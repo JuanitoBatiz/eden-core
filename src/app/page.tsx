@@ -106,37 +106,25 @@ export default function MenuPage() {
     }
   }, []);
 
-  // Scroll direction listener to show/hide header unificado (optimized with requestAnimationFrame)
+  // Scroll direction listener to show/hide header unificado (instant response)
   useEffect(() => {
     if (typeof window === 'undefined') return;
 
     let lastScrollY = window.scrollY;
-    let ticking = false;
-
-    const updateScrollDir = () => {
+    
+    const handleScroll = () => {
       const scrollY = window.scrollY;
       
       // Always show near the top of the page
       if (scrollY < 50) {
         setIsNavVisible(true);
-      } else {
-        // If scrolling down, hide; if scrolling up, show instantly
-        if (scrollY > lastScrollY) {
-          setIsNavVisible(false);
-        } else if (scrollY < lastScrollY) {
-          setIsNavVisible(true);
-        }
+      } else if (scrollY > lastScrollY) {
+        setIsNavVisible(false);
+      } else if (scrollY < lastScrollY) {
+        setIsNavVisible(true);
       }
-
-      lastScrollY = scrollY > 0 ? scrollY : 0;
-      ticking = false;
-    };
-
-    const handleScroll = () => {
-      if (!ticking) {
-        window.requestAnimationFrame(updateScrollDir);
-        ticking = true;
-      }
+      
+      lastScrollY = scrollY;
     };
 
     window.addEventListener('scroll', handleScroll, { passive: true });

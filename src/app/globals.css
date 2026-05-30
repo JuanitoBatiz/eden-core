@@ -167,17 +167,22 @@ a {
 /* Category Navigation */
 /* Sticky Header & Nav Container */
 .sticky-header-container {
-  position: sticky;
+  position: fixed;
   top: 0;
+  left: 0;
+  width: 100%;
   z-index: 100;
   transition: transform 0.35s cubic-bezier(0.16, 1, 0.3, 1);
   transform: translateY(0);
   box-shadow: 0 4px 20px var(--color-shadow);
-  width: 100%;
 }
 
 .sticky-header-container.hidden {
   transform: translateY(-100%);
+}
+
+.sticky-header-container + main.container {
+  padding-top: 144px;
 }
 
 /* Category Navigation */
