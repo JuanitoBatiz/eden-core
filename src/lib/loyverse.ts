@@ -151,7 +151,7 @@ export async function createLoyverseReceipt(order: {
 
     const data = await res.json();
     return {
-      receipt_id: data.receipt_id,
+      receipt_id: data.receipt_number,
       receipt_number: data.receipt_number
     };
   } catch (error) {
@@ -185,31 +185,15 @@ export async function refundLoyverseReceipt(receiptId: string) {
 
     const receipt = await fetchRes.json();
 
-    // Prepare refund payload
+    // Prepare refund payload targeting original item IDs
     const refundPayload = {
-      store_id: LOYVERSE_STORE_ID,
-      receipt_type: 'REFUND',
-      refund_for_receipt_id: receiptId,
       line_items: receipt.line_items.map((item: any) => ({
-        variant_id: item.variant_id,
-        quantity: item.quantity,
-        price: item.price
-      })),
-      payments: receipt.payments.map((payment: any) => {
-        if (payment.payment_type_id) {
-          return {
-            payment_type_id: payment.payment_type_id,
-            amount: -payment.amount
-          };
-        }
-        return {
-          type: payment.type || 'OTHER',
-          amount: -payment.amount
-        };
-      })
+        id: item.id,
+        quantity: item.quantity
+      }))
     };
 
-    const res = await fetch(`${LOYVERSE_API_URL}/receipts`, {
+    const res = await fetch(`${LOYVERSE_API_URL}/receipts/${receiptId}/refund`, {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${LOYVERSE_ACCESS_TOKEN}`,
