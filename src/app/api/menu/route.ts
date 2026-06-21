@@ -26,11 +26,11 @@ export async function GET() {
     const { data: products, error: prodErr } = await supabase
       .from('products')
       .select(`
-        *,
-        variants(*),
+        id, name, description, base_price, image_url, category_id, display_order,
+        variants(id, name, price, display_order),
         modifier_groups(
-          *,
-          modifiers(*)
+          id, name, max_selection,
+          modifiers(id, name, display_order)
         )
       `)
       .eq('available', true)

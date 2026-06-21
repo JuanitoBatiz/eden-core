@@ -26,6 +26,8 @@ interface Order {
   notes?: string;
   status: 'en_revision' | 'preparando' | 'listo' | 'cancelado';
   loyverse_receipt_number?: string;
+  payment_status?: string;
+  rejection_reason?: string;
 }
 
 export default function OrderStatusPage() {
@@ -41,6 +43,7 @@ export default function OrderStatusPage() {
   const [bankConfig, setBankConfig] = useState<any>(null);
   const [bankError, setBankError] = useState('');
   const [copied, setCopied] = useState(false);
+  const [showSyncMessage, setShowSyncMessage] = useState(true);
 
   // Upload state
   const [showUpload, setShowUpload] = useState(false);
@@ -130,6 +133,15 @@ export default function OrderStatusPage() {
       return () => clearInterval(interval);
     }
   }, [id]);
+
+  useEffect(() => {
+    if (order && !order.loyverse_receipt_number) {
+      const timer = setTimeout(() => {
+        setShowSyncMessage(false);
+      }, 10000);
+      return () => clearTimeout(timer);
+    }
+  }, [order?.loyverse_receipt_number]);
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setUploadError('');
@@ -311,7 +323,11 @@ export default function OrderStatusPage() {
             <div style={{ display: 'flex', justifyContent: 'space-between' }}>
               <span style={{ fontWeight: 600 }}>Ticket POS:</span>
               <span style={{ fontWeight: 700, color: 'var(--color-terracotta)' }}>
-                {order.loyverse_receipt_number || 'Sincronizando...'}
+                {order.loyverse_receipt_number 
+                  ? order.loyverse_receipt_number 
+                  : showSyncMessage 
+                    ? 'Sincronizando...' 
+                    : 'Recibido correctamente'}
               </span>
             </div>
             <div style={{ display: 'flex', justifyContent: 'space-between' }}>

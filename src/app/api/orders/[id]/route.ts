@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { createAdminClient, isSupabaseConfigured } from '@/lib/supabase';
 import { requireRole } from '@/lib/auth';
 
-export async function GET(req: Request, { params }: { params: { id: string } }) {
+export async function GET(req: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
     let tokenPayload;
     try {
@@ -18,7 +18,7 @@ export async function GET(req: Request, { params }: { params: { id: string } }) 
       return NextResponse.json({ error: 'Configuración de base de datos ausente.' }, { status: 500 });
     }
 
-    const orderId = params.id;
+    const orderId = (await params).id;
     if (!orderId) {
       return NextResponse.json({ error: 'ID de orden no proporcionado.' }, { status: 400 });
     }

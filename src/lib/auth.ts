@@ -21,7 +21,7 @@ export function generateRefreshToken(payload: { user_id: string }): string {
   return jwt.sign(payload, JWT_REFRESH_SECRET, { expiresIn: '7d' });
 }
 
-const activeUserCache = new Map<string, { active: boolean, expiresAt: number }>();
+const activeUserCache = new Map<string, { active: boolean, role: string, expiresAt: number }>();
 
 /**
  * Extrae y verifica el access_token de una request.
@@ -64,22 +64,26 @@ export async function verifyAccessToken(request: NextRequest | Request): Promise
 
   if (cached && cached.expiresAt > now) {
     if (!cached.active) throw new Error('401: Cuenta inactiva');
+    decoded.role = cached.role;
   } else {
     const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
     const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY || '';
     if (!supabaseUrl || !serviceRoleKey) {
       // Sin Supabase (modo dev) — asumir activo si el token es válido
-      activeUserCache.set(decoded.user_id, { active: true, expiresAt: now + 15000 });
+      activeUserCache.set(decoded.user_id, { active: true, role: decoded.role || 'customer', expiresAt: now + 15000 });
     } else {
       const supabase = createClient(supabaseUrl, serviceRoleKey);
       const { data: user } = await supabase
         .from('users')
-        .select('active')
+        .select('active, role')
         .eq('id', decoded.user_id)
         .single();
 
       const isActive = user ? user.active : false;
-      activeUserCache.set(decoded.user_id, { active: isActive, expiresAt: now + 15000 }); // 15 segundos de caché
+      const userRole = user ? user.role : 'customer';
+      activeUserCache.set(decoded.user_id, { active: isActive, role: userRole, expiresAt: now + 15000 }); // 15 segundos de caché
+      
+      decoded.role = userRole;
 
       if (!isActive) throw new Error('401: Cuenta inactiva');
     }
@@ -102,48 +106,22 @@ export function verifyRefreshToken(token: string): JwtPayload {
  * Lanza Error con código 403 si el rol es insuficiente.
  */
 export async function requireRole(request: NextRequest | Request, requiredRole: MinimumRole): Promise<JwtPayload & { role: string }> {
-  // 1. Verificar token y estado activo
+  // 1. Verificar token y estado activo (esto ya recupera el rol de la DB y lo cachea)
   const tokenPayload = await verifyAccessToken(request);
 
-  // 2. Leer el rol actual desde la DB (siempre desde DB, no del JWT, para reflejar cambios de rol)
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
-  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY || '';
-
-  if (!supabaseUrl || !serviceRoleKey) {
-    // Sin Supabase — usar el rol del JWT directamente (modo dev)
-    const tokenRole = (tokenPayload.role || 'customer') as MinimumRole;
-    const tokenRoleIndex = ROLE_HIERARCHY.indexOf(tokenRole);
-    const requiredRoleIndex = ROLE_HIERARCHY.indexOf(requiredRole);
-    if (tokenRoleIndex === -1 || tokenRoleIndex < requiredRoleIndex) {
-      const permError = new Error('403: insufficient_permissions');
-      (permError as any).required_role = requiredRole;
-      (permError as any).your_role = tokenRole;
-      throw permError;
-    }
-    return { ...tokenPayload, role: tokenRole };
-  }
-
-  const supabase = createClient(supabaseUrl, serviceRoleKey);
-  const { data: user, error } = await supabase
-    .from('users')
-    .select('role')
-    .eq('id', tokenPayload.user_id)
-    .single();
-
-  if (error || !user) {
-    throw new Error('401: Usuario no encontrado');
-  }
+  // 2. Leer el rol actual (obtenido desde la validación previa o caché)
+  const userRole = tokenPayload.role || 'customer';
 
   // 3. Comparar roles usando la jerarquía
-  const userRoleIndex = ROLE_HIERARCHY.indexOf(user.role as MinimumRole);
+  const userRoleIndex = ROLE_HIERARCHY.indexOf(userRole as MinimumRole);
   const requiredRoleIndex = ROLE_HIERARCHY.indexOf(requiredRole);
 
   if (userRoleIndex === -1 || userRoleIndex < requiredRoleIndex) {
     const permError = new Error('403: insufficient_permissions');
     (permError as any).required_role = requiredRole;
-    (permError as any).your_role = user.role;
+    (permError as any).your_role = userRole;
     throw permError;
   }
 
-  return { ...tokenPayload, role: user.role };
+  return { ...tokenPayload, role: userRole };
 }

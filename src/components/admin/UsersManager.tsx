@@ -2,9 +2,10 @@
 
 import React, { useState, useEffect } from 'react';
 import { Search, ShieldAlert, UserCheck, UserX, AlertCircle } from 'lucide-react';
+import { User } from '@/types/api-contracts';
 
 export default function UsersManager({ accessToken }: { accessToken: string }) {
-  const [users, setUsers] = useState<any[]>([]);
+  const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   
@@ -64,7 +65,7 @@ export default function UsersManager({ accessToken }: { accessToken: string }) {
     }
   };
 
-  const handleToggleActive = async (user: any) => {
+  const handleToggleActive = async (user: User) => {
     const action = user.active ? 'deactivate' : 'reactivate';
     const actionText = user.active ? 'desactivar' : 'reactivar';
     
@@ -106,25 +107,25 @@ export default function UsersManager({ accessToken }: { accessToken: string }) {
             placeholder="Buscar por nombre o teléfono..." 
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            style={{ padding: '10px', borderRadius: '8px', border: '1px solid #d1d5db', width: '250px' }}
+            style={{ padding: '10px', borderRadius: '8px', border: '1px solid var(--color-cream-dark)', width: '250px', color: 'var(--color-text-dark)' }}
           />
-          <button type="submit" style={{ padding: '10px 15px', backgroundColor: '#4b5563', color: 'white', border: 'none', borderRadius: '8px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '5px' }}>
+          <button type="submit" style={{ padding: '10px 15px', backgroundColor: 'var(--color-text-dark)', color: 'white', border: 'none', borderRadius: '8px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '5px' }}>
             <Search size={16} /> Buscar
           </button>
         </form>
       </div>
 
-      <div style={{ padding: '10px', backgroundColor: '#eff6ff', color: '#1e40af', borderRadius: '8px', fontSize: '0.9rem', marginBottom: '20px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+      <div style={{ padding: '10px', backgroundColor: 'var(--color-ochre-light)', color: 'var(--color-ochre)', borderRadius: '8px', fontSize: '0.9rem', marginBottom: '20px', display: 'flex', alignItems: 'center', gap: '8px' }}>
         <AlertCircle size={18} />
         La desactivación de una cuenta expulsa al usuario de su sesión en un máximo de 15 segundos mediante invalidación por caché.
       </div>
 
-      {error && <div style={{ color: 'red', marginBottom: '15px' }}>{error}</div>}
+      {error && <div style={{ color: 'var(--color-terracotta)', marginBottom: '15px' }}>{error}</div>}
 
       <div style={{ overflowX: 'auto' }}>
         <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
           <thead>
-            <tr style={{ backgroundColor: '#f9fafb', color: '#6b7280', fontSize: '0.9rem', borderBottom: '1px solid #e5e7eb' }}>
+            <tr style={{ backgroundColor: 'var(--color-cream-light)', color: 'var(--color-text-muted)', fontSize: '0.9rem', borderBottom: '1px solid var(--color-cream-dark)' }}>
               <th style={{ padding: '12px' }}>Nombre</th>
               <th style={{ padding: '12px' }}>Teléfono</th>
               <th style={{ padding: '12px' }}>Rol</th>
@@ -135,19 +136,19 @@ export default function UsersManager({ accessToken }: { accessToken: string }) {
           </thead>
           <tbody>
             {loading ? (
-              <tr><td colSpan={6} style={{ padding: '20px', textAlign: 'center', color: '#6b7280' }}>Cargando usuarios...</td></tr>
+              <tr><td colSpan={6} style={{ padding: '20px', textAlign: 'center', color: 'var(--color-text-muted)' }}>Cargando usuarios...</td></tr>
             ) : users.length === 0 ? (
-              <tr><td colSpan={6} style={{ padding: '20px', textAlign: 'center', color: '#6b7280' }}>No se encontraron usuarios.</td></tr>
+              <tr><td colSpan={6} style={{ padding: '20px', textAlign: 'center', color: 'var(--color-text-muted)' }}>No se encontraron usuarios.</td></tr>
             ) : (
               users.map(user => (
-                <tr key={user.id} style={{ borderBottom: '1px solid #e5e7eb', opacity: user.active ? 1 : 0.6 }}>
-                  <td style={{ padding: '12px', fontWeight: 500 }}>{user.name}</td>
-                  <td style={{ padding: '12px', color: '#4b5563' }}>{user.phone}</td>
+                <tr key={user.id} style={{ borderBottom: '1px solid var(--color-cream-dark)', opacity: user.active ? 1 : 0.6 }}>
+                  <td style={{ padding: '12px', fontWeight: 500, color: 'var(--color-text-dark)' }}>{user.name}</td>
+                  <td style={{ padding: '12px', color: 'var(--color-text-muted)' }}>{user.phone}</td>
                   <td style={{ padding: '12px' }}>
                     <select 
                       value={user.role} 
                       onChange={(e) => handleChangeRole(user.id, e.target.value, user.role)}
-                      style={{ padding: '6px', borderRadius: '4px', border: '1px solid #d1d5db', outline: 'none' }}
+                      style={{ padding: '6px', borderRadius: '4px', border: '1px solid var(--color-cream-dark)', outline: 'none', color: 'var(--color-text-dark)' }}
                     >
                       <option value="customer">Customer</option>
                       <option value="cashier">Cashier</option>
@@ -160,13 +161,13 @@ export default function UsersManager({ accessToken }: { accessToken: string }) {
                       borderRadius: '12px', 
                       fontSize: '0.8rem', 
                       fontWeight: 600,
-                      backgroundColor: user.active ? '#d1fae5' : '#fee2e2',
-                      color: user.active ? '#065f46' : '#991b1b'
+                      backgroundColor: user.active ? 'rgba(4,120,87,0.1)' : 'var(--color-ochre-light)',
+                      color: user.active ? 'var(--color-green-dark)' : 'var(--color-terracotta)'
                     }}>
                       {user.active ? 'Activo' : 'Inactivo'}
                     </span>
                   </td>
-                  <td style={{ padding: '12px', fontSize: '0.85rem', color: '#6b7280' }}>
+                  <td style={{ padding: '12px', fontSize: '0.85rem', color: 'var(--color-text-muted)' }}>
                     {new Date(user.created_at).toLocaleDateString()}
                   </td>
                   <td style={{ padding: '12px' }}>
@@ -176,7 +177,7 @@ export default function UsersManager({ accessToken }: { accessToken: string }) {
                         background: 'none', 
                         border: 'none', 
                         cursor: 'pointer', 
-                        color: user.active ? '#ef4444' : '#10b981',
+                        color: user.active ? 'var(--color-terracotta)' : 'var(--color-green-dark)',
                         display: 'flex',
                         alignItems: 'center',
                         gap: '5px',
@@ -196,21 +197,21 @@ export default function UsersManager({ accessToken }: { accessToken: string }) {
       </div>
 
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '20px' }}>
-        <div style={{ fontSize: '0.85rem', color: '#6b7280' }}>
+        <div style={{ fontSize: '0.85rem', color: 'var(--color-text-muted)' }}>
           Mostrando {users.length} de {totalCount} usuarios
         </div>
         <div style={{ display: 'flex', gap: '5px' }}>
           <button 
             disabled={page <= 1} 
             onClick={() => setPage(p => p - 1)}
-            style={{ padding: '6px 12px', border: '1px solid #d1d5db', borderRadius: '6px', backgroundColor: 'white', cursor: page <= 1 ? 'not-allowed' : 'pointer' }}
+            style={{ padding: '6px 12px', border: '1px solid var(--color-cream-dark)', borderRadius: '6px', backgroundColor: 'white', color: 'var(--color-text-dark)', cursor: page <= 1 ? 'not-allowed' : 'pointer' }}
           >
             Anterior
           </button>
           <button 
             disabled={page >= totalPages} 
             onClick={() => setPage(p => p + 1)}
-            style={{ padding: '6px 12px', border: '1px solid #d1d5db', borderRadius: '6px', backgroundColor: 'white', cursor: page >= totalPages ? 'not-allowed' : 'pointer' }}
+            style={{ padding: '6px 12px', border: '1px solid var(--color-cream-dark)', borderRadius: '6px', backgroundColor: 'white', color: 'var(--color-text-dark)', cursor: page >= totalPages ? 'not-allowed' : 'pointer' }}
           >
             Siguiente
           </button>

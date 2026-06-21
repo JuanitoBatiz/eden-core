@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { requireRole } from '@/lib/auth';
 import { createClient } from '@supabase/supabase-js';
 
-export async function PATCH(req: Request, { params }: { params: { id: string } }) {
+export async function PATCH(req: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
     let tokenPayload;
     try {
@@ -14,7 +14,7 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
       return NextResponse.json({ error: authErr.message || 'No autorizado' }, { status: 401 });
     }
 
-    const targetUserId = params.id;
+    const targetUserId = (await params).id;
 
     const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
     const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY || '';

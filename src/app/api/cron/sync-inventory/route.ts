@@ -34,12 +34,12 @@ export async function GET(req: Request) {
     const adminSupabase = createClient(supabaseUrl, serviceRoleKey);
 
     const LOYVERSE_API = 'https://api.loyverse.com/v1.0';
-    let cursor = null;
+    let cursor: string | null = null;
     let totalUpdated = 0;
 
     // Paginación segura para no saturar memoria
     do {
-      const url = cursor 
+      const url: string = cursor 
         ? `${LOYVERSE_API}/inventory?cursor=${cursor}`
         : `${LOYVERSE_API}/inventory`;
 
@@ -73,13 +73,19 @@ export async function GET(req: Request) {
           .in('loyverse_item_id', variantIds);
 
         if (products && products.length > 0) {
+          const updates = [];
           for (const prod of products) {
             if (prod.loyverse_item_id && isAvailableMap[prod.loyverse_item_id] !== undefined) {
-              await adminSupabase.from('products')
-                .update({ available: isAvailableMap[prod.loyverse_item_id] })
-                .eq('id', prod.id);
-              totalUpdated++;
+              updates.push({
+                id: prod.id,
+                available: isAvailableMap[prod.loyverse_item_id]
+              });
             }
+          }
+
+          if (updates.length > 0) {
+            await adminSupabase.from('products').upsert(updates);
+            totalUpdated += updates.length;
           }
         }
       }

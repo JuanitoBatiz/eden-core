@@ -43,8 +43,8 @@ export default function PerfilPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-emerald-500"></div>
+      <div style={{ minHeight: '100vh', backgroundColor: 'var(--color-cream-light)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        <div className="status-animation-ring active" style={{ width: '48px', height: '48px' }}></div>
       </div>
     );
   }
@@ -52,39 +52,39 @@ export default function PerfilPage() {
   if (!isAuthenticated) return null;
 
   return (
-    <div className="min-h-screen bg-gray-50 pb-24">
-      <header className="bg-white sticky top-0 z-40 border-b border-gray-100 px-4 py-4 flex items-center justify-between">
-        <button onClick={() => router.push('/')} className="p-2 -ml-2 text-gray-500 hover:text-gray-800">
-          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor" className="w-6 h-6">
+    <div style={{ minHeight: '100vh', backgroundColor: 'var(--color-cream-light)', paddingBottom: '96px' }}>
+      <header style={{ backgroundColor: 'white', position: 'sticky', top: 0, zIndex: 40, borderBottom: '1px solid var(--color-cream-dark)', padding: '16px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+        <button onClick={() => router.push('/')} style={{ padding: '8px', marginLeft: '-8px', color: 'var(--color-text-muted)', cursor: 'pointer', background: 'none', border: 'none' }}>
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor" style={{ width: '24px', height: '24px' }}>
             <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 19.5L8.25 12l7.5-7.5" />
           </svg>
         </button>
-        <h1 className="text-xl font-black text-gray-900 tracking-tight">Mi Perfil</h1>
+        <h1 style={{ fontSize: '1.25rem', fontWeight: 900, color: 'var(--color-text-dark)', letterSpacing: '-0.025em', margin: 0 }}>Mi Perfil</h1>
         <button
           onClick={handleLogout}
-          className="text-sm text-red-500 font-semibold hover:text-red-700"
+          style={{ fontSize: '0.875rem', color: 'var(--color-terracotta)', fontWeight: 600, background: 'none', border: 'none', cursor: 'pointer' }}
         >
           Salir
         </button>
       </header>
 
-      <main className="max-w-md mx-auto px-4 pt-8 space-y-8">
+      <main style={{ maxWidth: '28rem', margin: '0 auto', padding: '32px 16px 0 16px', display: 'flex', flexDirection: 'column', gap: '32px' }}>
         {/* EdenPass QR */}
         <EdenPassQR />
 
         {/* Loyalty Summary */}
         {loyaltyData && (
-          <div className="bg-white rounded-3xl shadow-sm border border-gray-100 p-6">
-            <h2 className="text-lg font-black text-gray-800 mb-4">Mis Puntos</h2>
-            <div className="flex items-center justify-between">
+          <div style={{ backgroundColor: 'white', borderRadius: '24px', boxShadow: '0 1px 2px 0 rgba(0, 0, 0, 0.05)', border: '1px solid var(--color-cream-dark)', padding: '24px' }}>
+            <h2 style={{ fontSize: '1.125rem', fontWeight: 900, color: 'var(--color-text-dark)', marginBottom: '16px', marginTop: 0 }}>Mis Puntos</h2>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
               <div>
-                <p className="text-3xl font-black text-emerald-600">{loyaltyData.loyalty_points}</p>
-                <p className="text-sm text-gray-500 mt-1">puntos acumulados</p>
+                <p style={{ fontSize: '1.875rem', fontWeight: 900, color: 'var(--color-green-dark)', margin: 0 }}>{loyaltyData.loyalty_points}</p>
+                <p style={{ fontSize: '0.875rem', color: 'var(--color-text-muted)', marginTop: '4px', marginBottom: 0 }}>puntos acumulados</p>
               </div>
-              <div className="text-right">
-                <p className="font-semibold text-gray-800">{loyaltyData.loyalty_tier}</p>
+              <div style={{ textAlign: 'right' }}>
+                <p style={{ fontWeight: 600, color: 'var(--color-text-dark)', margin: 0 }}>{loyaltyData.loyalty_tier}</p>
                 {loyaltyData.next_tier && (
-                  <p className="text-xs text-gray-500 mt-1">
+                  <p style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: '4px', marginBottom: 0 }}>
                     {loyaltyData.points_needed_for_next_tier} pts para {loyaltyData.next_tier}
                   </p>
                 )}
@@ -95,13 +95,13 @@ export default function PerfilPage() {
 
         {/* History */}
         {loyaltyData?.history?.length > 0 && (
-          <div className="bg-white rounded-3xl shadow-sm border border-gray-100 p-6">
-            <h2 className="text-lg font-black text-gray-800 mb-4">Historial de Canjes</h2>
-            <ul className="space-y-3">
+          <div style={{ backgroundColor: 'white', borderRadius: '24px', boxShadow: '0 1px 2px 0 rgba(0, 0, 0, 0.05)', border: '1px solid var(--color-cream-dark)', padding: '24px' }}>
+            <h2 style={{ fontSize: '1.125rem', fontWeight: 900, color: 'var(--color-text-dark)', marginBottom: '16px', marginTop: 0 }}>Historial de Canjes</h2>
+            <ul style={{ display: 'flex', flexDirection: 'column', gap: '12px', padding: 0, margin: 0, listStyle: 'none' }}>
               {loyaltyData.history.map((item: any) => (
-                <li key={item.id} className="flex justify-between text-sm">
-                  <span className="text-gray-700">{item.benefit_description}</span>
-                  <span className="text-emerald-600 font-semibold">-{item.points_used} pts</span>
+                <li key={item.id} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.875rem' }}>
+                  <span style={{ color: 'var(--color-text-dark)' }}>{item.benefit_description}</span>
+                  <span style={{ color: 'var(--color-green-dark)', fontWeight: 600 }}>-{item.points_used} pts</span>
                 </li>
               ))}
             </ul>

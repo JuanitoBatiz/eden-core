@@ -3,7 +3,7 @@ import { requireRole } from '@/lib/auth';
 import { createClient } from '@supabase/supabase-js';
 import { revalidatePath } from 'next/cache';
 
-export async function PATCH(req: Request, { params }: { params: { id: string } }) {
+export async function PATCH(req: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
     let tokenPayload;
     try {
@@ -38,7 +38,7 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
     const { data, error } = await adminSupabase
       .from('products')
       .update(updates)
-      .eq('id', params.id)
+      .eq('id', (await params).id)
       .select()
       .single();
 
@@ -52,7 +52,7 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
   }
 }
 
-export async function DELETE(req: Request, { params }: { params: { id: string } }) {
+export async function DELETE(req: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
     let tokenPayload;
     try {
@@ -73,7 +73,7 @@ export async function DELETE(req: Request, { params }: { params: { id: string } 
     const { error } = await adminSupabase
       .from('products')
       .update({ available: false, deleted_at: new Date().toISOString() })
-      .eq('id', params.id);
+      .eq('id', (await params).id);
 
     if (error) throw error;
 

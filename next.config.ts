@@ -29,6 +29,10 @@ const nextConfig: NextConfig = {
             value: cspHeader,
           },
           {
+            key: 'Permissions-Policy',
+            value: 'camera=self',
+          },
+          {
             key: 'X-Frame-Options',
             value: 'DENY',
           },

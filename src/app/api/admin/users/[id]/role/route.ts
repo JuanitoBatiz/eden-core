@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { requireRole } from '@/lib/auth';
 import { createClient } from '@supabase/supabase-js';
 
-export async function PATCH(req: Request, { params }: { params: { id: string } }) {
+export async function PATCH(req: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
     let tokenPayload;
     try {
@@ -21,7 +21,7 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
       return NextResponse.json({ error: 'Rol inválido' }, { status: 400 });
     }
 
-    const targetUserId = params.id;
+    const targetUserId = (await params).id;
     
     // Regla: No puedes bajar tu propio rol de owner
     if (tokenPayload.user_id === targetUserId && role !== 'owner') {

@@ -4,9 +4,9 @@ import { createClient } from '@supabase/supabase-js';
 import { RedeemBenefitRequest } from '@/types/api-contracts';
 
 // POST: Registrar un canje manual de puntos (Loyalty)
-export async function POST(req: Request, { params }: { params: { id: string } }) {
+export async function POST(req: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
-    const customerId = params.id;
+    const customerId = (await params).id;
     if (!customerId) {
       return NextResponse.json({ error: 'ID de cliente no proporcionado.' }, { status: 400 });
     }

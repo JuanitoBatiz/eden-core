@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { requireRole } from '@/lib/auth';
 import { createClient } from '@supabase/supabase-js';
 
-export async function PATCH(req: Request, { params }: { params: { id: string } }) {
+export async function PATCH(req: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
     let tokenPayload;
     try {
@@ -14,7 +14,7 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
       return NextResponse.json({ error: authErr.message || 'No autorizado' }, { status: 401 });
     }
 
-    const targetUserId = params.id;
+    const targetUserId = (await params).id;
 
     if (tokenPayload.user_id === targetUserId) {
         return NextResponse.json({ error: 'No puedes desactivar tu propia cuenta' }, { status: 400 });

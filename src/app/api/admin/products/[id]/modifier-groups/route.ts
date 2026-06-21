@@ -3,7 +3,7 @@ import { requireRole } from '@/lib/auth';
 import { createClient } from '@supabase/supabase-js';
 import { revalidatePath } from 'next/cache';
 
-export async function POST(req: Request, { params }: { params: { id: string } }) {
+export async function POST(req: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
     let tokenPayload;
     try {
@@ -15,7 +15,7 @@ export async function POST(req: Request, { params }: { params: { id: string } })
       return NextResponse.json({ error: authErr.message || 'No autorizado' }, { status: 401 });
     }
 
-    const product_id = params.id;
+    const product_id = (await params).id;
     const { name, min_selection, max_selection, free_limit, extra_price, required, display_order } = await req.json();
 
     if (!name || name.trim() === '') {

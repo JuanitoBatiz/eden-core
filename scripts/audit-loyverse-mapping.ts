@@ -18,11 +18,11 @@ const supabase = createClient(supabaseUrl, serviceRoleKey);
 const LOYVERSE_API = 'https://api.loyverse.com/v1.0';
 
 async function fetchLoyverseItems() {
-  const items = [];
-  let cursor = null;
+  const items: any[] = [];
+  let cursor: string | null = null;
 
   do {
-    const url = cursor 
+    const url: string = cursor 
       ? `${LOYVERSE_API}/items?cursor=${cursor}`
       : `${LOYVERSE_API}/items`;
 

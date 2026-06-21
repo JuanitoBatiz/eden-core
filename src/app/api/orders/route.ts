@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { createAdminClient, isSupabaseConfigured } from '@/lib/supabase';
-import { getLoyverseInventory, createLoyverseReceipt } from '@/lib/loyverse';
+import { createLoyverseReceipt } from '@/lib/loyverse';
 import { requireRole, verifyAccessToken } from '@/lib/auth';
 import { OrderCreateRequest } from '@/types/api-contracts';
 import { calculateOrderTotal } from '@/lib/pricing';

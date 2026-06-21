@@ -44,7 +44,7 @@ export async function GET(req: Request) {
     }
 
     // 3. Enrich with Loyverse data if available
-    let loyverseData = { loyalty_points: 0, loyalty_tier: 'Estándar', _loyverse_raw: null };
+    let loyverseData: any = { loyalty_points: 0, loyalty_tier: 'Estándar', _loyverse_raw: null };
     if (customer.loyverse_customer_id) {
       loyverseData = await getLoyaltyInfoFromLoyverse(customer.loyverse_customer_id);
     }

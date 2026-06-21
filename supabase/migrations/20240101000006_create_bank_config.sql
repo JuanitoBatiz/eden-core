@@ -20,11 +20,11 @@ CREATE POLICY "Public read access to active bank config"
     TO public
     USING (active = true);
 
--- Enable updated_at trigger (assuming the trigger function update_modified_column exists from auth migration)
-CREATE TRIGGER update_bank_config_modtime
-    BEFORE UPDATE ON bank_config
+-- Enable updated_at trigger (assuming the trigger function update_updated_at_column exists from menu migration)
+CREATE TRIGGER update_bank_config_updated_at
+    BEFORE UPDATE ON public.bank_config
     FOR EACH ROW
-    EXECUTE FUNCTION update_modified_column();
+    EXECUTE FUNCTION update_updated_at_column();
 
 -- Insert a dummy bank configuration so the frontend doesn't crash empty
 INSERT INTO bank_config (bank_name, account_holder, clabe, active)

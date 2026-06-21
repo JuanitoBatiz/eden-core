@@ -3,7 +3,7 @@ import { requireRole } from '@/lib/auth';
 import { createClient } from '@supabase/supabase-js';
 import { revalidatePath } from 'next/cache';
 
-export async function POST(req: Request, { params }: { params: { id: string } }) {
+export async function POST(req: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
     let tokenPayload;
     try {
@@ -15,7 +15,7 @@ export async function POST(req: Request, { params }: { params: { id: string } })
       return NextResponse.json({ error: authErr.message || 'No autorizado' }, { status: 401 });
     }
 
-    const modifier_group_id = params.id;
+    const modifier_group_id = (await params).id;
     const { name, price_modifier, available, display_order } = await req.json();
 
     if (!name || name.trim() === '') {

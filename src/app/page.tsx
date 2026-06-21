@@ -23,6 +23,7 @@ import {
 } from 'lucide-react';
 import { MenuItem, MenuCategory } from '@/lib/menuData';
 import { SmsRequest, VerifyOtpRequest, OrderCreateRequest } from '@/types/api-contracts';
+import ProductImage from '@/components/ProductImage';
 
 // Helper local icon
 function getCategoryIcon(name: string) {
@@ -239,10 +240,10 @@ export default function MenuPage() {
 
     // Construct customizable labels
     const customizations = {
-      proteins: selectedProteins.map(p => SALAD_OPTIONS.proteins.find(item => item.id === p)?.name || p),
-      toppings: selectedToppings.map(t => SALAD_OPTIONS.toppings.find(item => item.id === t)?.name || t),
-      seedsAndNuts: selectedSeeds.map(s => SALAD_OPTIONS.seedsAndNuts.find(item => item.id === s)?.name || s),
-      dressings: selectedDressings.map(d => SALAD_OPTIONS.dressings.find(item => item.id === d)?.name || d),
+      proteins: selectedProteins.map((p: any) => SALAD_OPTIONS.proteins.find((item: any) => item.id === p)?.name || p),
+      toppings: selectedToppings.map((t: any) => SALAD_OPTIONS.toppings.find((item: any) => item.id === t)?.name || t),
+      seedsAndNuts: selectedSeeds.map((s: any) => SALAD_OPTIONS.seedsAndNuts.find((item: any) => item.id === s)?.name || s),
+      dressings: selectedDressings.map((d: any) => SALAD_OPTIONS.dressings.find((item: any) => item.id === d)?.name || d),
       extras: selectedExtras,
       flavors: selectedFlavors
     };
@@ -373,7 +374,7 @@ export default function MenuPage() {
         customer_name: customerName,
         customer_phone: customerPhone,
         items: cart,
-        notes: cart.map(item => item.notes).filter(Boolean).join('; ')
+        notes: cart.map((item: any) => item.notes).filter(Boolean).join('; ')
       };
 
       const res = await fetch('/api/orders', {
@@ -420,7 +421,7 @@ export default function MenuPage() {
   // Customizer checkbox toggle helper
   const toggleOption = (id: string, list: string[], setList: React.Dispatch<React.SetStateAction<string[]>>, limit: number) => {
     if (list.includes(id)) {
-      setList(list.filter(item => item !== id));
+      setList(list.filter((item: any) => item !== id));
     } else {
       // If limit is reached, still allow adding (it will charge as extra) OR enforce hard caps.
       // Salad details say: Chica: 1 protein, 4 toppings, 2 seeds. If selected more, we count it as extra.
@@ -479,7 +480,7 @@ export default function MenuPage() {
         {/* CATEGORY BAR */}
         <nav className="category-nav">
           <ul className="category-list">
-            {CATEGORIES.map(category => (
+            {CATEGORIES.map((category: any) => (
               <li key={category.id}>
                 <button 
                   className={`category-btn ${activeCategory === category.id ? 'active' : ''}`}
@@ -522,8 +523,8 @@ export default function MenuPage() {
         </section>
 
         {/* MENU CATEGORIES SECTIONS */}
-        {CATEGORIES.map(cat => {
-          const items = MENU_ITEMS.filter(item => item.category === cat.id);
+        {CATEGORIES.map((cat: any) => {
+          const items = MENU_ITEMS.filter((item: any) => item.category === cat.id);
           if (items.length === 0) return null;
 
           return (
@@ -534,10 +535,10 @@ export default function MenuPage() {
               </div>
 
               <div className="products-grid">
-                {items.map(product => (
+                {items.map((product: any) => (
                   <div key={product.id} className="product-card">
                     <div className="product-img-container">
-                      <img src={product.image} alt={product.name} className="product-img" />
+                      <ProductImage src={product.image} alt={product.name} className="product-img" />
                     </div>
                     <div className="product-info">
                       <h3 className="product-name">{product.name}</h3>
@@ -600,7 +601,7 @@ export default function MenuPage() {
                 <div className="option-group">
                   <div className="option-group-title">Tamaño del producto</div>
                   <div className="option-grid">
-                    {Object.keys(selectedProduct.prices).map(size => (
+                    {Object.keys(selectedProduct.prices).map((size: any) => (
                       <label key={size} className="option-card-label">
                         <input 
                           type="radio" 
@@ -632,7 +633,7 @@ export default function MenuPage() {
                       (Adicionales tienen costo extra de +$30 c/u)
                     </p>
                     <div className="option-grid">
-                      {SALAD_OPTIONS.proteins.map(protein => (
+                      {SALAD_OPTIONS.proteins.map((protein: any) => (
                         <label key={protein.id} className="option-card-label">
                           <input 
                             type="checkbox" 
@@ -661,7 +662,7 @@ export default function MenuPage() {
                       (Adicionales tienen costo extra de +$15 c/u)
                     </p>
                     <div className="option-grid">
-                      {SALAD_OPTIONS.toppings.map(topping => (
+                      {SALAD_OPTIONS.toppings.map((topping: any) => (
                         <label key={topping.id} className="option-card-label">
                           <input 
                             type="checkbox" 
@@ -690,7 +691,7 @@ export default function MenuPage() {
                       (Adicionales tienen costo extra de +$15 c/u)
                     </p>
                     <div className="option-grid">
-                      {SALAD_OPTIONS.seedsAndNuts.map(seed => (
+                      {SALAD_OPTIONS.seedsAndNuts.map((seed: any) => (
                         <label key={seed.id} className="option-card-label">
                           <input 
                             type="checkbox" 
@@ -715,7 +716,7 @@ export default function MenuPage() {
                       <span>Aderezos (1 obligatorio)</span>
                     </div>
                     <div className="option-grid">
-                      {SALAD_OPTIONS.dressings.map(dressing => (
+                      {SALAD_OPTIONS.dressings.map((dressing: any) => (
                         <label key={dressing.id} className="option-card-label">
                           <input 
                             type="radio" 
@@ -742,7 +743,7 @@ export default function MenuPage() {
                       <span>Frutas (Toppings) - Selecciona 2</span>
                     </div>
                     <div className="option-grid">
-                      {SALAD_OPTIONS.toppings.filter(t => ['mango', 'fresa', 'platano', 'uva', 'kiwi', 'pina', 'blueberry', 'frambuesa'].includes(t.id)).map(topping => (
+                      {SALAD_OPTIONS.toppings.filter((t: any) => ['mango', 'fresa', 'platano', 'uva', 'kiwi', 'pina', 'blueberry', 'frambuesa'].includes(t.id)).map((topping: any) => (
                         <label key={topping.id} className="option-card-label">
                           <input 
                             type="checkbox" 
@@ -750,7 +751,7 @@ export default function MenuPage() {
                             checked={selectedToppings.includes(topping.id)}
                             onChange={() => {
                               if (selectedToppings.includes(topping.id)) {
-                                setSelectedToppings(selectedToppings.filter(x => x !== topping.id));
+                                setSelectedToppings(selectedToppings.filter((x: any) => x !== topping.id));
                               } else if (selectedToppings.length < 2) {
                                 setSelectedToppings([...selectedToppings, topping.id]);
                               }
@@ -769,7 +770,7 @@ export default function MenuPage() {
                       <span>Semillas y Granos - Selecciona 2</span>
                     </div>
                     <div className="option-grid">
-                      {SALAD_OPTIONS.seedsAndNuts.map(seed => (
+                      {SALAD_OPTIONS.seedsAndNuts.map((seed: any) => (
                         <label key={seed.id} className="option-card-label">
                           <input 
                             type="checkbox" 
@@ -777,7 +778,7 @@ export default function MenuPage() {
                             checked={selectedSeeds.includes(seed.id)}
                             onChange={() => {
                               if (selectedSeeds.includes(seed.id)) {
-                                setSelectedSeeds(selectedSeeds.filter(x => x !== seed.id));
+                                setSelectedSeeds(selectedSeeds.filter((x: any) => x !== seed.id));
                               } else if (selectedSeeds.length < 2) {
                                 setSelectedSeeds([...selectedSeeds, seed.id]);
                               }
@@ -810,7 +811,7 @@ export default function MenuPage() {
                       : 'Selecciona el sabor para tu bebida.'}
                   </p>
                   <div className="option-grid">
-                    {selectedProduct.flavors.map(flavor => {
+                    {selectedProduct.flavors.map((flavor: any) => {
                       const isChecked = selectedFlavors.includes(flavor);
                       return (
                         <label key={flavor} className="option-card-label">
@@ -822,7 +823,7 @@ export default function MenuPage() {
                             onChange={() => {
                               const max = selectedProduct.maxFlavors || 1;
                               if (isChecked) {
-                                setSelectedFlavors(selectedFlavors.filter(f => f !== flavor));
+                                setSelectedFlavors(selectedFlavors.filter((f: any) => f !== flavor));
                               } else {
                                 if (max === 1) {
                                   setSelectedFlavors([flavor]);
@@ -924,7 +925,7 @@ export default function MenuPage() {
                 </div>
               ) : (
                 <div className="cart-items-list">
-                  {cart.map(item => (
+                  {cart.map((item: any) => (
                     <div key={item.cartId} className="cart-item">
                       <div className="cart-item-info">
                         <span className="cart-item-name">{item.name} {item.size && `(${item.size})`}</span>

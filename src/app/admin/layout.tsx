@@ -5,7 +5,7 @@ import { createClient } from '@supabase/supabase-js';
 import { ROLE_HIERARCHY, MinimumRole, ROUTE_PERMISSIONS } from '@/lib/permissions';
 
 export default async function AdminLayout({ children }: { children: React.ReactNode }) {
-  const cookieStore = cookies();
+  const cookieStore = await cookies();
   const refreshToken = cookieStore.get('refresh_token');
 
   if (!refreshToken?.value) {

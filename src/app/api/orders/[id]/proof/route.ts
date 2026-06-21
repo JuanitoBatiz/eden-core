@@ -6,9 +6,9 @@ import { sanitizeError } from '@/lib/apiError';
 const slugify = (text: string) => text.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9.]+/g, '-');
 
 // POST: Upload payment proof
-export async function POST(req: Request, { params }: { params: { id: string } }) {
+export async function POST(req: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
-    const orderId = params.id;
+    const orderId = (await params).id;
     if (!orderId) {
       return NextResponse.json({ error: 'ID de orden no proporcionado.' }, { status: 400 });
     }
@@ -114,9 +114,9 @@ export async function POST(req: Request, { params }: { params: { id: string } })
 }
 
 // GET: Create a temporary signed URL to view the proof (Admin/Cashier only)
-export async function GET(req: Request, { params }: { params: { id: string } }) {
+export async function GET(req: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
-    const orderId = params.id;
+    const orderId = (await params).id;
     if (!orderId) {
       return NextResponse.json({ error: 'ID de orden no proporcionado.' }, { status: 400 });
     }

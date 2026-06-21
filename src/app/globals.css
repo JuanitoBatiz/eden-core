@@ -1266,3 +1266,133 @@ a {
   50% { transform: scale(1.02); opacity: 1; }
   100% { transform: scale(1); opacity: 0.95; }
 }
+
+/* =========================================
+   Admin Panel Specific Styles
+   ========================================= */
+
+.admin-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  margin-bottom: 30px;
+}
+
+.admin-header-stats {
+  display: flex;
+  gap: 20px;
+  font-size: 0.9rem;
+  background-color: var(--color-cream-light);
+  padding: 10px 20px;
+  border-radius: 15px;
+  border: 1px solid var(--color-ochre-light);
+  align-items: center;
+}
+
+.admin-tabs {
+  display: flex;
+  gap: 20px;
+  border-bottom: 2px solid var(--color-cream-dark);
+  margin-bottom: 30px;
+  padding-bottom: 10px;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.admin-tabs::-webkit-scrollbar {
+  display: none;
+}
+
+.admin-tab-btn {
+  padding: 10px 20px;
+  background: none;
+  border: none;
+  border-bottom: 3px solid transparent;
+  font-weight: 500;
+  font-size: 1.1rem;
+  color: var(--color-text-muted);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  transition: all 0.2s;
+  white-space: nowrap;
+}
+
+.admin-tab-btn:hover {
+  color: var(--color-text-dark);
+}
+
+.admin-tab-btn.active {
+  font-weight: 700;
+}
+
+.admin-tab-btn.active-cocina {
+  border-bottom-color: var(--color-green-dark);
+  color: var(--color-green-dark);
+}
+
+.admin-tab-btn.active-finanzas {
+  border-bottom-color: var(--color-terracotta);
+  color: var(--color-terracotta);
+}
+
+.admin-tab-btn.active-edenpass {
+  border-bottom-color: #8b5cf6;
+  color: #8b5cf6;
+}
+
+.admin-tab-btn.active-menu {
+  border-bottom-color: var(--color-ochre);
+  color: var(--color-ochre);
+}
+
+.admin-tab-btn.active-usuarios {
+  border-bottom-color: #3b82f6;
+  color: #3b82f6;
+}
+
+.admin-tab-btn.active-banco {
+  border-bottom-color: var(--color-green-dark);
+  color: var(--color-green-dark);
+}
+
+/* Tablet Responsive Adjustments */
+@media (max-width: 992px) {
+  .admin-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 15px;
+  }
+  
+  .admin-header-stats {
+    width: 100%;
+    justify-content: space-between;
+  }
+
+  /* Components flex layouts */
+  .admin-bank-config-container {
+    flex-direction: column !important;
+  }
+  
+  .admin-finance-container {
+    flex-direction: column !important;
+  }
+}
+
+@media (max-width: 768px) {
+  .admin-header-stats {
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .admin-header-stats > div {
+    display: flex;
+    justify-content: space-between;
+    width: 100%;
+  }
+
+  .admin-header-stats .divider {
+    display: none;
+  }
+}

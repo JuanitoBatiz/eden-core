@@ -12,9 +12,9 @@ const VALID_TRANSITIONS: Record<string, string[]> = {
 };
 
 // PATCH: Cambiar estado de la orden (Admin/Cashier)
-export async function PATCH(req: Request, { params }: { params: { id: string } }) {
+export async function PATCH(req: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
-    const orderId = params.id;
+    const orderId = (await params).id;
     if (!orderId) {
       return NextResponse.json({ error: 'ID de orden no proporcionado.' }, { status: 400 });
     }
