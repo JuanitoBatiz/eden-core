@@ -36,13 +36,35 @@ export default function OrderStatusPage() {
   const [order, setOrder] = useState<Order | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  
+  // Bank Config state
+  const [bankConfig, setBankConfig] = useState<any>(null);
+  const [bankError, setBankError] = useState('');
+  const [copied, setCopied] = useState(false);
 
-  // Fetch Order Details
+  // Upload state
+  const [showUpload, setShowUpload] = useState(false);
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [uploading, setUploading] = useState(false);
+  const [uploadError, setUploadError] = useState('');
+
+
+  // Obtiene los detalles de la orden. credentials:'include' envía la cookie httpOnly automáticamente.
   const fetchOrder = async () => {
     try {
-      const res = await fetch(`/api/orders/${id}`);
+      // 1. Refresh silencioso para asegurar que el access_token en cookie esté vigente
+      const authRes = await fetch('/api/auth/refresh', { method: 'POST', credentials: 'include' });
+      if (!authRes.ok) {
+        setError('No estás autenticado. Por favor inicia sesión.');
+        setLoading(false);
+        return;
+      }
+
+      // 2. Fetch de la orden — la cookie renovada viaja automáticamente
+      const res = await fetch(`/api/orders/${id}`, { credentials: 'include' });
       const data = await res.json();
-      
+
       if (!res.ok) {
         setError(data.error || 'No pudimos cargar los detalles del pedido.');
         setLoading(false);
@@ -58,9 +80,24 @@ export default function OrderStatusPage() {
     }
   };
 
+  const fetchBankConfig = async () => {
+    try {
+      const res = await fetch('/api/bank-config');
+      const data = await res.json();
+      if (res.ok) {
+        setBankConfig(data.config);
+      } else {
+        setBankError(data.error || 'Configuración bancaria no disponible.');
+      }
+    } catch (e) {
+      setBankError('Error al cargar datos bancarios.');
+    }
+  };
+
   useEffect(() => {
     if (!id) return;
     fetchOrder();
+    fetchBankConfig();
 
     // 1. If Supabase is configured, use Realtime
     if (isSupabaseConfigured && supabase) {
@@ -85,14 +122,76 @@ export default function OrderStatusPage() {
         if (supabase) supabase.removeChannel(channel);
       };
     } else {
-      // 2. If not, fallback to polling every 3 seconds
+      // 2. If not, fallback to polling every 5 seconds
       const interval = setInterval(() => {
         fetchOrder();
-      }, 3000);
+      }, 5000);
 
       return () => clearInterval(interval);
     }
   }, [id]);
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setUploadError('');
+    const file = e.target.files?.[0];
+    if (!file) {
+      setSelectedFile(null);
+      setPreviewUrl(null);
+      return;
+    }
+
+    if (file.size > 5 * 1024 * 1024) {
+      setUploadError('El archivo es demasiado grande (máximo 5MB).');
+      return;
+    }
+    const validTypes = ['image/jpeg', 'image/png', 'application/pdf'];
+    if (!validTypes.includes(file.type)) {
+      setUploadError('Formato no válido. Usa JPG, PNG o PDF.');
+      return;
+    }
+
+    setSelectedFile(file);
+    if (file.type.startsWith('image/')) {
+      setPreviewUrl(URL.createObjectURL(file));
+    } else {
+      setPreviewUrl(null);
+    }
+  };
+
+  const handleUpload = async () => {
+    if (!selectedFile) return;
+    setUploading(true);
+    setUploadError('');
+
+    try {
+      const formData = new FormData();
+      formData.append('file', selectedFile);
+
+      const res = await fetch(`/api/orders/${id}/proof`, {
+        method: 'POST',
+        credentials: 'include',
+        body: formData
+      });
+
+      const data = await res.json();
+      
+      if (!res.ok) {
+        setUploadError(data.error || 'Error al subir el comprobante.');
+        setUploading(false);
+        return;
+      }
+
+      // Success
+      setUploading(false);
+      setShowUpload(false);
+      fetchOrder(); // refresh order state to get 'payment_submitted'
+
+    } catch (err) {
+      console.error(err);
+      setUploadError('Error de red al subir el comprobante.');
+      setUploading(false);
+    }
+  };
 
   if (loading) {
     return (
@@ -235,6 +334,126 @@ export default function OrderStatusPage() {
               <MessageCircle size={20} />
               <span>Contactar por WhatsApp</span>
             </a>
+          )}
+
+          {/* BANK CONFIG & UPLOAD (Módulo 4) */}
+          {(order.payment_status === 'pending_payment' || !order.payment_status) && order.status !== 'cancelado' && (
+            <div style={{ marginTop: '25px', padding: '20px', backgroundColor: '#f9fafb', borderRadius: '15px', border: '1px solid #e5e7eb' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '15px' }}>
+                <FileText color="var(--color-terracotta)" size={20} />
+                <h3 style={{ fontSize: '1.1rem', color: 'var(--color-green-dark)', margin: 0, fontWeight: 700 }}>Pago por Transferencia</h3>
+              </div>
+              
+              {!showUpload && (
+                <>
+                  {bankError ? (
+                    <div style={{ fontSize: '0.85rem', color: '#b91c1c', backgroundColor: '#fef2f2', padding: '10px', borderRadius: '8px' }}>
+                      {bankError}
+                    </div>
+                  ) : bankConfig ? (
+                    <div style={{ fontSize: '0.9rem', color: '#374151', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                        <span style={{ fontWeight: 600 }}>Banco:</span>
+                        <span>{bankConfig.bank_name}</span>
+                      </div>
+                      <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                        <span style={{ fontWeight: 600 }}>Titular:</span>
+                        <span>{bankConfig.account_holder}</span>
+                      </div>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <span style={{ fontWeight: 600 }}>CLABE:</span>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                          <span style={{ fontFamily: 'monospace', fontSize: '1.05rem', fontWeight: 600 }}>{bankConfig.clabe}</span>
+                          <button 
+                            onClick={() => {
+                              navigator.clipboard.writeText(bankConfig.clabe);
+                              setCopied(true);
+                              setTimeout(() => setCopied(false), 2000);
+                            }}
+                            style={{ padding: '6px 10px', fontSize: '0.75rem', backgroundColor: copied ? '#dcfce7' : '#e5e7eb', color: copied ? '#166534' : '#374151', border: 'none', borderRadius: '6px', cursor: 'pointer', fontWeight: 600, transition: 'all 0.2s' }}
+                          >
+                            {copied ? '¡Copiada!' : 'Copiar'}
+                          </button>
+                        </div>
+                      </div>
+                      
+                      <button 
+                        style={{ marginTop: '15px', width: '100%', padding: '14px', backgroundColor: 'var(--color-terracotta)', color: 'white', border: 'none', borderRadius: '10px', fontWeight: 700, fontSize: '0.95rem', cursor: 'pointer', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '8px' }}
+                        onClick={() => setShowUpload(true)}
+                      >
+                        Ya transferí, subir comprobante
+                      </button>
+                    </div>
+                  ) : (
+                    <div style={{ fontSize: '0.85rem', color: '#6b7280', display: 'flex', justifyContent: 'center', padding: '10px' }}>
+                      <div className="status-animation-ring active" style={{ width: '20px', height: '20px', borderWidth: '2px' }}></div>
+                    </div>
+                  )}
+                </>
+              )}
+
+              {showUpload && (
+                <div style={{ marginTop: '10px' }}>
+                  <p style={{ fontSize: '0.85rem', color: '#4b5563', marginBottom: '15px' }}>
+                    Sube una captura de pantalla de tu transferencia (JPG/PNG) o el PDF del comprobante.
+                  </p>
+
+                  <input 
+                    type="file" 
+                    accept="image/jpeg,image/png,application/pdf"
+                    onChange={handleFileChange}
+                    disabled={uploading}
+                    style={{ marginBottom: '15px', fontSize: '0.9rem', width: '100%' }}
+                  />
+
+                  {previewUrl && (
+                    <div style={{ marginBottom: '15px', border: '1px solid #e5e7eb', borderRadius: '8px', overflow: 'hidden' }}>
+                      <img src={previewUrl} alt="Preview" style={{ width: '100%', maxHeight: '200px', objectFit: 'contain' }} />
+                    </div>
+                  )}
+                  {selectedFile && !previewUrl && (
+                    <div style={{ marginBottom: '15px', padding: '10px', backgroundColor: '#e5e7eb', borderRadius: '8px', fontSize: '0.85rem', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      <FileText size={16} /> {selectedFile.name}
+                    </div>
+                  )}
+
+                  {uploadError && (
+                    <div style={{ fontSize: '0.85rem', color: '#b91c1c', marginBottom: '15px', fontWeight: 600 }}>
+                      {uploadError}
+                    </div>
+                  )}
+
+                  <div style={{ display: 'flex', gap: '10px' }}>
+                    <button 
+                      onClick={() => setShowUpload(false)}
+                      disabled={uploading}
+                      style={{ flex: 1, padding: '12px', backgroundColor: '#e5e7eb', color: '#374151', border: 'none', borderRadius: '8px', fontWeight: 600, cursor: 'pointer' }}
+                    >
+                      Cancelar
+                    </button>
+                    <button 
+                      onClick={handleUpload}
+                      disabled={!selectedFile || uploading}
+                      style={{ flex: 2, padding: '12px', backgroundColor: 'var(--color-green-dark)', color: 'white', border: 'none', borderRadius: '8px', fontWeight: 600, cursor: !selectedFile || uploading ? 'not-allowed' : 'pointer', opacity: !selectedFile || uploading ? 0.6 : 1 }}
+                    >
+                      {uploading ? 'Subiendo...' : 'Enviar Comprobante'}
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
+          {order.payment_status === 'payment_submitted' && order.status !== 'cancelado' && (
+            <div style={{ marginTop: '25px', padding: '15px', border: '1px solid #bbf7d0', backgroundColor: '#f0fdf4', borderRadius: '15px', textAlign: 'left', display: 'flex', gap: '10px' }}>
+              <CheckCircle color="#16a34a" style={{ flexShrink: 0 }} />
+              <div>
+                <strong style={{ color: '#16a34a', display: 'block' }}>Comprobante recibido</strong>
+                <span style={{ fontSize: '0.85rem', color: '#15803d' }}>
+                  Tu pedido está en revisión y comenzaremos a prepararlo en breve.
+                </span>
+              </div>
+            </div>
           )}
 
           {order.status === 'listo' && (

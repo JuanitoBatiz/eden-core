@@ -1,6 +1,10 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
+import { usePermissions } from '@/hooks/usePermissions';
+import MenuManager from '@/components/admin/MenuManager';
+import UsersManager from '@/components/admin/UsersManager';
+import BankConfigManager from '@/components/admin/BankConfigManager';
 import { 
   Check, 
   X, 
@@ -10,9 +14,18 @@ import {
   MessageCircle, 
   RefreshCw, 
   Unlock,
-  ClipboardList
+  ClipboardList,
+  ScanLine,
+  Search,
+  UserCircle,
+  Award,
+  Users,
+  Landmark
 } from 'lucide-react';
-import { supabase, isSupabaseConfigured } from '@/lib/supabase';
+import KitchenKanban from '@/components/admin/KitchenKanban';
+import Image from 'next/image';
+import { Html5QrcodeScanner } from 'html5-qrcode';
+import { QrValidateRequest, RedeemBenefitRequest, OrderRejectPaymentRequest, OrderStatusUpdateRequest } from '@/types/api-contracts';
 
 interface Order {
   id: string;
@@ -22,7 +35,7 @@ interface Order {
   items: any[];
   total: number;
   notes?: string;
-  status: 'en_revision' | 'preparando' | 'listo' | 'cancelado';
+  status: 'received' | 'in_preparation' | 'delivered' | 'cancelled';
   loyverse_receipt_number?: string;
 }
 
@@ -30,41 +43,56 @@ export default function AdminPage() {
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
-  const [password, setPassword] = useState('');
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const [authError, setAuthError] = useState('');
+  const [authChecked, setAuthChecked] = useState(false);
+  const { can, loading: permsLoading } = usePermissions();
 
-  // Access Code check
+  // Financial Tab State
+  const [activeTab, setActiveTab] = useState<'cocina' | 'finanzas' | 'edenpass' | 'menu' | 'usuarios' | 'banco'>('cocina');
+  const [pendingPayments, setPendingPayments] = useState<any[]>([]);
+  const [selectedProofUrl, setSelectedProofUrl] = useState<string | null>(null);
+  const [rejectReason, setRejectReason] = useState('');
+  const [activeFinancialOrder, setActiveFinancialOrder] = useState<string | null>(null);
+
+  // EdenPass Tab State
+  const [customerProfile, setCustomerProfile] = useState<any>(null);
+  const [loyaltyBenefits, setLoyaltyBenefits] = useState<any[]>([]);
+  const [phoneSearchQuery, setPhoneSearchQuery] = useState('');
+  const [edenPassError, setEdenPassError] = useState<string | null>(null);
+  const [scannerActive, setScannerActive] = useState(false);
+  const [isRedeeming, setIsRedeeming] = useState(false);
+
+  // Auth: verificar sesión via cookie httpOnly (refresh silencioso)
   useEffect(() => {
-    if (typeof window !== 'undefined') {
-      const adminSession = localStorage.getItem('eden_admin_auth');
-      if (adminSession === 'true') {
-        setIsAuthenticated(true);
+    const initAuth = async () => {
+      try {
+        // credentials:'include' envía la cookie refresh_token automáticamente
+        const res = await fetch('/api/auth/refresh', {
+          method: 'POST',
+          credentials: 'include'
+        });
+        if (!res.ok) {
+          window.location.href = '/?login=true';
+        }
+        // El nuevo access_token queda en cookie httpOnly — no necesitamos leerlo
+      } catch (e) {
+        window.location.href = '/?login=true';
+      } finally {
+        setAuthChecked(true);
       }
-    }
+    };
+    initAuth();
   }, []);
 
-  const handleLogin = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (password === 'eden2026') {
-      setIsAuthenticated(true);
-      localStorage.setItem('eden_admin_auth', 'true');
-      setAuthError('');
-    } else {
-      setAuthError('Código de acceso incorrecto.');
-    }
+  const handleLogout = async () => {
+    await fetch('/api/auth/logout', { method: 'POST', credentials: 'include' });
+    window.location.href = '/';
   };
 
-  const handleLogout = () => {
-    setIsAuthenticated(false);
-    localStorage.removeItem('eden_admin_auth');
-  };
-
-  // Fetch active orders from API
+  // Fetch active orders — credentials:'include' envía cookie httpOnly automáticamente
   const fetchOrders = async () => {
     setIsRefreshing(true);
     try {
-      const res = await fetch('/api/orders');
+      const res = await fetch('/api/orders', { credentials: 'include' });
       const data = await res.json();
       if (res.ok) {
         setOrders(data.orders);
@@ -77,54 +105,243 @@ export default function AdminPage() {
     }
   };
 
-  // Setup Realtime or Polling
-  useEffect(() => {
-    if (!isAuthenticated) return;
-    fetchOrders();
+  const fetchPendingPayments = async () => {
+    try {
+      const res = await fetch('/api/orders/pending-payment', { credentials: 'include' });
+      const data = await res.json();
+      if (res.ok) {
+        setPendingPayments(data.pendingPayments);
+      }
+    } catch (e) {
+      console.error('Error fetching pending payments:', e);
+    }
+  };
 
-    if (isSupabaseConfigured && supabase) {
-      const channel = supabase
-        .channel('admin-orders-feed')
-        .on(
-          'postgres_changes',
-          {
-            event: '*',
-            schema: 'public',
-            table: 'orders'
-          },
-          (payload) => {
-            console.log('Realtime change in admin panel:', payload);
-            fetchOrders(); // Refresh whole list to maintain order sorted by date
+  // Setup Polling
+  useEffect(() => {
+    if (!authChecked) return;
+    
+    fetchOrders();
+    fetchPendingPayments();
+
+    const interval = setInterval(() => {
+      fetchOrders();
+      fetchPendingPayments();
+    }, 4000); // 4 seconds polling
+
+    return () => clearInterval(interval);
+  }, [authChecked]);
+
+  // Load Loyalty Benefits
+  useEffect(() => {
+    if (activeTab === 'edenpass') {
+      fetch('/api/benefits', { credentials: 'include' })
+        .then(res => res.json())
+        .then(data => {
+          if (data.success) {
+            setLoyaltyBenefits(data.benefits);
           }
-        )
-        .subscribe();
+        })
+        .catch(console.error);
+    }
+  }, [activeTab]);
+
+  // QR Scanner Initialization
+  useEffect(() => {
+    if (activeTab === 'edenpass' && scannerActive) {
+      const scanner = new Html5QrcodeScanner(
+        "reader",
+        { fps: 10, qrbox: { width: 250, height: 250 }, rememberLastUsedCamera: true },
+        false
+      );
+
+      scanner.render((decodedText) => {
+        scanner.clear();
+        setScannerActive(false);
+        validateQR(decodedText);
+      }, (err) => {
+        // Ignore errors during scanning (e.g. no QR detected yet)
+      });
 
       return () => {
-        if (supabase) supabase.removeChannel(channel);
+        scanner.clear().catch(console.error);
       };
-    } else {
-      // Polling fallback every 3 seconds
-      const interval = setInterval(() => {
-        fetchOrders();
-      }, 3000);
-
-      return () => clearInterval(interval);
     }
-  }, [isAuthenticated]);
+  }, [activeTab, scannerActive]);
+
+  const validateQR = async (token: string) => {
+    setEdenPassError(null);
+    setCustomerProfile(null);
+    try {
+      const payload: QrValidateRequest = { token };
+      const res = await fetch('/api/qr/validate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify(payload)
+      });
+      const data = await res.json();
+      if (res.ok && data.success) {
+        setCustomerProfile(data.customer);
+      } else {
+        setEdenPassError(data.error || 'Error validando código QR');
+      }
+    } catch (e) {
+      setEdenPassError('Error de red al validar QR');
+    }
+  };
+
+  const searchPhone = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!phoneSearchQuery) return;
+    setEdenPassError(null);
+    setCustomerProfile(null);
+    try {
+      let formattedPhone = phoneSearchQuery;
+      if (!formattedPhone.startsWith('52') && formattedPhone.length === 10) {
+        formattedPhone = '52' + formattedPhone;
+      }
+      const res = await fetch(`/api/customers?phone=${formattedPhone}`, {
+        credentials: 'include'
+      });
+      const data = await res.json();
+      if (res.ok && data.success) {
+        setCustomerProfile(data.customer);
+      } else {
+        setEdenPassError(data.error || 'Cliente no encontrado');
+      }
+    } catch (e) {
+      setEdenPassError('Error de red al buscar cliente');
+    }
+  };
+
+  const redeemBenefit = async (benefitId: string, benefitName: string) => {
+    if (!customerProfile) return;
+    if (!confirm(`¿Confirmas el canje de "${benefitName}" para ${customerProfile.name}?`)) return;
+    
+    setIsRedeeming(true);
+    try {
+      const payload: RedeemBenefitRequest = { benefit_id: benefitId };
+      const res = await fetch(`/api/customers/${customerProfile.user_id}/redeem`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify(payload)
+      });
+      const data = await res.json();
+      if (res.ok) {
+        alert(data.message);
+        // Refresh customer points dynamically by searching again
+        if (phoneSearchQuery) searchPhone(new Event('submit') as any);
+        else setCustomerProfile(null); // Or just nullify to scan again
+      } else {
+        alert(data.error || 'Error al canjear beneficio');
+      }
+    } catch (e) {
+      alert('Error de red al intentar canjear');
+    } finally {
+      setIsRedeeming(false);
+    }
+  };
+
+  // View Proof
+  const viewProof = async (id: string) => {
+    setActiveFinancialOrder(id);
+    setSelectedProofUrl(null);
+    setRejectReason('');
+    
+    try {
+      const res = await fetch(`/api/orders/${id}/proof`, {
+        credentials: 'include'
+      });
+      const data = await res.json();
+      if (res.ok && data.signedUrl) {
+        setSelectedProofUrl(data.signedUrl);
+      } else {
+        alert(data.error || 'Error al obtener comprobante.');
+      }
+    } catch (e) {
+      console.error(e);
+      alert('Error de red al obtener comprobante.');
+    }
+  };
+
+  // Approve Payment
+  const approvePayment = async (id: string) => {
+    try {
+      const res = await fetch(`/api/orders/${id}/approve-payment`, {
+        method: 'PATCH',
+        credentials: 'include'
+      });
+      if (res.ok) {
+        setPendingPayments(prev => prev.filter(p => p.id !== id));
+        fetchOrders(); // Update kitchen kanban automatically
+        if (activeFinancialOrder === id) {
+          setActiveFinancialOrder(null);
+          setSelectedProofUrl(null);
+        }
+      } else {
+        const errorData = await res.json();
+        alert(errorData.error || 'Error al aprobar el pago.');
+      }
+    } catch (e) {
+      console.error(e);
+      alert('Error de red al aprobar.');
+    }
+  };
+
+  // Reject Payment
+  const rejectPayment = async (id: string) => {
+    if (!rejectReason.trim()) {
+      alert('Debes ingresar un motivo de rechazo.');
+      return;
+    }
+    try {
+      const payload: OrderRejectPaymentRequest = { reason: rejectReason };
+      const res = await fetch(`/api/orders/${id}/reject-payment`, {
+        method: 'PATCH',
+        headers: { 
+          'Content-Type': 'application/json'
+        },
+        credentials: 'include',
+        body: JSON.stringify(payload)
+      });
+      if (res.ok) {
+        setPendingPayments(prev => prev.filter(p => p.id !== id));
+        setRejectReason('');
+        if (activeFinancialOrder === id) {
+          setActiveFinancialOrder(null);
+          setSelectedProofUrl(null);
+        }
+      } else {
+        const errorData = await res.json();
+        alert(errorData.error || 'Error al rechazar el pago.');
+      }
+    } catch (e) {
+      console.error(e);
+      alert('Error de red al rechazar.');
+    }
+  };
 
   // Update order status via PATCH API
-  const updateStatus = async (id: string, newStatus: 'preparando' | 'listo' | 'cancelado') => {
+  const updateStatus = async (id: string, newStatus: 'in_preparation' | 'delivered' | 'cancelled') => {
     try {
-      const res = await fetch(`/api/orders/${id}`, {
+      const payload: OrderStatusUpdateRequest = { status: newStatus as any };
+      const res = await fetch(`/api/orders/${id}/status`, {
         method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ status: newStatus })
+        headers: { 
+          'Content-Type': 'application/json'
+        },
+        credentials: 'include',
+        body: JSON.stringify(payload)
       });
 
       if (res.ok) {
         // Optimistic UI update
-        setOrders(prev => prev.map(o => o.id === id ? { ...o, status: newStatus } : o).filter(o => o.status !== 'listo' && o.status !== 'cancelado'));
-        fetchOrders();
+        setOrders(prev => prev.map(o => o.id === id ? { ...o, status: newStatus } : o).filter(o => o.status !== 'delivered' && o.status !== 'cancelled'));
+      } else {
+        const errorData = await res.json();
+        alert(errorData.error || 'Error al actualizar el estado.');
       }
     } catch (error) {
       console.error('Error updating order status:', error);
@@ -140,41 +357,26 @@ export default function AdminPage() {
     return `https://wa.me/${formattedPhone}?text=${text}`;
   };
 
-  if (!isAuthenticated) {
+  // Redirección del lado del cliente por si layout falla
+  useEffect(() => {
+    if (!permsLoading && !can('can_view_all_orders')) {
+      window.location.href = '/?unauthorized=true';
+    }
+  }, [can, permsLoading]);
+
+  if (!authChecked || permsLoading) {
     return (
       <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '100vh', padding: '20px' }}>
-        <div className="status-container" style={{ maxWidth: '400px', margin: 0 }}>
-          <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '20px' }}>
-            <Unlock size={40} color="var(--color-terracotta)" />
-          </div>
-          <h2 style={{ fontFamily: 'var(--font-serif)', fontSize: '1.5rem', marginBottom: '15px' }}>
-            Administrador Edén
-          </h2>
-          <form onSubmit={handleLogin} style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
-            <div className="form-group" style={{ textAlign: 'left' }}>
-              <label className="form-label">Código de Acceso</label>
-              <input 
-                type="password" 
-                className="form-input" 
-                placeholder="Ingresa el código"
-                value={password}
-                onChange={e => setPassword(e.target.value)}
-              />
-            </div>
-            {authError && (
-              <span style={{ fontSize: '0.8rem', color: '#c62828', fontWeight: 600 }}>{authError}</span>
-            )}
-            <button type="submit" className="checkout-btn">
-              Entrar al Panel
-            </button>
-          </form>
-        </div>
+        <div className="status-animation-ring active" style={{ width: '50px', height: '50px' }}></div>
       </div>
     );
   }
 
-  const pendingOrders = orders.filter(o => o.status === 'en_revision');
-  const preparingOrders = orders.filter(o => o.status === 'preparando');
+  // Double check prevent render
+  if (!can('can_view_all_orders')) return null;
+
+  const pendingOrders = orders.filter(o => o.status === 'received');
+  const preparingOrders = orders.filter(o => o.status === 'in_preparation');
 
   return (
     <>
@@ -192,7 +394,7 @@ export default function AdminPage() {
           <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
             <button 
               className="cart-icon-btn" 
-              onClick={fetchOrders} 
+              onClick={() => fetchOrders(accessToken)} 
               style={{ background: 'none', border: '1px solid var(--color-ochre)', color: 'var(--color-text-dark)', display: 'flex', gap: '4px' }}
               disabled={isRefreshing}
             >
@@ -219,15 +421,78 @@ export default function AdminPage() {
           
           <div style={{ display: 'flex', gap: '20px', fontSize: '0.9rem', backgroundColor: 'var(--color-cream-light)', padding: '10px 20px', borderRadius: '15px', border: '1px solid var(--color-ochre-light)' }}>
             <div>
-              <span style={{ fontWeight: 600 }}>En Revisión: </span>
+              <span style={{ fontWeight: 600 }}>Pendientes Pago: </span>
+              <strong style={{ color: 'var(--color-terracotta)', fontSize: '1.1rem' }}>{pendingPayments.length}</strong>
+            </div>
+            <div style={{ width: '1px', backgroundColor: 'var(--color-ochre)' }}></div>
+            <div>
+              <span style={{ fontWeight: 600 }}>Cocina - Revisión: </span>
               <strong style={{ color: 'var(--color-terracotta)', fontSize: '1.1rem' }}>{pendingOrders.length}</strong>
             </div>
             <div style={{ width: '1px', backgroundColor: 'var(--color-ochre)' }}></div>
             <div>
-              <span style={{ fontWeight: 600 }}>Preparando: </span>
+              <span style={{ fontWeight: 600 }}>Cocina - Preparando: </span>
               <strong style={{ color: 'var(--color-green-dark)', fontSize: '1.1rem' }}>{preparingOrders.length}</strong>
             </div>
           </div>
+        </div>
+
+        {/* TABS */}
+        <div style={{ display: 'flex', gap: '20px', borderBottom: '2px solid #e5e7eb', marginBottom: '30px', paddingBottom: '10px' }}>
+          <button 
+            onClick={() => setActiveTab('cocina')}
+            style={{ padding: '10px 20px', background: 'none', border: 'none', borderBottom: activeTab === 'cocina' ? '3px solid var(--color-green-dark)' : '3px solid transparent', fontWeight: activeTab === 'cocina' ? 700 : 500, fontSize: '1.1rem', color: activeTab === 'cocina' ? 'var(--color-green-dark)' : '#6b7280', cursor: 'pointer', transition: 'all 0.2s' }}
+          >
+            Vista Operativa (Cocina)
+          </button>
+          <button 
+            onClick={() => setActiveTab('finanzas')}
+            style={{ padding: '10px 20px', background: 'none', border: 'none', borderBottom: activeTab === 'finanzas' ? '3px solid var(--color-terracotta)' : '3px solid transparent', fontWeight: activeTab === 'finanzas' ? 700 : 500, fontSize: '1.1rem', color: activeTab === 'finanzas' ? 'var(--color-terracotta)' : '#6b7280', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px', transition: 'all 0.2s' }}
+          >
+            Validación Financiera
+            {pendingPayments.length > 0 && (
+              <span style={{ backgroundColor: 'var(--color-terracotta)', color: 'white', borderRadius: '50%', padding: '2px 8px', fontSize: '0.8rem', fontWeight: 700 }}>
+                {pendingPayments.length}
+              </span>
+            )}
+          </button>
+          
+          {can('can_scan_qr') && (
+            <button 
+              onClick={() => setActiveTab('edenpass')}
+              style={{ padding: '10px 20px', background: 'none', border: 'none', borderBottom: activeTab === 'edenpass' ? '3px solid #8b5cf6' : '3px solid transparent', fontWeight: activeTab === 'edenpass' ? 700 : 500, fontSize: '1.1rem', color: activeTab === 'edenpass' ? '#8b5cf6' : '#6b7280', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px', transition: 'all 0.2s' }}
+            >
+              <ScanLine size={20} />
+              EdenPass (Lealtad)
+            </button>
+          )}
+          {can('can_manage_menu') && (
+            <button 
+              onClick={() => setActiveTab('menu')}
+              style={{ padding: '10px 20px', background: 'none', border: 'none', borderBottom: activeTab === 'menu' ? '3px solid #047857' : '3px solid transparent', fontWeight: activeTab === 'menu' ? 700 : 500, fontSize: '1.1rem', color: activeTab === 'menu' ? '#047857' : '#6b7280', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px', transition: 'all 0.2s' }}
+            >
+              <ClipboardList size={20} />
+              Menú
+            </button>
+          )}
+          {can('can_manage_users') && (
+            <button 
+              onClick={() => setActiveTab('usuarios')}
+              style={{ padding: '10px 20px', background: 'none', border: 'none', borderBottom: activeTab === 'usuarios' ? '3px solid #b91c1c' : '3px solid transparent', fontWeight: activeTab === 'usuarios' ? 700 : 500, fontSize: '1.1rem', color: activeTab === 'usuarios' ? '#b91c1c' : '#6b7280', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px', transition: 'all 0.2s' }}
+            >
+              <Users size={20} />
+              Usuarios
+            </button>
+          )}
+          {can('can_configure_bank') && (
+            <button 
+              onClick={() => setActiveTab('banco')}
+              style={{ padding: '10px 20px', background: 'none', border: 'none', borderBottom: activeTab === 'banco' ? '3px solid #1d4ed8' : '3px solid transparent', fontWeight: activeTab === 'banco' ? 700 : 500, fontSize: '1.1rem', color: activeTab === 'banco' ? '#1d4ed8' : '#6b7280', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px', transition: 'all 0.2s' }}
+            >
+              <Landmark size={20} />
+              Banco
+            </button>
+          )}
         </div>
 
         {loading ? (
@@ -235,8 +500,9 @@ export default function AdminPage() {
             <div className="status-animation-ring active" style={{ margin: '0 auto 20px auto', width: '50px', height: '50px' }}></div>
             <p>Cargando pedidos activos...</p>
           </div>
-        ) : (
-          <div className="admin-grid">
+          <>
+            {activeTab === 'cocina' && (
+              <div className="admin-grid">
             {/* COLUMN 1: ORDERS LIST */}
             <div style={{ display: 'flex', flexDirection: 'column', gap: '30px' }}>
               
@@ -301,10 +567,10 @@ export default function AdminPage() {
                         </div>
 
                         <div className="admin-order-actions">
-                          <button className="admin-btn admin-btn-accept" onClick={() => updateStatus(order.id, 'preparando')}>
+                          <button className="admin-btn admin-btn-accept" onClick={() => updateStatus(order.id, 'in_preparation')}>
                             Aceptar Pedido
                           </button>
-                          <button className="admin-btn admin-btn-cancel" onClick={() => updateStatus(order.id, 'cancelado')}>
+                          <button className="admin-btn admin-btn-cancel" onClick={() => updateStatus(order.id, 'cancelled')}>
                             Rechazar / Falta Ingrediente
                           </button>
                           <a 
@@ -383,10 +649,10 @@ export default function AdminPage() {
                         </div>
 
                         <div className="admin-order-actions">
-                          <button className="admin-btn admin-btn-ready" onClick={() => updateStatus(order.id, 'listo')}>
+                          <button className="admin-btn admin-btn-ready" onClick={() => updateStatus(order.id, 'delivered')}>
                             Marcar como Listo / Notificar Cliente
                           </button>
-                          <button className="admin-btn admin-btn-cancel" onClick={() => updateStatus(order.id, 'cancelado')}>
+                          <button className="admin-btn admin-btn-cancel" onClick={() => updateStatus(order.id, 'cancelled')}>
                             Cancelar Pedido
                           </button>
                           <span style={{ marginLeft: 'auto', fontWeight: 700, color: 'var(--color-green-dark)' }}>
@@ -433,8 +699,404 @@ export default function AdminPage() {
                 </p>
               </div>
             </div>
-          </div>
-        )}
+          )}
+
+          {activeTab === 'finanzas' && (
+            <div style={{ display: 'flex', gap: '30px', alignItems: 'flex-start' }}>
+              {/* Lista */}
+              <div style={{ flex: '1', display: 'flex', flexDirection: 'column', gap: '15px', maxHeight: '70vh', overflowY: 'auto', paddingRight: '10px' }}>
+                <h3 style={{ color: 'var(--color-text-dark)', marginBottom: '5px' }}>Comprobantes Pendientes</h3>
+                 {pendingPayments.map(p => (
+                   <div key={p.id} onClick={() => viewProof(p.id)} style={{ padding: '15px', border: activeFinancialOrder === p.id ? '2px solid var(--color-terracotta)' : '1px solid #e5e7eb', borderRadius: '10px', cursor: 'pointer', backgroundColor: activeFinancialOrder === p.id ? '#fff5f5' : 'white', transition: 'all 0.2s' }}>
+                      <div style={{ fontWeight: 600, display: 'flex', justifyContent: 'space-between' }}>
+                        <span>Orden #{p.id.slice(-4).toUpperCase()}</span>
+                        <span style={{ fontSize: '0.8rem', color: '#6b7280' }}>{new Date(p.created_at).toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit' })}</span>
+                      </div>
+                      <div style={{ fontSize: '0.85rem', color: '#4b5563', marginTop: '4px' }}>{p.customer_name} | {p.customer_phone}</div>
+                      <div style={{ fontWeight: 700, color: 'var(--color-green-dark)', marginTop: '8px' }}>${p.total}</div>
+                   </div>
+                 ))}
+                 {pendingPayments.length === 0 && (
+                   <div style={{ backgroundColor: '#f9fafb', padding: '30px', borderRadius: '15px', textAlign: 'center', color: '#6b7280', fontStyle: 'italic', border: '1px dashed #d1d5db' }}>
+                     No hay comprobantes pendientes de validación.
+                   </div>
+                 )}
+              </div>
+              
+              {/* Detalle */}
+              <div style={{ flex: '2', backgroundColor: '#f9fafb', borderRadius: '15px', padding: '30px', border: '1px solid #e5e7eb', minHeight: '60vh' }}>
+                 {!activeFinancialOrder ? (
+                   <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100%', color: '#6b7280' }}>
+                     <ClipboardList size={48} color="#d1d5db" style={{ marginBottom: '15px' }} />
+                     <p>Selecciona una orden de la lista para revisar su comprobante.</p>
+                   </div>
+                 ) : (
+                   <div>
+                      <h3 style={{ marginBottom: '20px', color: 'var(--color-green-dark)' }}>Revisando Comprobante</h3>
+                      {!selectedProofUrl ? (
+                        <div style={{ display: 'flex', justifyContent: 'center', padding: '50px' }}>
+                          <div className="status-animation-ring active" style={{ width: '40px', height: '40px' }}></div>
+                        </div>
+                      ) : (
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+                          <div style={{ border: '1px solid #d1d5db', borderRadius: '10px', overflow: 'hidden', backgroundColor: 'white', display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '300px', padding: '10px' }}>
+                            {selectedProofUrl.split('?')[0].toLowerCase().endsWith('.pdf') ? (
+                              <iframe src={selectedProofUrl} style={{ width: '100%', height: '500px', border: 'none' }} title="Comprobante" />
+                            ) : (
+                              <a href={selectedProofUrl} target="_blank" rel="noopener noreferrer" style={{ display: 'block', cursor: 'zoom-in' }}>
+                                <img src={selectedProofUrl} alt="Comprobante" style={{ maxWidth: '100%', maxHeight: '500px', objectFit: 'contain' }} />
+                              </a>
+                            )}
+                          </div>
+                          
+                           {/* Esta protección es solo de experiencia de usuario, la autorización real ocurre en el backend vía requireRole() */}
+                           {can('can_approve_payments') ? (
+                             <div style={{ display: 'flex', gap: '15px', alignItems: 'stretch' }}>
+                               <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                                 <input 
+                                   type="text" 
+                                   placeholder="Motivo (obligatorio si rechazas)" 
+                                   value={rejectReason}
+                                   onChange={(e) => setRejectReason(e.target.value)}
+                                   style={{ padding: '12px', borderRadius: '8px', border: '1px solid #d1d5db', width: '100%', fontSize: '0.9rem' }}
+                                 />
+                                 <button onClick={() => rejectPayment(activeFinancialOrder)} style={{ backgroundColor: '#ef4444', color: 'white', padding: '12px', borderRadius: '8px', border: 'none', fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}>
+                                   <X size={18} /> Rechazar Pago
+                                 </button>
+                               </div>
+                               <button onClick={() => approvePayment(activeFinancialOrder)} style={{ flex: 1, backgroundColor: 'var(--color-green-dark)', color: 'white', padding: '12px', borderRadius: '8px', border: 'none', fontWeight: 700, fontSize: '1.1rem', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', boxShadow: '0 4px 6px rgba(0,0,0,0.1)' }}>
+                                 <Check size={24} /> Aprobar Pago
+                               </button>
+                             </div>
+                           ) : (
+                             <div style={{ padding: '15px', backgroundColor: '#fef3c7', color: '#92400e', borderRadius: '8px', textAlign: 'center' }}>
+                               No tienes permisos para aprobar pagos.
+                             </div>
+                           )}
+                        </div>
+                      )}
+                   </div>
+                 )}
+              </div>
+            </div>
+          )}
+
+          {activeTab === 'edenpass' && (
+            <div style={{ display: 'flex', gap: '30px', alignItems: 'flex-start' }}>
+              
+              {/* ESCÁNER Y BÚSQUEDA */}
+              <div style={{ flex: '1', display: 'flex', flexDirection: 'column', gap: '20px' }}>
+                <div style={{ backgroundColor: 'white', padding: '20px', borderRadius: '15px', border: '1px solid #e5e7eb' }}>
+                  <h3 style={{ color: '#8b5cf6', display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '15px' }}>
+                    <ScanLine size={20} /> Escáner de Código QR
+                  </h3>
+                  
+                  {scannerActive ? (
+                    <div id="reader" style={{ width: '100%', overflow: 'hidden', borderRadius: '8px' }}></div>
+                  ) : (
+                    <button 
+                      onClick={() => setScannerActive(true)}
+                      style={{ width: '100%', padding: '15px', backgroundColor: '#f3f4f6', border: '2px dashed #d1d5db', borderRadius: '10px', color: '#4b5563', fontWeight: 600, cursor: 'pointer', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '8px' }}
+                    >
+                      <ScanLine size={20} /> Iniciar Cámara
+                    </button>
+                  )}
+                  
+                  {edenPassError && (
+                    <div style={{ marginTop: '15px', padding: '10px', backgroundColor: '#fef2f2', border: '1px solid #fecaca', color: '#ef4444', borderRadius: '8px', fontSize: '0.9rem', textAlign: 'center' }}>
+                      {edenPassError}
+                    </div>
+                  )}
+                </div>
+
+                <div style={{ backgroundColor: 'white', padding: '20px', borderRadius: '15px', border: '1px solid #e5e7eb' }}>
+                  <h3 style={{ color: '#4b5563', display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '15px', fontSize: '1rem' }}>
+                    <Search size={18} /> Búsqueda Manual
+                  </h3>
+                  <form onSubmit={searchPhone} style={{ display: 'flex', gap: '10px' }}>
+                    <input 
+                      type="tel" 
+                      placeholder="Teléfono (ej. 52...)" 
+                      value={phoneSearchQuery}
+                      onChange={(e) => setPhoneSearchQuery(e.target.value)}
+                      style={{ flex: '1', padding: '10px', border: '1px solid #d1d5db', borderRadius: '8px' }}
+                    />
+                    <button type="submit" style={{ padding: '10px 15px', backgroundColor: '#4b5563', color: 'white', border: 'none', borderRadius: '8px', cursor: 'pointer' }}>
+                      Buscar
+                    </button>
+                  </form>
+                </div>
+              </div>
+
+              {/* PERFIL Y BENEFICIOS */}
+              <div style={{ flex: '2', backgroundColor: '#f9fafb', borderRadius: '15px', padding: '30px', border: '1px solid #e5e7eb', minHeight: '60vh' }}>
+                {!customerProfile ? (
+                   <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100%', color: '#9ca3af' }}>
+                     <UserCircle size={64} style={{ marginBottom: '15px', opacity: 0.5 }} />
+                     <p>Escanea un código QR o busca un teléfono para ver el perfil.</p>
+                   </div>
+                ) : (
+                  <div className="animate-fade-in">
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '30px', borderBottom: '1px solid #e5e7eb', paddingBottom: '20px' }}>
+                      <div>
+                        <h2 style={{ fontSize: '2rem', color: '#111827', fontWeight: 800, marginBottom: '5px' }}>{customerProfile.name}</h2>
+                        <div style={{ color: '#6b7280', fontSize: '1rem' }}>{customerProfile.phone}</div>
+                      </div>
+                      <div style={{ textAlign: 'right' }}>
+                        <div style={{ fontSize: '0.9rem', color: '#6b7280', textTransform: 'uppercase', fontWeight: 700, letterSpacing: '1px' }}>{customerProfile.loyalty_tier}</div>
+                        <div style={{ fontSize: '2.5rem', color: '#8b5cf6', fontWeight: 900, lineHeight: '1' }}>{customerProfile.loyalty_points} <span style={{ fontSize: '1rem', color: '#9ca3af', fontWeight: 600 }}>pts</span></div>
+                      </div>
+                    </div>
+
+                    <h3 style={{ fontSize: '1.2rem', color: '#374151', marginBottom: '15px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      <Award size={20} color="#8b5cf6" /> Recompensas Disponibles
+                    </h3>
+
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(250px, 1fr))', gap: '15px' }}>
+                      {loyaltyBenefits.length === 0 ? (
+                        <div style={{ gridColumn: '1 / -1', padding: '20px', backgroundColor: '#f3f4f6', borderRadius: '10px', textAlign: 'center', color: '#6b7280' }}>
+                          No hay beneficios configurados en el sistema.
+                        </div>
+                      ) : (
+                        loyaltyBenefits.map(benefit => {
+                          const canAfford = customerProfile.loyalty_points >= benefit.points_required;
+                          return (
+                            <div key={benefit.id} style={{ border: `1px solid ${canAfford ? '#8b5cf6' : '#e5e7eb'}`, borderRadius: '12px', padding: '15px', backgroundColor: 'white', opacity: benefit.active ? 1 : 0.6, position: 'relative', overflow: 'hidden' }}>
+                              {!canAfford && (
+                                <div style={{ position: 'absolute', top: 0, right: 0, backgroundColor: '#f3f4f6', color: '#6b7280', fontSize: '0.75rem', padding: '2px 8px', borderBottomLeftRadius: '8px', fontWeight: 600 }}>
+                                  Faltan {benefit.points_required - customerProfile.loyalty_points} pts
+                                </div>
+                              )}
+                              <h4 style={{ fontSize: '1.1rem', color: canAfford ? '#111827' : '#9ca3af', fontWeight: 700, marginBottom: '5px' }}>{benefit.name}</h4>
+                              <p style={{ fontSize: '0.85rem', color: '#6b7280', marginBottom: '15px', minHeight: '40px' }}>{benefit.description}</p>
+                              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                <span style={{ fontWeight: 800, color: canAfford ? '#8b5cf6' : '#9ca3af' }}>{benefit.points_required} pts</span>
+                                <button 
+                                  disabled={!canAfford || !benefit.active || isRedeeming}
+                                  onClick={() => redeemBenefit(benefit.id, benefit.name)}
+                                  style={{ padding: '8px 15px', borderRadius: '6px', backgroundColor: canAfford && benefit.active ? '#8b5cf6' : '#e5e7eb', color: canAfford && benefit.active ? 'white' : '#9ca3af', border: 'none', fontWeight: 600, cursor: canAfford && benefit.active ? 'pointer' : 'not-allowed' }}
+                                >
+                                  Canjear
+                                </button>
+                              </div>
+                            </div>
+                          );
+                </ul>
+              </div>
+
+              <div className="admin-panel-section" style={{ backgroundColor: 'var(--color-ochre-light)', borderColor: 'var(--color-ochre)' }}>
+                <h3 style={{ fontSize: '1.2rem', marginBottom: '8px', color: 'var(--color-green-dark)' }}>
+                  <AlertCircle size={18} style={{ display: 'inline', marginRight: '6px', verticalAlign: 'text-bottom' }} />
+                  Información Técnica
+                </h3>
+                <p style={{ fontSize: '0.8rem', lineHeight: '1.4' }}>
+                  El sistema está operando en <strong>Modo Sincronizado Completo</strong>. Si hay variables de Supabase configuradas, actualizará mediante WebSockets. De lo contrario, opera en modo de sondeo optimizado localmente para garantizar el servicio continuo.
+                </p>
+              </div>
+            </div>
+          )}
+
+          {activeTab === 'finanzas' && (
+            <div style={{ display: 'flex', gap: '30px', alignItems: 'flex-start' }}>
+              {/* Lista */}
+              <div style={{ flex: '1', display: 'flex', flexDirection: 'column', gap: '15px', maxHeight: '70vh', overflowY: 'auto', paddingRight: '10px' }}>
+                <h3 style={{ color: 'var(--color-text-dark)', marginBottom: '5px' }}>Comprobantes Pendientes</h3>
+                 {pendingPayments.map(p => (
+                   <div key={p.id} onClick={() => viewProof(p.id)} style={{ padding: '15px', border: activeFinancialOrder === p.id ? '2px solid var(--color-terracotta)' : '1px solid #e5e7eb', borderRadius: '10px', cursor: 'pointer', backgroundColor: activeFinancialOrder === p.id ? '#fff5f5' : 'white', transition: 'all 0.2s' }}>
+                      <div style={{ fontWeight: 600, display: 'flex', justifyContent: 'space-between' }}>
+                        <span>Orden #{p.id.slice(-4).toUpperCase()}</span>
+                        <span style={{ fontSize: '0.8rem', color: '#6b7280' }}>{new Date(p.created_at).toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit' })}</span>
+                      </div>
+                      <div style={{ fontSize: '0.85rem', color: '#4b5563', marginTop: '4px' }}>{p.customer_name} | {p.customer_phone}</div>
+                      <div style={{ fontWeight: 700, color: 'var(--color-green-dark)', marginTop: '8px' }}>${p.total}</div>
+                   </div>
+                 ))}
+                 {pendingPayments.length === 0 && (
+                   <div style={{ backgroundColor: '#f9fafb', padding: '30px', borderRadius: '15px', textAlign: 'center', color: '#6b7280', fontStyle: 'italic', border: '1px dashed #d1d5db' }}>
+                     No hay comprobantes pendientes de validación.
+                   </div>
+                 )}
+              </div>
+              
+              {/* Detalle */}
+              <div style={{ flex: '2', backgroundColor: '#f9fafb', borderRadius: '15px', padding: '30px', border: '1px solid #e5e7eb', minHeight: '60vh' }}>
+                 {!activeFinancialOrder ? (
+                   <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100%', color: '#6b7280' }}>
+                     <ClipboardList size={48} color="#d1d5db" style={{ marginBottom: '15px' }} />
+                     <p>Selecciona una orden de la lista para revisar su comprobante.</p>
+                   </div>
+                 ) : (
+                   <div>
+                      <h3 style={{ marginBottom: '20px', color: 'var(--color-green-dark)' }}>Revisando Comprobante</h3>
+                      {!selectedProofUrl ? (
+                        <div style={{ display: 'flex', justifyContent: 'center', padding: '50px' }}>
+                          <div className="status-animation-ring active" style={{ width: '40px', height: '40px' }}></div>
+                        </div>
+                      ) : (
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+                          <div style={{ border: '1px solid #d1d5db', borderRadius: '10px', overflow: 'hidden', backgroundColor: 'white', display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '300px', padding: '10px' }}>
+                            {selectedProofUrl.split('?')[0].toLowerCase().endsWith('.pdf') ? (
+                              <iframe src={selectedProofUrl} style={{ width: '100%', height: '500px', border: 'none' }} title="Comprobante" />
+                            ) : (
+                              <a href={selectedProofUrl} target="_blank" rel="noopener noreferrer" style={{ display: 'block', cursor: 'zoom-in' }}>
+                                <img src={selectedProofUrl} alt="Comprobante" style={{ maxWidth: '100%', maxHeight: '500px', objectFit: 'contain' }} />
+                              </a>
+                            )}
+                          </div>
+                          
+                           {/* Esta protección es solo de experiencia de usuario, la autorización real ocurre en el backend vía requireRole() */}
+                           {can('can_approve_payments') ? (
+                             <div style={{ display: 'flex', gap: '15px', alignItems: 'stretch' }}>
+                               <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                                 <input 
+                                   type="text" 
+                                   placeholder="Motivo (obligatorio si rechazas)" 
+                                   value={rejectReason}
+                                   onChange={(e) => setRejectReason(e.target.value)}
+                                   style={{ padding: '12px', borderRadius: '8px', border: '1px solid #d1d5db', width: '100%', fontSize: '0.9rem' }}
+                                 />
+                                 <button onClick={() => rejectPayment(activeFinancialOrder)} style={{ backgroundColor: '#ef4444', color: 'white', padding: '12px', borderRadius: '8px', border: 'none', fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}>
+                                   <X size={18} /> Rechazar Pago
+                                 </button>
+                               </div>
+                               <button onClick={() => approvePayment(activeFinancialOrder)} style={{ flex: 1, backgroundColor: 'var(--color-green-dark)', color: 'white', padding: '12px', borderRadius: '8px', border: 'none', fontWeight: 700, fontSize: '1.1rem', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', boxShadow: '0 4px 6px rgba(0,0,0,0.1)' }}>
+                                 <Check size={24} /> Aprobar Pago
+                               </button>
+                             </div>
+                           ) : (
+                             <div style={{ padding: '15px', backgroundColor: '#fef3c7', color: '#92400e', borderRadius: '8px', textAlign: 'center' }}>
+                               No tienes permisos para aprobar pagos.
+                             </div>
+                           )}
+                        </div>
+                      )}
+                   </div>
+                 )}
+              </div>
+            </div>
+          )}
+
+          {activeTab === 'edenpass' && (
+            <div style={{ display: 'flex', gap: '30px', alignItems: 'flex-start' }}>
+              
+              {/* ESCÁNER Y BÚSQUEDA */}
+              <div style={{ flex: '1', display: 'flex', flexDirection: 'column', gap: '20px' }}>
+                <div style={{ backgroundColor: 'white', padding: '20px', borderRadius: '15px', border: '1px solid #e5e7eb' }}>
+                  <h3 style={{ color: '#8b5cf6', display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '15px' }}>
+                    <ScanLine size={20} /> Escáner de Código QR
+                  </h3>
+                  
+                  {scannerActive ? (
+                    <div id="reader" style={{ width: '100%', overflow: 'hidden', borderRadius: '8px' }}></div>
+                  ) : (
+                    <button 
+                      onClick={() => setScannerActive(true)}
+                      style={{ width: '100%', padding: '15px', backgroundColor: '#f3f4f6', border: '2px dashed #d1d5db', borderRadius: '10px', color: '#4b5563', fontWeight: 600, cursor: 'pointer', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '8px' }}
+                    >
+                      <ScanLine size={20} /> Iniciar Cámara
+                    </button>
+                  )}
+                  
+                  {edenPassError && (
+                    <div style={{ marginTop: '15px', padding: '10px', backgroundColor: '#fef2f2', border: '1px solid #fecaca', color: '#ef4444', borderRadius: '8px', fontSize: '0.9rem', textAlign: 'center' }}>
+                      {edenPassError}
+                    </div>
+                  )}
+                </div>
+
+                <div style={{ backgroundColor: 'white', padding: '20px', borderRadius: '15px', border: '1px solid #e5e7eb' }}>
+                  <h3 style={{ color: '#4b5563', display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '15px', fontSize: '1rem' }}>
+                    <Search size={18} /> Búsqueda Manual
+                  </h3>
+                  <form onSubmit={searchPhone} style={{ display: 'flex', gap: '10px' }}>
+                    <input 
+                      type="tel" 
+                      placeholder="Teléfono (ej. 52...)" 
+                      value={phoneSearchQuery}
+                      onChange={(e) => setPhoneSearchQuery(e.target.value)}
+                      style={{ flex: '1', padding: '10px', border: '1px solid #d1d5db', borderRadius: '8px' }}
+                    />
+                    <button type="submit" style={{ padding: '10px 15px', backgroundColor: '#4b5563', color: 'white', border: 'none', borderRadius: '8px', cursor: 'pointer' }}>
+                      Buscar
+                    </button>
+                  </form>
+                </div>
+              </div>
+
+              {/* PERFIL Y BENEFICIOS */}
+              <div style={{ flex: '2', backgroundColor: '#f9fafb', borderRadius: '15px', padding: '30px', border: '1px solid #e5e7eb', minHeight: '60vh' }}>
+                {!customerProfile ? (
+                   <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100%', color: '#9ca3af' }}>
+                     <UserCircle size={64} style={{ marginBottom: '15px', opacity: 0.5 }} />
+                     <p>Escanea un código QR o busca un teléfono para ver el perfil.</p>
+                   </div>
+                ) : (
+                  <div className="animate-fade-in">
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '30px', borderBottom: '1px solid #e5e7eb', paddingBottom: '20px' }}>
+                      <div>
+                        <h2 style={{ fontSize: '2rem', color: '#111827', fontWeight: 800, marginBottom: '5px' }}>{customerProfile.name}</h2>
+                        <div style={{ color: '#6b7280', fontSize: '1rem' }}>{customerProfile.phone}</div>
+                      </div>
+                      <div style={{ textAlign: 'right' }}>
+                        <div style={{ fontSize: '0.9rem', color: '#6b7280', textTransform: 'uppercase', fontWeight: 700, letterSpacing: '1px' }}>{customerProfile.loyalty_tier}</div>
+                        <div style={{ fontSize: '2.5rem', color: '#8b5cf6', fontWeight: 900, lineHeight: '1' }}>{customerProfile.loyalty_points} <span style={{ fontSize: '1rem', color: '#9ca3af', fontWeight: 600 }}>pts</span></div>
+                      </div>
+                    </div>
+
+                    <h3 style={{ fontSize: '1.2rem', color: '#374151', marginBottom: '15px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      <Award size={20} color="#8b5cf6" /> Recompensas Disponibles
+                    </h3>
+
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(250px, 1fr))', gap: '15px' }}>
+                      {loyaltyBenefits.length === 0 ? (
+                        <div style={{ gridColumn: '1 / -1', padding: '20px', backgroundColor: '#f3f4f6', borderRadius: '10px', textAlign: 'center', color: '#6b7280' }}>
+                          No hay beneficios configurados en el sistema.
+                        </div>
+                      ) : (
+                        loyaltyBenefits.map(benefit => {
+                          const canAfford = customerProfile.loyalty_points >= benefit.points_required;
+                          return (
+                            <div key={benefit.id} style={{ border: `1px solid ${canAfford ? '#8b5cf6' : '#e5e7eb'}`, borderRadius: '12px', padding: '15px', backgroundColor: 'white', opacity: benefit.active ? 1 : 0.6, position: 'relative', overflow: 'hidden' }}>
+                              {!canAfford && (
+                                <div style={{ position: 'absolute', top: 0, right: 0, backgroundColor: '#f3f4f6', color: '#6b7280', fontSize: '0.75rem', padding: '2px 8px', borderBottomLeftRadius: '8px', fontWeight: 600 }}>
+                                  Faltan {benefit.points_required - customerProfile.loyalty_points} pts
+                                </div>
+                              )}
+                              <h4 style={{ fontSize: '1.1rem', color: canAfford ? '#111827' : '#9ca3af', fontWeight: 700, marginBottom: '5px' }}>{benefit.name}</h4>
+                              <p style={{ fontSize: '0.85rem', color: '#6b7280', marginBottom: '15px', minHeight: '40px' }}>{benefit.description}</p>
+                              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                <span style={{ fontWeight: 800, color: canAfford ? '#8b5cf6' : '#9ca3af' }}>{benefit.points_required} pts</span>
+                                <button 
+                                  disabled={!canAfford || !benefit.active || isRedeeming}
+                                  onClick={() => redeemBenefit(benefit.id, benefit.name)}
+                                  style={{ padding: '8px 15px', borderRadius: '6px', backgroundColor: canAfford && benefit.active ? '#8b5cf6' : '#e5e7eb', color: canAfford && benefit.active ? 'white' : '#9ca3af', border: 'none', fontWeight: 600, cursor: canAfford && benefit.active ? 'pointer' : 'not-allowed' }}
+                                >
+                                  Canjear
+                                </button>
+                              </div>
+                            </div>
+                          );
+                        })
+                      )}
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
+          {activeTab === 'menu' && (
+            <MenuManager accessToken={accessToken} />
+          )}
+
+          {activeTab === 'usuarios' && (
+            <UsersManager accessToken={accessToken} />
+          )}
+
+          {activeTab === 'banco' && (
+            <BankConfigManager accessToken={accessToken} />
+          )}
+        </>
       </main>
     </>
   );

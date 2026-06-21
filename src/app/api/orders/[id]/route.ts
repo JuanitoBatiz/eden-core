@@ -1,122 +1,57 @@
 import { NextResponse } from 'next/server';
-import { supabase, isSupabaseConfigured } from '@/lib/supabase';
-import { refundLoyverseReceipt } from '@/lib/loyverse';
-import { serverMockOrders } from '../route';
+import { createAdminClient, isSupabaseConfigured } from '@/lib/supabase';
+import { requireRole } from '@/lib/auth';
 
-// Helper to find and update in-memory database
-function updateInMemoryOrder(id: string, updates: any) {
-  const index = serverMockOrders.findIndex(o => o.id === id);
-  if (index !== -1) {
-    serverMockOrders[index] = { ...serverMockOrders[index], ...updates };
-    return serverMockOrders[index];
-  }
-  return null;
-}
-
-export async function GET(
-  req: Request,
-  { params }: { params: Promise<{ id: string }> }
-) {
+export async function GET(req: Request, { params }: { params: { id: string } }) {
   try {
-    const { id } = await params;
-
-    if (isSupabaseConfigured && supabase) {
-      const { data, error } = await supabase
-        .from('orders')
-        .select('*')
-        .eq('id', id)
-        .single();
-
-      if (error) {
-        return NextResponse.json({ error: 'Pedido no encontrado.' }, { status: 404 });
+    let tokenPayload;
+    try {
+      tokenPayload = await requireRole(req, 'customer');
+    } catch (authErr: any) {
+      if (authErr.message.includes('403')) {
+        return NextResponse.json({ error: 'insufficient_permissions', required_role: authErr.required_role, your_role: authErr.your_role }, { status: 403 });
       }
-      return NextResponse.json({ success: true, order: data });
-    } else {
-      // Find in-memory
-      const order = serverMockOrders.find(o => o.id === id);
-      if (!order) {
-        return NextResponse.json({ error: 'Pedido no encontrado.' }, { status: 404 });
-      }
-      return NextResponse.json({ success: true, order });
-    }
-  } catch (error: any) {
-    console.error('Error fetching single order:', error);
-    return NextResponse.json(
-      { error: error.message || 'Error al obtener el pedido.' },
-      { status: 500 }
-    );
-  }
-}
-
-export async function PATCH(
-  req: Request,
-  { params }: { params: Promise<{ id: string }> }
-) {
-  try {
-    const { id } = await params;
-    const body = await req.json();
-    const { status } = body;
-
-    if (!status) {
-      return NextResponse.json({ error: 'Estado no proporcionado.' }, { status: 400 });
+      return NextResponse.json({ error: authErr.message || 'No autorizado' }, { status: 401 });
     }
 
-    // 1. Fetch the current order details to check for Loyverse receipt ID
-    let currentOrder: any = null;
-
-    if (isSupabaseConfigured && supabase) {
-      const { data, error } = await supabase
-        .from('orders')
-        .select('*')
-        .eq('id', id)
-        .single();
-
-      if (!error) currentOrder = data;
-    } else {
-      currentOrder = serverMockOrders.find(o => o.id === id);
+    if (!isSupabaseConfigured) {
+      return NextResponse.json({ error: 'Configuración de base de datos ausente.' }, { status: 500 });
     }
 
-    if (!currentOrder) {
-      return NextResponse.json({ error: 'Pedido no encontrado.' }, { status: 404 });
+    const orderId = params.id;
+    if (!orderId) {
+      return NextResponse.json({ error: 'ID de orden no proporcionado.' }, { status: 400 });
     }
 
-    // 2. If status is being updated to 'cancelado' and there's a Loyverse receipt, void it
-    if (status === 'cancelado' && currentOrder.loyverse_receipt_id) {
-      try {
-        await refundLoyverseReceipt(currentOrder.loyverse_receipt_id);
-        console.log(`[LOYVERSE] Recibo ${currentOrder.loyverse_receipt_id} anulado con éxito.`);
-      } catch (loyverseErr) {
-        console.error('Error refunding/voiding receipt in Loyverse POS:', loyverseErr);
-        // We continue with updating the DB status even if Loyverse voiding fails
-      }
+    // Endpoint protegido por requireRole → usar adminClient para bypassear RLS
+    const adminSupabase = createAdminClient();
+
+    const { data: order, error } = await adminSupabase
+      .from('orders')
+      .select('*')
+      .eq('id', orderId)
+      .single();
+
+    if (error) {
+      console.error('Fetch order DB error:', error.message);
+      return NextResponse.json({ error: 'Error al consultar la orden.' }, { status: 500 });
     }
 
-    // 3. Update the order status in database
-    let updatedOrder: any = null;
-
-    if (isSupabaseConfigured && supabase) {
-      const { data, error } = await supabase
-        .from('orders')
-        .update({ status })
-        .eq('id', id)
-        .select()
-        .single();
-
-      if (error) {
-        throw error;
-      }
-      updatedOrder = data;
-    } else {
-      // Update in-memory
-      updatedOrder = updateInMemoryOrder(id, { status });
+    if (!order) {
+      return NextResponse.json({ error: 'Orden no encontrada.' }, { status: 404 });
     }
 
-    return NextResponse.json({ success: true, order: updatedOrder });
+    // Verificación de ownership: el cliente solo puede ver sus propias órdenes
+    if (order.user_id !== tokenPayload.user_id && tokenPayload.role !== 'cashier' && tokenPayload.role !== 'owner') {
+      return NextResponse.json({ error: 'Prohibido. No tienes permiso para ver esta orden.' }, { status: 403 });
+    }
+
+    return NextResponse.json({ success: true, order });
 
   } catch (error: any) {
-    console.error('Error updating order status:', error);
+    console.error('Fetch order error:', error);
     return NextResponse.json(
-      { error: error.message || 'Error al actualizar el estado del pedido.' },
+      { error: 'Error interno al obtener el pedido.' },
       { status: 500 }
     );
   }

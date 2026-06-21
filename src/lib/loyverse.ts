@@ -213,3 +213,53 @@ export async function refundLoyverseReceipt(receiptId: string) {
     throw error;
   }
 }
+
+/**
+ * Creates a customer in Loyverse POS.
+ * WARNING: The Loyverse API does not guarantee uniqueness by phone natively when creating via POST.
+ * If duplicate prevention is strictly needed, a GET request to search by phone should be done first,
+ * but currently the specification is to blindly attempt creation.
+ */
+export async function createLoyverseCustomer(name: string, phone: string): Promise<string> {
+  if (!isLoyverseConfigured) {
+    console.log(`[MOCK LOYVERSE] Creando cliente ${name} (${phone}) en Loyverse`);
+    return `loyverse_cust_${Math.random().toString(36).substring(2, 11)}`;
+  }
+
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 seconds timeout
+
+  try {
+    const payload = {
+      name,
+      phone_number: phone
+    };
+
+    const res = await fetch(`${LOYVERSE_API_URL}/customers`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${LOYVERSE_ACCESS_TOKEN}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify(payload),
+      signal: controller.signal
+    });
+
+    clearTimeout(timeoutId);
+
+    if (!res.ok) {
+      const errText = await res.text();
+      throw new Error(`Loyverse API error creating customer: ${res.status} - ${errText}`);
+    }
+
+    const data = await res.json();
+    return data.id || data.customer_id; // Return whichever the API provides as ID
+  } catch (error: any) {
+    clearTimeout(timeoutId);
+    if (error.name === 'AbortError') {
+      throw new Error('Loyverse API request timed out after 10 seconds.');
+    }
+    console.error('Error creating Loyverse customer:', error);
+    throw error;
+  }
+}

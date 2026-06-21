@@ -21,8 +21,21 @@ import {
   Soup,
   GlassWater
 } from 'lucide-react';
-import { MENU_ITEMS, CATEGORIES, SALAD_OPTIONS, MenuItem } from '@/lib/menuData';
+import { MenuItem, MenuCategory } from '@/lib/menuData';
+import { SmsRequest, VerifyOtpRequest, OrderCreateRequest } from '@/types/api-contracts';
 
+// Helper local icon
+function getCategoryIcon(name: string) {
+  switch (name) {
+    case 'Ensaladas': return <Salad size={20} />;
+    case 'Jugos y Smoothies': return <CupSoda size={20} />;
+    case 'Infusiones': return <Coffee size={20} />;
+    case 'Wraps y Sándwiches': return <Sandwich size={20} />;
+    case 'Bowls y Cocteles': return <Soup size={20} />;
+    case 'Embotellados': return <GlassWater size={20} />;
+    default: return null;
+  }
+}
 interface CartItem {
   cartId: string; // Unique instance ID in cart
   id: string;
@@ -41,30 +54,17 @@ interface CartItem {
   notes?: string;
 }
 
-function getCategoryIcon(id: string) {
-  switch (id) {
-    case 'ensaladas':
-      return <Salad size={20} />;
-    case 'jugos':
-      return <CupSoda size={20} />;
-    case 'infusiones':
-      return <Coffee size={20} />;
-    case 'burritos-sandwiches':
-      return <Sandwich size={20} />;
-    case 'bowls':
-      return <Soup size={20} />;
-    case 'embotellada':
-      return <GlassWater size={20} />;
-    default:
-      return null;
-  }
-}
+
 
 export default function MenuPage() {
   const router = useRouter();
 
+  // Menu Data State
+  const [menuData, setMenuData] = useState<{CATEGORIES: MenuCategory[], MENU_ITEMS: MenuItem[], SALAD_OPTIONS: any} | null>(null);
+  const [menuError, setMenuError] = useState(false);
+
   // Navigation and Scroll-hide Header
-  const [activeCategory, setActiveCategory] = useState('ensaladas');
+  const [activeCategory, setActiveCategory] = useState<string>('');
   const [isNavVisible, setIsNavVisible] = useState(true);
 
   // Cart State
@@ -106,6 +106,25 @@ export default function MenuPage() {
     }
   }, []);
 
+  // Fetch Menu from API
+  useEffect(() => {
+    fetch('/api/menu')
+      .then(res => {
+        if (!res.ok) throw new Error('Error de red al cargar el menú');
+        return res.json();
+      })
+      .then(data => {
+        setMenuData(data);
+        if (data.CATEGORIES?.length > 0) {
+          setActiveCategory(data.CATEGORIES[0].id);
+        }
+      })
+      .catch(err => {
+        console.error(err);
+        setMenuError(true);
+      });
+  }, []);
+
   // Scroll direction listener to show/hide header unificado (instant response)
   useEffect(() => {
     if (typeof window === 'undefined') return;
@@ -141,14 +160,14 @@ export default function MenuPage() {
   const getConstraints = () => {
     if (!selectedProduct) return { proteins: 0, toppings: 0, seeds: 0, dressings: 1 };
     
-    if (selectedProduct.id === 'ensalada-chica') {
-      return { proteins: 1, toppings: 4, seeds: 2, dressings: 1 }; // Chica: 1 prot, 4 toppings, 1 sem, 1 fruto (max 2 total seeds/nuts)
+    if (selectedProduct.name === 'Ensalada Chica') {
+      return { proteins: 1, toppings: 4, seeds: 2, dressings: 1 };
     }
-    if (selectedProduct.id === 'ensalada-grande') {
-      return { proteins: 2, toppings: 6, seeds: 4, dressings: 1 }; // Grande: 2 prot, 6 toppings, 2 sem, 2 frutos (max 4 total seeds/nuts)
+    if (selectedProduct.name === 'Ensalada Grande') {
+      return { proteins: 2, toppings: 6, seeds: 4, dressings: 1 };
     }
-    if (selectedProduct.id === 'bowl-avena' || selectedProduct.id === 'bowl-yogurt') {
-      return { proteins: 0, toppings: 2, seeds: 2, dressings: 0 }; // Bowls: 2 fruits (toppings) and 2 seeds
+    if (selectedProduct.name === 'Bowl de Avena' || selectedProduct.name === 'Bowl de Yogurt') {
+      return { proteins: 0, toppings: 2, seeds: 2, dressings: 0 };
     }
     return { proteins: 0, toppings: 0, seeds: 0, dressings: 0 };
   };
@@ -274,10 +293,11 @@ export default function MenuPage() {
     }
 
     try {
+      const payload: SmsRequest = { phone: customerPhone, name: customerName };
       const res = await fetch('/api/sms', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ phone: customerPhone, name: customerName })
+        body: JSON.stringify(payload)
       });
       const data = await res.json();
       
@@ -307,16 +327,30 @@ export default function MenuPage() {
 
     setIsVerifying(true);
 
-    // If development code is provided in response, match it. Else simulate validation.
-    setTimeout(async () => {
-      if (sentCode && fullCode !== sentCode && fullCode !== '1234') {
-        setErrorMsg('El código ingresado es incorrecto.');
+    try {
+      const payload: VerifyOtpRequest = { phone: customerPhone, code: fullCode, name: customerName };
+      const res = await fetch('/api/auth/verify-otp', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',  // La cookie access_token queda seteada automáticamente por el servidor
+        body: JSON.stringify(payload)
+      });
+      const data = await res.json();
+
+      if (!res.ok) {
+        setErrorMsg(data.error || 'Código incorrecto o expirado.');
         setIsVerifying(false);
         return;
       }
 
+      // Éxito: la cookie httpOnly ya está seteada, enviar orden directamente
       await submitOrder();
-    }, 1000);
+
+    } catch (e) {
+      console.error(e);
+      setErrorMsg('Error de red al verificar el código.');
+      setIsVerifying(false);
+    }
   };
 
   const handleGoogleLogin = async () => {
@@ -325,33 +359,43 @@ export default function MenuPage() {
       setErrorMsg('Por favor ingresa tu nombre antes de continuar.');
       return;
     }
-    
     setIsVerifying(true);
-    // Simulate google sign-in and direct order submission
-    setTimeout(async () => {
-      await submitOrder('google_user@gmail.com');
-    }, 1200);
+    // TODO: Integrar Google Auth real — actualmente deshabilitado
+    setErrorMsg('Google Login no disponible aún. Usa verificación por SMS.');
+    setIsVerifying(false);
   };
 
-  const submitOrder = async (email?: string) => {
+  // submitOrder usa credentials:'include' para que la cookie httpOnly viaje automáticamente
+  const submitOrder = async () => {
     setIsSubmittingOrder(true);
     try {
-      const payload = {
+      const payload: OrderCreateRequest = {
         customer_name: customerName,
-        customer_phone: customerPhone || 'Google User',
-        customer_email: email || null,
+        customer_phone: customerPhone,
         items: cart,
-        total: calculateSubtotal(),
         notes: cart.map(item => item.notes).filter(Boolean).join('; ')
       };
 
       const res = await fetch('/api/orders', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
         body: JSON.stringify(payload)
       });
 
       const data = await res.json();
+
+      if (res.status === 409) {
+        let errorText = "⚠️ Cambios en disponibilidad:\n";
+        data.conflicts.forEach((c: any) => {
+          errorText += `- ${c.product_name}: ${c.reason}\n`;
+        });
+        errorText += "\nPor favor, actualiza tu carrito e intenta de nuevo.";
+        setErrorMsg(errorText);
+        setIsSubmittingOrder(false);
+        setIsVerifying(false);
+        return;
+      }
 
       if (!res.ok) {
         setErrorMsg(data.error || 'Ocurrió un error al procesar tu orden.');
@@ -360,7 +404,7 @@ export default function MenuPage() {
         return;
       }
 
-      // Success: clear cart and redirect to order status
+      // Éxito: limpiar carrito y redirigir al estado de la orden
       saveCart([]);
       setIsAuthOpen(false);
       router.push(`/orden/${data.order.id}`);
@@ -387,6 +431,28 @@ export default function MenuPage() {
   };
 
   const constraints = getConstraints();
+
+  if (menuError) {
+    return (
+      <div className="container" style={{ textAlign: 'center', padding: '100px 20px', minHeight: '100vh', display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center' }}>
+        <h2>No pudimos cargar el menú 😔</h2>
+        <p style={{ marginBottom: '20px' }}>Por favor intenta de nuevo.</p>
+        <button className="add-btn" style={{ padding: '10px 20px' }} onClick={() => window.location.reload()}>Reintentar</button>
+      </div>
+    );
+  }
+
+  if (!menuData) {
+    return (
+      <div className="container" style={{ textAlign: 'center', padding: '100px 20px', minHeight: '100vh', display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center' }}>
+        <div style={{ width: '40px', height: '40px', border: '4px solid var(--color-green-light)', borderTopColor: 'var(--color-green-dark)', borderRadius: '50%', animation: 'spin 1s linear infinite' }}></div>
+        <p style={{ marginTop: '20px', color: 'var(--color-green-dark)', fontWeight: 600 }}>Cargando el menú fresco de hoy...</p>
+        <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
+      </div>
+    );
+  }
+
+  const { CATEGORIES, MENU_ITEMS, SALAD_OPTIONS } = menuData;
 
   return (
     <>
@@ -434,7 +500,7 @@ export default function MenuPage() {
                   }}
                 >
                   <span className="category-icon-wrapper">
-                    {getCategoryIcon(category.id)}
+                    {getCategoryIcon(category.name)}
                   </span>
                   <span className="category-btn-text">{category.name}</span>
                 </button>
@@ -940,7 +1006,7 @@ export default function MenuPage() {
               </p>
 
               {errorMsg && (
-                <div style={{ backgroundColor: '#ffebee', color: '#c62828', padding: '12px', borderRadius: '10px', fontSize: '0.85rem', marginBottom: '15px', fontWeight: 600 }}>
+                <div style={{ backgroundColor: '#ffebee', color: '#c62828', padding: '12px', borderRadius: '10px', fontSize: '0.85rem', marginBottom: '15px', fontWeight: 600, whiteSpace: 'pre-wrap' }}>
                   {errorMsg}
                 </div>
               )}

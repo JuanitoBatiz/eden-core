@@ -1,3 +1,6 @@
+// DEPRECATED: migrado a Supabase, ver /api/menu. 
+// Eliminar tras confirmar estabilidad en producción.
+
 export interface MenuItem {
   id: string;
   name: string;

@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { PermissionsProvider } from "@/hooks/usePermissions";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -14,7 +15,9 @@ export default function RootLayout({
   return (
     <html lang="es">
       <body>
-        {children}
+        <PermissionsProvider>
+          {children}
+        </PermissionsProvider>
       </body>
     </html>
   );
