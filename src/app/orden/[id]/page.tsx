@@ -12,7 +12,15 @@ import {
   ShoppingBag,
   Phone,
   HelpCircle,
-  FileText
+  FileText,
+  Salad,
+  Sparkles,
+  Utensils,
+  CupSoda,
+  Bike,
+  ShieldCheck,
+  Award,
+  QrCode
 } from 'lucide-react';
 import { supabase, isSupabaseConfigured } from '@/lib/supabase';
 
@@ -24,7 +32,8 @@ interface Order {
   items: any[];
   total: number;
   notes?: string;
-  status: 'en_revision' | 'preparando' | 'listo' | 'cancelado';
+  status: string;
+  service_type?: string;
   loyverse_receipt_number?: string;
   payment_status?: string;
   rejection_reason?: string;
@@ -51,7 +60,57 @@ export default function OrderStatusPage() {
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
   const [uploadError, setUploadError] = useState('');
+  const [showThankYou, setShowThankYou] = useState(false);
+  const [dynamicStep, setDynamicStep] = useState(0);
 
+  // Helper universal de copiado (funciona en HTTP LAN móvil y dispara vibración háptica)
+  const handleCopyClabe = (text: string) => {
+    if (!text) return;
+    if (typeof window !== 'undefined' && navigator.vibrate) {
+      try { navigator.vibrate([40, 30, 40]); } catch(e) {}
+    }
+    const onSuccess = () => {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2500);
+    };
+    if (navigator.clipboard && window.isSecureContext) {
+      navigator.clipboard.writeText(text).then(onSuccess).catch(() => fallbackCopy(text, onSuccess));
+    } else {
+      fallbackCopy(text, onSuccess);
+    }
+  };
+
+  const fallbackCopy = (text: string, onSuccess: () => void) => {
+    const textArea = document.createElement("textarea");
+    textArea.value = text;
+    textArea.style.position = "fixed";
+    textArea.style.top = "-99999px";
+    textArea.style.left = "-99999px";
+    document.body.appendChild(textArea);
+    textArea.focus();
+    textArea.select();
+    try {
+      document.execCommand('copy');
+      onSuccess();
+    } catch (err) {
+      console.error('Error copiando:', err);
+      alert('CLABE para transferir:\n' + text);
+    }
+    document.body.removeChild(textArea);
+  };
+
+  // Rotación dinámica UX para dar sensación de actividad en vivo (tipo DiDi / Uber)
+  useEffect(() => {
+    if (!order) return;
+    if (order.status === 'received' || order.status === 'in_preparation') {
+      const interval = setInterval(() => {
+        setDynamicStep(prev => (prev + 1) % 4);
+      }, 6500);
+      return () => clearInterval(interval);
+    } else {
+      setDynamicStep(0);
+    }
+  }, [order?.status]);
 
   // Obtiene los detalles de la orden. credentials:'include' envía la cookie httpOnly automáticamente.
   const fetchOrder = async () => {
@@ -102,36 +161,47 @@ export default function OrderStatusPage() {
     fetchOrder();
     fetchBankConfig();
 
-    // 1. If Supabase is configured, use Realtime
+    // 1. Intentar suscripción WebSocket de Supabase con respaldo de polling HTTP
+    let channel: any = null;
+    let fallbackInterval: any = null;
+
     if (isSupabaseConfigured && supabase) {
-      const channel = supabase
-        .channel(`order-status-${id}`)
-        .on(
-          'postgres_changes',
-          {
-            event: 'UPDATE',
-            schema: 'public',
-            table: 'orders',
-            filter: `id=eq.${id}`
-          },
-          (payload) => {
-            console.log('Realtime order update received:', payload.new);
-            setOrder(payload.new as Order);
-          }
-        )
-        .subscribe();
-
-      return () => {
-        if (supabase) supabase.removeChannel(channel);
-      };
+      try {
+        channel = supabase
+          .channel(`order-status-${id}`)
+          .on(
+            'postgres_changes',
+            {
+              event: 'UPDATE',
+              schema: 'public',
+              table: 'orders',
+              filter: `id=eq.${id}`
+            },
+            (payload) => {
+              console.log('Realtime order update received:', payload.new);
+              setOrder(payload.new as Order);
+            }
+          )
+          .subscribe((status) => {
+            if (status === 'CHANNEL_ERROR' && !fallbackInterval) {
+              console.warn('Realtime channel error, switching to HTTP polling.');
+              fallbackInterval = setInterval(fetchOrder, 5000);
+            }
+          });
+      } catch (wsErr) {
+        console.warn('WebSocket insecure operation on mobile HTTP, switching to polling:', wsErr);
+        fallbackInterval = setInterval(fetchOrder, 5000);
+      }
     } else {
-      // 2. If not, fallback to polling every 5 seconds
-      const interval = setInterval(() => {
-        fetchOrder();
-      }, 5000);
-
-      return () => clearInterval(interval);
+      fallbackInterval = setInterval(fetchOrder, 5000);
     }
+
+    return () => {
+      if (channel && supabase) {
+        try { supabase.removeChannel(channel); } catch(e) {}
+      }
+      if (fallbackInterval) clearInterval(fallbackInterval);
+    };
   }, [id]);
 
   useEffect(() => {
@@ -176,6 +246,9 @@ export default function OrderStatusPage() {
     setUploadError('');
 
     try {
+      // Renovar cookie de access_token por si expiró durante los minutos de transferencia
+      await fetch('/api/auth/refresh', { method: 'POST', credentials: 'include' });
+
       const formData = new FormData();
       formData.append('file', selectedFile);
 
@@ -188,7 +261,11 @@ export default function OrderStatusPage() {
       const data = await res.json();
       
       if (!res.ok) {
-        setUploadError(data.error || 'Error al subir el comprobante.');
+        if (res.status === 401) {
+          setUploadError('Sesión caducada. Por favor recarga la página o vuelve a ingresar.');
+        } else {
+          setUploadError(data.error || 'Error al subir el comprobante.');
+        }
         setUploading(false);
         return;
       }
@@ -233,37 +310,99 @@ export default function OrderStatusPage() {
   // Visual layout configurations based on current status
   const getStatusConfig = () => {
     switch (order.status) {
-      case 'en_revision':
+      case 'received': {
+        const receivedTitles = [
+          'Recibiendo orden en cocina...',
+          'Revisando ingredientes frescos',
+          'Asignando chef de barra',
+          'Confirmando especificaciones...'
+        ];
+        const receivedIcons = [
+          <Clock key="0" size={48} color="#f57f17" />,
+          <Salad key="1" size={48} color="#f57f17" />,
+          <ChefHat key="2" size={48} color="#f57f17" />,
+          <Sparkles key="3" size={48} color="#f57f17" />
+        ];
+        const receivedDescs = [
+          'Conectando con la estación principal de ensaladas y jugos naturales.',
+          'Verificando calidad y disponibilidad de tus vegetales recién cortados.',
+          'Nuestro chef está leyendo tus notas de personalización exactas.',
+          'Hay alguien prestándole total atención a tu pedido. En breve confirmamos.'
+        ];
         return {
-          title: 'Pedido en Revisión',
-          description: 'Tu orden fue enviada a cocina. Estamos revisando que todos los ingredientes frescos estén disponibles.',
+          titleText: receivedTitles[dynamicStep] || 'Pedido en Revisión',
+          description: receivedDescs[dynamicStep] || 'Tu orden fue enviada a cocina.',
           colorClass: 'en_revision',
-          icon: <Clock size={40} color="#f57f17" />,
+          icon: receivedIcons[dynamicStep] || <Clock size={48} color="#f57f17" />,
           animationClass: 'active'
         };
-      case 'preparando':
+      }
+      case 'awaiting_payment':
         return {
-          title: 'Preparando tu orden',
-          description: '¡Todo listo! Nuestro equipo está preparando tu ensalada y jugos con la máxima higiene y cuidado.',
+          titleText: '¡Ingredientes Confirmados!',
+          description: 'Tenemos todo listo. Elige tu método de pago para que cocina comience a preparar tu orden.',
+          colorClass: 'en_revision',
+          icon: <CheckCircle size={48} color="#f57f17" />,
+          animationClass: 'active'
+        };
+      case 'in_preparation': {
+        const prepTitles = [
+          'Desinfectando vegetales',
+          'Mezclando ingredientes',
+          'Prensando jugos al momento',
+          'Empacando tu pedido'
+        ];
+        const prepIcons = [
+          <ShieldCheck key="0" size={48} color="var(--color-green-dark)" />,
+          <Utensils key="1" size={48} color="var(--color-green-dark)" />,
+          <CupSoda key="2" size={48} color="var(--color-green-dark)" />,
+          <Sparkles key="3" size={48} color="var(--color-green-dark)" />
+        ];
+        const prepDescs = [
+          'Lavamos tus hojas verdes con estrictos estándares de grado alimenticio.',
+          'Integrando proteínas calientes, toppings artesanales y aderezos caseros.',
+          'Extracción de fruta fresca en frío para conservar todas sus vitaminas.',
+          'Colocando cubiertos ecológicos y sellando tu paquete con total frescura.'
+        ];
+        return {
+          titleText: prepTitles[dynamicStep] || 'Preparando tu orden',
+          description: prepDescs[dynamicStep] || 'Nuestro equipo prepara tu orden con cuidado.',
           colorClass: 'preparando',
-          icon: <ChefHat size={40} color="var(--color-green-dark)" />,
+          icon: prepIcons[dynamicStep] || <ChefHat size={48} color="var(--color-green-dark)" />,
           animationClass: 'active'
         };
-      case 'listo':
+      }
+      case 'ready':
         return {
-          title: '¡Tu orden está lista!',
-          description: 'Puedes pasar a recoger tu pedido en la barra del local. Recuerda realizar el pago en el mostrador.',
+          titleText: order.service_type === 'delivery' ? 'Orden Lista y Empacada' : '¡Tu orden está lista!',
+          description: order.service_type === 'delivery' ? 'Tu paquete está sellado y esperando al repartidor.' : 'Puedes pasar a recoger tu pedido en mostrador.',
           colorClass: 'listo',
-          icon: <CheckCircle size={40} color="#2e7d32" />,
+          icon: <CheckCircle size={48} color="#2e7d32" />,
+          animationClass: order.service_type === 'delivery' ? 'active' : ''
+        };
+      case 'in_transit':
+        return {
+          titleText: 'Tu pedido va en camino',
+          description: 'Nuestro repartidor se dirige a la dirección indicada.',
+          colorClass: 'listo',
+          icon: <Bike size={48} color="#0284c7" />,
+          animationClass: 'active'
+        };
+      case 'delivered':
+        return {
+          titleText: 'Pedido Entregado',
+          description: 'Tu pedido fue entregado exitosamente. ¡Que lo disfrutes!',
+          colorClass: 'listo',
+          icon: <CheckCircle size={48} color="#2e7d32" />,
           animationClass: ''
         };
-      case 'cancelado':
-        default:
+      case 'cancelled':
+      default:
         return {
-          title: 'Pedido Cancelado',
-          description: 'Lo sentimos, tuvimos que anular tu pedido. Te contactaremos vía WhatsApp para ofrecerte una alternativa o cambio.',
+          titleText: 'Pedido Cancelado',
+          description: 'Tuvimos que anular tu pedido. Te contactaremos por WhatsApp para ofrecerte una alternativa.',
           colorClass: 'cancelado',
-          icon: <XCircle size={40} color="#c62828" />,
+          icon: <XCircle size={48} color="#c62828" />,
           animationClass: ''
         };
     }
@@ -282,10 +421,7 @@ export default function OrderStatusPage() {
         <div className="container header-content">
           <div className="logo-container" style={{ cursor: 'pointer' }} onClick={() => router.push('/')}>
             <img src="/logo.png" alt="Edén Logo" className="logo-img" />
-            <div className="logo-text">
-              EDÉN
-              <span className="logo-sub">barra de ensaladas</span>
-            </div>
+            <div className="logo-text">EDÉN</div>
           </div>
           
           <button className="cart-icon-btn" onClick={() => router.push('/')} style={{ background: 'none', border: '1px solid var(--color-green-dark)', color: 'var(--color-green-dark)' }}>
@@ -299,18 +435,21 @@ export default function OrderStatusPage() {
         <div className="status-container">
           <div className="status-header">
             <span className={`status-badge-tracking ${statusConfig.colorClass}`}>
-              {order.status === 'en_revision' && 'En Revisión'}
-              {order.status === 'preparando' && 'Preparando'}
-              {order.status === 'listo' && 'Listo para Entregar'}
-              {order.status === 'cancelado' && 'Cancelado'}
+              {order.status === 'received' && 'En Revisión'}
+              {order.status === 'awaiting_payment' && 'Esperando Pago'}
+              {order.status === 'in_preparation' && 'Preparando'}
+              {order.status === 'delivered' && 'Listo para Entregar'}
+              {order.status === 'cancelled' && 'Cancelado'}
             </span>
             
-            <h1 style={{ fontFamily: 'var(--font-serif)', fontSize: '2.2rem', marginTop: '15px', color: 'var(--color-green-dark)' }}>
-              {statusConfig.title}
-            </h1>
-            <p style={{ color: 'var(--color-text-muted)', marginTop: '10px', fontSize: '1rem', lineHeight: '1.5' }}>
-              {statusConfig.description}
-            </p>
+            <div key={statusConfig.titleText} style={{ animation: 'fadeIn 0.6s cubic-bezier(0.16, 1, 0.3, 1)' }}>
+              <h1 style={{ fontFamily: 'var(--font-serif)', fontSize: '2.2rem', marginTop: '15px', color: 'var(--color-green-dark)', textAlign: 'center' }}>
+                {statusConfig.titleText}
+              </h1>
+              <p style={{ color: 'var(--color-text-muted)', marginTop: '10px', fontSize: '1rem', lineHeight: '1.5', textAlign: 'center' }}>
+                {statusConfig.description}
+              </p>
+            </div>
           </div>
 
           <div className="status-visual">
@@ -340,7 +479,7 @@ export default function OrderStatusPage() {
             </div>
           </div>
 
-          {order.status === 'cancelado' && (
+          {order.status === 'cancelled' && (
             <a 
               href={`https://wa.me/526237591105?text=Hola,%20tuve%20un%20inconveniente%20con%20mi%20pedido%20Ed%C3%A9n%20#${order.id.slice(-4).toUpperCase()}`}
               target="_blank"
@@ -352,115 +491,154 @@ export default function OrderStatusPage() {
             </a>
           )}
 
-          {/* BANK CONFIG & UPLOAD (Módulo 4) */}
-          {(order.payment_status === 'pending_payment' || !order.payment_status) && order.status !== 'cancelado' && (
-            <div style={{ marginTop: '25px', padding: '20px', backgroundColor: '#f9fafb', borderRadius: '15px', border: '1px solid #e5e7eb' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '15px' }}>
-                <FileText color="var(--color-terracotta)" size={20} />
-                <h3 style={{ fontSize: '1.1rem', color: 'var(--color-green-dark)', margin: 0, fontWeight: 700 }}>Pago por Transferencia</h3>
+          {/* PAYMENT CHOICES */}
+          {order.status === 'awaiting_payment' && order.payment_status === 'pending_payment' && (
+            <div style={{ marginTop: '30px', padding: '28px 22px', backgroundColor: '#ffffff', borderRadius: '16px', border: '1px solid rgba(0,0,0,0.08)', boxShadow: '0 4px 20px rgba(0,0,0,0.03)', animation: 'fadeIn 0.5s ease', boxSizing: 'border-box' }}>
+              <div style={{ textAlign: 'center', marginBottom: '24px' }}>
+                <h3 style={{ fontSize: '1.3rem', color: 'var(--color-green-dark)', margin: '0 0 8px 0', fontFamily: 'var(--font-serif)', fontWeight: 700 }}>Elige tu método de pago</h3>
+                <p style={{ fontSize: '0.9rem', color: 'var(--color-text-muted)', margin: 0, lineHeight: '1.5' }}>Tu pedido está listo para prepararse. Confirma cómo deseas pagar:</p>
               </div>
-              
-              {!showUpload && (
-                <>
-                  {bankError ? (
-                    <div style={{ fontSize: '0.85rem', color: '#b91c1c', backgroundColor: '#fef2f2', padding: '10px', borderRadius: '8px' }}>
-                      {bankError}
-                    </div>
-                  ) : bankConfig ? (
-                    <div style={{ fontSize: '0.9rem', color: '#374151', display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                      <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                        <span style={{ fontWeight: 600 }}>Banco:</span>
-                        <span>{bankConfig.bank_name}</span>
-                      </div>
-                      <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                        <span style={{ fontWeight: 600 }}>Titular:</span>
-                        <span>{bankConfig.account_holder}</span>
-                      </div>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                        <span style={{ fontWeight: 600 }}>CLABE:</span>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                          <span style={{ fontFamily: 'monospace', fontSize: '1.05rem', fontWeight: 600 }}>{bankConfig.clabe}</span>
+
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+                <button 
+                  onClick={async () => {
+                    if (!confirm('¿Confirmas que pagarás en la caja física? Comenzaremos a preparar tu pedido de inmediato.')) return;
+                    try {
+                      setUploading(true);
+                      await fetch('/api/auth/refresh', { method: 'POST', credentials: 'include' });
+                      const res = await fetch(`/api/orders/${id}/pay-physical`, { method: 'PATCH', credentials: 'include' });
+                      if (res.ok) {
+                        fetchOrder();
+                      } else {
+                        alert('Error al actualizar el método de pago.');
+                      }
+                    } catch (e) {
+                      alert('Error de conexión.');
+                    } finally {
+                      setUploading(false);
+                    }
+                  }}
+                  disabled={uploading}
+                  style={{ width: '100%', padding: '16px 18px', backgroundColor: 'var(--color-green-dark)', color: 'white', border: 'none', borderRadius: '12px', fontWeight: 700, fontSize: '1rem', cursor: uploading ? 'not-allowed' : 'pointer', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '10px', boxShadow: '0 4px 10px rgba(18,39,28,0.12)', transition: 'all 0.2s' }}
+                >
+                  <ShoppingBag size={18} style={{ flexShrink: 0 }} />
+                  <span>Pagar en Físico (Efectivo / Tarjeta)</span>
+                </button>
+
+                <div style={{ display: 'flex', alignItems: 'center', gap: '12px', margin: '2px 0' }}>
+                  <div style={{ flex: 1, height: '1px', backgroundColor: 'rgba(0,0,0,0.08)' }}></div>
+                  <span style={{ color: 'var(--color-text-muted)', fontSize: '0.78rem', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '1px' }}>o vía transferencia</span>
+                  <div style={{ flex: 1, height: '1px', backgroundColor: 'rgba(0,0,0,0.08)' }}></div>
+                </div>
+
+                <div style={{ border: '1px solid rgba(0,0,0,0.08)', borderRadius: '14px', overflow: 'hidden', backgroundColor: '#fafaf9' }}>
+                  <div style={{ padding: '15px 18px', backgroundColor: 'rgba(0,0,0,0.02)', display: 'flex', alignItems: 'center', gap: '8px', borderBottom: '1px solid rgba(0,0,0,0.06)' }}>
+                    <FileText color="var(--color-terracotta)" size={18} style={{ flexShrink: 0 }} />
+                    <h4 style={{ fontSize: '1.02rem', color: 'var(--color-green-dark)', margin: 0, fontWeight: 700 }}>Transferencia Bancaria</h4>
+                  </div>
+                  <div style={{ padding: '18px', backgroundColor: 'white' }}>
+                    {!showUpload ? (
+                      <>
+                        {bankError ? (
+                          <div style={{ fontSize: '0.85rem', color: '#b91c1c', backgroundColor: '#fef2f2', padding: '10px', borderRadius: '8px' }}>
+                            {bankError}
+                          </div>
+                        ) : bankConfig ? (
+                          <div style={{ fontSize: '0.9rem', color: '#334155', display: 'flex', flexDirection: 'column', gap: '14px' }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '10px' }}>
+                              <span style={{ color: 'var(--color-text-muted)' }}>Banco:</span>
+                              <strong style={{ color: 'var(--color-text-dark)', textAlign: 'right' }}>{bankConfig.bank_name}</strong>
+                            </div>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '10px' }}>
+                              <span style={{ color: 'var(--color-text-muted)' }}>Titular:</span>
+                              <strong style={{ color: 'var(--color-text-dark)', textAlign: 'right' }}>{bankConfig.account_holder}</strong>
+                            </div>
+                            
+                            {/* CLABE VERTICAL STACKED - ZERO MUTILATION */}
+                            <div style={{ backgroundColor: '#f8fafc', padding: '14px', borderRadius: '10px', border: '1px solid #e2e8f0', display: 'flex', flexDirection: 'column', gap: '8px', boxSizing: 'border-box' }}>
+                              <span style={{ fontSize: '0.78rem', fontWeight: 600, color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>CLABE Interbancaria (18 dígitos)</span>
+                              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
+                                <span style={{ fontFamily: 'monospace', fontSize: '1.1rem', fontWeight: 700, color: 'var(--color-green-dark)', letterSpacing: '1px', wordBreak: 'break-all' }}>
+                                  {bankConfig.clabe}
+                                </span>
+                                <button 
+                                  onClick={() => handleCopyClabe(bankConfig.clabe)}
+                                  style={{ padding: '8px 14px', fontSize: '0.78rem', backgroundColor: copied ? '#dcfce7' : 'var(--color-ochre)', color: copied ? '#166534' : 'var(--color-text-dark)', border: 'none', borderRadius: '8px', cursor: 'pointer', fontWeight: 700, transition: 'all 0.2s', flexShrink: 0, boxShadow: '0 1px 2px rgba(0,0,0,0.05)' }}
+                                >
+                                  {copied ? '✓ Copiada' : 'Copiar CLABE'}
+                                </button>
+                              </div>
+                            </div>
+                            
+                            <button 
+                              style={{ marginTop: '4px', width: '100%', padding: '15px', backgroundColor: 'var(--color-terracotta)', color: 'white', border: 'none', borderRadius: '10px', fontWeight: 700, fontSize: '0.95rem', cursor: 'pointer', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '8px', boxShadow: '0 4px 10px rgba(194,89,63,0.18)', transition: 'all 0.2s' }}
+                              onClick={() => setShowUpload(true)}
+                            >
+                              Ya transferí, subir comprobante
+                            </button>
+                          </div>
+                        ) : (
+                          <div style={{ fontSize: '0.85rem', color: '#6b7280', display: 'flex', justifyContent: 'center', padding: '10px' }}>
+                            <div className="status-animation-ring active" style={{ width: '20px', height: '20px', borderWidth: '2px' }}></div>
+                          </div>
+                        )}
+                      </>
+                    ) : (
+                      <div style={{ animation: 'fadeIn 0.3s ease' }}>
+                        <p style={{ fontSize: '0.9rem', color: '#4b5563', marginBottom: '15px' }}>
+                          Sube una captura de tu transferencia (JPG/PNG/PDF).
+                        </p>
+
+                        <input 
+                          type="file" 
+                          accept="image/jpeg,image/png,application/pdf"
+                          onChange={handleFileChange}
+                          disabled={uploading}
+                          style={{ marginBottom: '15px', fontSize: '0.9rem', width: '100%' }}
+                        />
+
+                        {previewUrl && (
+                          <div style={{ marginBottom: '15px', border: '1px solid #e5e7eb', borderRadius: '8px', overflow: 'hidden' }}>
+                            <img src={previewUrl} alt="Preview" style={{ width: '100%', maxHeight: '200px', objectFit: 'contain' }} />
+                          </div>
+                        )}
+                        {selectedFile && !previewUrl && (
+                          <div style={{ marginBottom: '15px', padding: '10px', backgroundColor: '#e5e7eb', borderRadius: '8px', fontSize: '0.85rem', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                            <FileText size={16} /> {selectedFile.name}
+                          </div>
+                        )}
+
+                        {uploadError && (
+                          <div style={{ fontSize: '0.85rem', color: '#b91c1c', marginBottom: '15px', fontWeight: 600 }}>
+                            {uploadError}
+                          </div>
+                        )}
+
+                        <div style={{ display: 'flex', gap: '10px' }}>
                           <button 
-                            onClick={() => {
-                              navigator.clipboard.writeText(bankConfig.clabe);
-                              setCopied(true);
-                              setTimeout(() => setCopied(false), 2000);
-                            }}
-                            style={{ padding: '6px 10px', fontSize: '0.75rem', backgroundColor: copied ? '#dcfce7' : '#e5e7eb', color: copied ? '#166534' : '#374151', border: 'none', borderRadius: '6px', cursor: 'pointer', fontWeight: 600, transition: 'all 0.2s' }}
+                            onClick={() => setShowUpload(false)}
+                            disabled={uploading}
+                            style={{ flex: 1, padding: '12px', backgroundColor: '#e5e7eb', color: '#374151', border: 'none', borderRadius: '8px', fontWeight: 600, cursor: 'pointer' }}
                           >
-                            {copied ? '¡Copiada!' : 'Copiar'}
+                            Atrás
+                          </button>
+                          <button 
+                            onClick={handleUpload}
+                            disabled={!selectedFile || uploading}
+                            style={{ flex: 2, padding: '12px', backgroundColor: 'var(--color-terracotta)', color: 'white', border: 'none', borderRadius: '8px', fontWeight: 600, cursor: !selectedFile || uploading ? 'not-allowed' : 'pointer', opacity: !selectedFile || uploading ? 0.6 : 1 }}
+                          >
+                            {uploading ? 'Subiendo...' : 'Enviar'}
                           </button>
                         </div>
                       </div>
-                      
-                      <button 
-                        style={{ marginTop: '15px', width: '100%', padding: '14px', backgroundColor: 'var(--color-terracotta)', color: 'white', border: 'none', borderRadius: '10px', fontWeight: 700, fontSize: '0.95rem', cursor: 'pointer', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '8px' }}
-                        onClick={() => setShowUpload(true)}
-                      >
-                        Ya transferí, subir comprobante
-                      </button>
-                    </div>
-                  ) : (
-                    <div style={{ fontSize: '0.85rem', color: '#6b7280', display: 'flex', justifyContent: 'center', padding: '10px' }}>
-                      <div className="status-animation-ring active" style={{ width: '20px', height: '20px', borderWidth: '2px' }}></div>
-                    </div>
-                  )}
-                </>
-              )}
-
-              {showUpload && (
-                <div style={{ marginTop: '10px' }}>
-                  <p style={{ fontSize: '0.85rem', color: '#4b5563', marginBottom: '15px' }}>
-                    Sube una captura de pantalla de tu transferencia (JPG/PNG) o el PDF del comprobante.
-                  </p>
-
-                  <input 
-                    type="file" 
-                    accept="image/jpeg,image/png,application/pdf"
-                    onChange={handleFileChange}
-                    disabled={uploading}
-                    style={{ marginBottom: '15px', fontSize: '0.9rem', width: '100%' }}
-                  />
-
-                  {previewUrl && (
-                    <div style={{ marginBottom: '15px', border: '1px solid #e5e7eb', borderRadius: '8px', overflow: 'hidden' }}>
-                      <img src={previewUrl} alt="Preview" style={{ width: '100%', maxHeight: '200px', objectFit: 'contain' }} />
-                    </div>
-                  )}
-                  {selectedFile && !previewUrl && (
-                    <div style={{ marginBottom: '15px', padding: '10px', backgroundColor: '#e5e7eb', borderRadius: '8px', fontSize: '0.85rem', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                      <FileText size={16} /> {selectedFile.name}
-                    </div>
-                  )}
-
-                  {uploadError && (
-                    <div style={{ fontSize: '0.85rem', color: '#b91c1c', marginBottom: '15px', fontWeight: 600 }}>
-                      {uploadError}
-                    </div>
-                  )}
-
-                  <div style={{ display: 'flex', gap: '10px' }}>
-                    <button 
-                      onClick={() => setShowUpload(false)}
-                      disabled={uploading}
-                      style={{ flex: 1, padding: '12px', backgroundColor: '#e5e7eb', color: '#374151', border: 'none', borderRadius: '8px', fontWeight: 600, cursor: 'pointer' }}
-                    >
-                      Cancelar
-                    </button>
-                    <button 
-                      onClick={handleUpload}
-                      disabled={!selectedFile || uploading}
-                      style={{ flex: 2, padding: '12px', backgroundColor: 'var(--color-green-dark)', color: 'white', border: 'none', borderRadius: '8px', fontWeight: 600, cursor: !selectedFile || uploading ? 'not-allowed' : 'pointer', opacity: !selectedFile || uploading ? 0.6 : 1 }}
-                    >
-                      {uploading ? 'Subiendo...' : 'Enviar Comprobante'}
-                    </button>
+                    )}
                   </div>
                 </div>
-              )}
+              </div>
             </div>
           )}
 
-          {order.payment_status === 'payment_submitted' && order.status !== 'cancelado' && (
+          {order.payment_status === 'payment_submitted' && order.status !== 'cancelled' && (
             <div style={{ marginTop: '25px', padding: '15px', border: '1px solid #bbf7d0', backgroundColor: '#f0fdf4', borderRadius: '15px', textAlign: 'left', display: 'flex', gap: '10px' }}>
               <CheckCircle color="#16a34a" style={{ flexShrink: 0 }} />
               <div>
@@ -472,14 +650,67 @@ export default function OrderStatusPage() {
             </div>
           )}
 
-          {order.status === 'listo' && (
-            <div style={{ marginTop: '25px', padding: '15px', border: '1px solid #c8e6c9', backgroundColor: '#e8f5e9', borderRadius: '15px', textAlign: 'left', display: 'flex', gap: '10px' }}>
-              <CheckCircle color="#2e7d32" style={{ flexShrink: 0 }} />
-              <div>
-                <strong style={{ color: '#2e7d32', display: 'block' }}>¡Paso final!</strong>
-                <span style={{ fontSize: '0.85rem', color: '#1b5e20' }}>
-                  Acércate a la caja, menciona tu nombre: <strong>{order.customer_name}</strong> o ticket <strong>{order.loyverse_receipt_number}</strong>, realiza tu pago (efectivo o terminal) y llévate tu comida recién preparada.
-                </span>
+          {((order.status === 'ready' && order.service_type === 'pickup') || order.status === 'in_transit' || order.status === 'delivered') && !showThankYou && (
+            <div style={{ marginTop: '25px', padding: '15px', border: '1px solid #c8e6c9', backgroundColor: '#e8f5e9', borderRadius: '15px', textAlign: 'left', display: 'flex', flexDirection: 'column', gap: '15px' }}>
+              <div style={{ display: 'flex', gap: '10px' }}>
+                <CheckCircle color="#2e7d32" style={{ flexShrink: 0 }} />
+                <div>
+                  <strong style={{ color: '#2e7d32', display: 'block' }}>¡Paso final!</strong>
+                  <span style={{ fontSize: '0.85rem', color: '#1b5e20' }}>
+                    {order.service_type === 'delivery' ? 
+                      'Recibe tu pedido en tu domicilio y disfrútalo.' :
+                      `Acércate a la caja, menciona tu nombre: ${order.customer_name} o ticket ${order.loyverse_receipt_number}, realiza tu pago (efectivo o terminal) y llévate tu comida recién preparada.`
+                    }
+                  </span>
+                </div>
+              </div>
+              <button 
+                onClick={() => setShowThankYou(true)}
+                style={{ width: '100%', padding: '12px', backgroundColor: '#2e7d32', color: 'white', border: 'none', borderRadius: '10px', fontWeight: 700, fontSize: '1rem', cursor: 'pointer' }}
+              >
+                Pedido Recibido
+              </button>
+            </div>
+          )}
+
+          {showThankYou && (
+            <div style={{ marginTop: '28px', padding: '36px 24px', backgroundColor: 'var(--color-cream-light)', borderRadius: '24px', border: '1px solid var(--color-ochre-light)', textAlign: 'center', boxShadow: '0 12px 35px rgba(46, 44, 41, 0.06)', animation: 'fadeIn 0.4s ease' }}>
+              <div style={{ width: '56px', height: '56px', backgroundColor: 'var(--color-ochre-light)', borderRadius: '50%', display: 'flex', justifyContent: 'center', alignItems: 'center', margin: '0 auto 16px auto', color: 'var(--color-green-dark)' }}>
+                <Award size={28} strokeWidth={1.5} />
+              </div>
+
+              <h2 style={{ fontFamily: 'var(--font-serif)', fontSize: '2rem', color: 'var(--color-green-dark)', margin: '0 0 8px 0', fontWeight: 700 }}>
+                ¡Gracias por tu compra!
+              </h2>
+              <p style={{ fontSize: '0.95rem', color: 'var(--color-text-muted)', margin: 0, lineHeight: '1.5' }}>
+                Tu pedido ha sido confirmado y está siendo preparado con ingredientes frescos.
+              </p>
+
+              <div style={{ margin: '26px 0', padding: '24px 20px', backgroundColor: '#ffffff', borderRadius: '18px', border: '1px solid var(--color-cream-dark)', boxShadow: '0 4px 15px rgba(46, 44, 41, 0.03)' }}>
+                <div style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', color: 'var(--color-terracotta)', fontSize: '0.75rem', fontWeight: 700, letterSpacing: '1px', textTransform: 'uppercase' }}>
+                  <Sparkles size={14} /> Membresía EdenPass
+                </div>
+                <div style={{ fontSize: '3.2rem', fontWeight: 800, color: 'var(--color-green-dark)', fontFamily: 'var(--font-serif)', margin: '6px 0 2px 0', letterSpacing: '-1px' }}>
+                  +{Math.floor(order.total * 0.1)} <span style={{ fontSize: '1.25rem', fontFamily: 'var(--font-sans)', fontWeight: 600, color: 'var(--color-ochre)' }}>pts</span>
+                </div>
+                <div style={{ fontSize: '0.85rem', color: 'var(--color-text-muted)', marginTop: '4px' }}>
+                  Acumulados automáticamente en tu pase digital
+                </div>
+              </div>
+
+              <div style={{ display: 'flex', gap: '12px' }}>
+                <button 
+                  onClick={() => router.push('/perfil')}
+                  style={{ flex: 1, padding: '14px 16px', backgroundColor: 'var(--color-green-dark)', color: '#ffffff', border: 'none', borderRadius: '14px', fontWeight: 600, fontSize: '0.95rem', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', transition: 'all 0.2s', boxShadow: '0 6px 16px rgba(30, 51, 41, 0.12)' }}
+                >
+                  <QrCode size={18} /> Ver mi EdenPass
+                </button>
+                <button 
+                  onClick={() => router.push('/')}
+                  style={{ flex: 1, padding: '14px 16px', backgroundColor: 'transparent', color: 'var(--color-text-dark)', border: '1px solid var(--color-ochre)', borderRadius: '14px', fontWeight: 600, fontSize: '0.95rem', cursor: 'pointer', transition: 'all 0.2s' }}
+                >
+                  Volver al Menú
+                </button>
               </div>
             </div>
           )}

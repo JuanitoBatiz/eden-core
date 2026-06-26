@@ -17,7 +17,7 @@ const cspHeader = `
 const nextConfig: NextConfig = {
   /* config options here */
   // @ts-ignore
-  allowedDevOrigins: ['192.168.1.90', 'localhost'],
+  allowedDevOrigins: ['192.168.22.101', '192.168.1.90', 'localhost', '127.0.0.1'],
 
   async headers() {
     return [

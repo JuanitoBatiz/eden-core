@@ -147,7 +147,7 @@ export default function MenuManager({ accessToken }: { accessToken: string }) {
                       const isProdExpanded = expandedProds[prod.id];
                       return (
                         <div key={prod.id} style={{ border: '1px solid var(--color-cream-dark)', borderRadius: '6px', marginLeft: '20px' }}>
-                           <div style={{ padding: '10px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', backgroundColor: prod.available ? 'white' : 'var(--color-cream-light)' }}>
+                           <div style={{ padding: '10px', display: 'flex', flexWrap: 'wrap', gap: '10px', justifyContent: 'space-between', alignItems: 'center', backgroundColor: prod.available ? 'white' : 'var(--color-cream-light)' }}>
                              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', color: 'var(--color-text-dark)' }} onClick={() => toggleProd(prod.id)}>
                                 {isProdExpanded ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
                                 <span style={{ fontWeight: 500, textDecoration: !prod.available ? 'line-through' : 'none' }}>{prod.name}</span>

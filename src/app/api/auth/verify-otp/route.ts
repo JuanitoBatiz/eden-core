@@ -1,12 +1,16 @@
 import { NextResponse } from 'next/server';
-import bcrypt from 'bcrypt';
 import crypto from 'crypto';
-import { createAdminClient, isSupabaseConfigured, serverMockOtpSessions, serverMockUsers } from '@/lib/supabase';
+import { createAdminClient, isSupabaseConfigured, serverMockUsers } from '@/lib/supabase';
 import { generateAccessToken, generateRefreshToken } from '@/lib/auth';
 import { serialize } from 'cookie';
 import { createLoyverseCustomer } from '@/lib/loyverse';
 import { checkRateLimit, getClientIP } from '@/lib/rateLimit';
 import { VerifyOtpRequest } from '@/types/api-contracts';
+
+const TWILIO_ACCOUNT_SID = process.env.TWILIO_ACCOUNT_SID || '';
+const TWILIO_AUTH_TOKEN = process.env.TWILIO_AUTH_TOKEN || '';
+const TWILIO_VERIFY_SERVICE_SID = process.env.TWILIO_VERIFY_SERVICE_SID || '';
+const isTwilioConfigured = !!(TWILIO_ACCOUNT_SID && TWILIO_AUTH_TOKEN && TWILIO_VERIFY_SERVICE_SID);
 
 // ─────────────────────────────────────────────────────────
 // Helpers
@@ -40,9 +44,9 @@ async function backgroundLoyverseSync(userId: string, name: string, phone: strin
  */
 function makeAuthCookie(name: string, value: string, maxAgeSeconds: number, isProduction: boolean): string {
   return serialize(name, value, {
-    httpOnly: true,                       // no accesible desde JS del cliente
-    secure: isProduction,                 // solo HTTPS en producción
-    sameSite: 'strict',                   // protección contra CSRF
+    httpOnly: true,
+    secure: isProduction,
+    sameSite: 'strict',
     maxAge: maxAgeSeconds,
     path: '/'
   });
@@ -60,13 +64,7 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'Faltan parámetros' }, { status: 400 });
     }
 
-    // ─────────────────────────────────────────────────────────
-    // RATE LIMITING POR IP — antes de cualquier operación de DB
-    // ─────────────────────────────────────────────────────────
-    // Máximo 20 intentos de verificación por IP en 15 minutos.
-    // Esto cierra el hueco donde un atacante pide un OTP nuevo cada 5 intentos
-    // y reinicia el contador por sesión — sin este check global por IP,
-    // la fuerza bruta sobre códigos de 4 dígitos sería viable.
+    // Rate Limiting
     const ip = getClientIP(req);
     const ipLimit = checkRateLimit(`otp:verify:ip:${ip}`, 20, 900); // 15 minutos
     if (!ipLimit.allowed) {
@@ -80,83 +78,41 @@ export async function POST(req: Request) {
     }
 
     const isProduction = process.env.NODE_ENV === 'production';
-    let session: any = null;
 
-    // 1. Buscar el OTP más reciente válido
-    if (isSupabaseConfigured) {
-      const adminClient = createAdminClient();
-      const { data, error } = await adminClient
-        .from('otp_sessions')
-        .select('*')
-        .eq('phone', phone)
-        .eq('consumed', false)
-        .gt('expires_at', new Date().toISOString())
-        .order('created_at', { ascending: false })
-        .limit(1)
-        .single();
+    // 1. Verificar el código con Twilio Verify V2 (o Dev Mode)
+    if (isTwilioConfigured) {
+      try {
+        const twilio = require('twilio');
+        const client = twilio(TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN);
+        
+        const verificationCheck = await client.verify.v2.services(TWILIO_VERIFY_SERVICE_SID)
+          .verificationChecks
+          .create({ to: `+52${phone}`, code });
 
-      if (!error && data) {
-        session = data;
+        if (verificationCheck.status !== 'approved') {
+          return NextResponse.json(
+            { error: 'El código ingresado es incorrecto o ha expirado.' },
+            { status: 400 }
+          );
+        }
+      } catch (verifyError: any) {
+        console.error('Twilio Verify check error:', verifyError);
+        return NextResponse.json(
+          { error: 'Error al verificar el código. Intenta de nuevo.' },
+          { status: 400 }
+        );
       }
     } else {
-      // Dev mode: buscar en mock en memoria
-      console.warn('[DEV MODE] OTP sessions no persisten entre reinicios del servidor.');
-      const validSessions = serverMockOtpSessions
-        .filter(s => s.phone === phone && !s.consumed && new Date(s.expires_at) > new Date())
-        .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
-
-      if (validSessions.length > 0) {
-        session = validSessions[0];
+      // Dev mode
+      if (code !== '123456') { // Fallback 6-digit dev code
+        return NextResponse.json(
+          { error: 'El código ingresado es incorrecto (Prueba con 123456).' },
+          { status: 400 }
+        );
       }
     }
 
-    if (!session) {
-      return NextResponse.json(
-        { error: 'Código expirado o no encontrado, solicita uno nuevo' },
-        { status: 400 }
-      );
-    }
-
-    // 2. Verificar intentos máximos
-    if (session.attempts >= 5) {
-      if (isSupabaseConfigured) {
-        const adminClient = createAdminClient();
-        await adminClient.from('otp_sessions').update({ consumed: true }).eq('id', session.id);
-      } else {
-        session.consumed = true;
-      }
-      return NextResponse.json(
-        { error: 'Demasiados intentos, solicita un nuevo código' },
-        { status: 429 }
-      );
-    }
-
-    // 3. Comparar el hash del código
-    const isValid = await bcrypt.compare(code, session.otp_hash);
-
-    if (!isValid) {
-      const newAttempts = session.attempts + 1;
-      if (isSupabaseConfigured) {
-        const adminClient = createAdminClient();
-        await adminClient.from('otp_sessions').update({ attempts: newAttempts }).eq('id', session.id);
-      } else {
-        session.attempts = newAttempts;
-      }
-      return NextResponse.json(
-        { error: 'El código ingresado es incorrecto.' },
-        { status: 400 }
-      );
-    }
-
-    // 4. Marcar OTP como consumido
-    if (isSupabaseConfigured) {
-      const adminClient = createAdminClient();
-      await adminClient.from('otp_sessions').update({ consumed: true }).eq('id', session.id);
-    } else {
-      session.consumed = true;
-    }
-
-    // 5. Buscar o crear usuario
+    // 2. Buscar o crear usuario
     let user: any = null;
 
     if (isSupabaseConfigured) {
@@ -169,6 +125,10 @@ export async function POST(req: Request) {
 
       if (existingUser) {
         user = existingUser;
+        if (!user.loyverse_customer_id) {
+          const customerName = user.name || `Cliente ${phone}`;
+          backgroundLoyverseSync(user.id, customerName, phone).catch(console.error);
+        }
       } else {
         const { data: newUser, error: createError } = await adminClient
           .from('users')
@@ -179,7 +139,6 @@ export async function POST(req: Request) {
         if (createError) throw createError;
         user = newUser;
 
-        // Sincronización asíncrona con Loyverse (no bloquea el login)
         const customerName = name || `Cliente ${phone}`;
         backgroundLoyverseSync(user.id, customerName, phone).catch(console.error);
       }
@@ -201,13 +160,12 @@ export async function POST(req: Request) {
       }
     }
 
-    // 6. Emitir tokens JWT
+    // 3. Emitir tokens JWT
     const accessToken = generateAccessToken({ user_id: user.id, phone: user.phone, role: user.role });
     const refreshToken = generateRefreshToken({ user_id: user.id });
 
-    // 7. Setear AMBOS tokens como cookies httpOnly — ningún token toca el JS del cliente
-    const ACCESS_MAX_AGE  = 15 * 60;         // 15 minutos
-    const REFRESH_MAX_AGE = 7 * 24 * 60 * 60; // 7 días
+    const ACCESS_MAX_AGE  = 15 * 60;          // 15 minutos
+    const REFRESH_MAX_AGE = 30 * 24 * 60 * 60; // 30 días
 
     const response = NextResponse.json({
       success: true,
@@ -217,8 +175,6 @@ export async function POST(req: Request) {
         name: user.name,
         role: user.role
       }
-      // NOTA INTENCIONAL: access_token NO se retorna en el body.
-      // El navegador lo leerá automáticamente de la cookie httpOnly.
     });
 
     response.headers.append('Set-Cookie', makeAuthCookie('access_token', accessToken, ACCESS_MAX_AGE, isProduction));

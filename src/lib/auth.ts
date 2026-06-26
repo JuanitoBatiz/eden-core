@@ -18,7 +18,7 @@ export function generateAccessToken(payload: JwtPayload): string {
 }
 
 export function generateRefreshToken(payload: { user_id: string }): string {
-  return jwt.sign(payload, JWT_REFRESH_SECRET, { expiresIn: '7d' });
+  return jwt.sign(payload, JWT_REFRESH_SECRET, { expiresIn: '30d' });
 }
 
 const activeUserCache = new Map<string, { active: boolean, role: string, expiresAt: number }>();
@@ -55,7 +55,17 @@ export async function verifyAccessToken(request: NextRequest | Request): Promise
   try {
     decoded = jwt.verify(token, JWT_ACCESS_SECRET) as JwtPayload;
   } catch (error) {
-    throw new Error('401: Token expirado o inválido');
+    const refreshToken = cookies.refresh_token;
+    if (refreshToken) {
+      try {
+        const refreshed = verifyRefreshToken(refreshToken);
+        decoded = { user_id: refreshed.user_id, role: refreshed.role };
+      } catch (refErr) {
+        throw new Error('401: Sesión expirada por completo. Inicia sesión.');
+      }
+    } else {
+      throw new Error('401: Token expirado o inválido');
+    }
   }
 
   // Verificar que la cuenta siga activa (con caché de 15s para no saturar la DB)

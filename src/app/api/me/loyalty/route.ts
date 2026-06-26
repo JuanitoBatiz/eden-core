@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { requireRole } from '@/lib/auth';
 import { createClient } from '@supabase/supabase-js';
+import { getLoyaltyInfoFromLoyverse } from '@/lib/loyalty';
 
 // Esto asegura que la ruta tenga cache de 30 segundos usando el sistema de revalidate de App Router
 export const revalidate = 30;
@@ -40,28 +41,10 @@ export async function GET(req: Request) {
       return NextResponse.json({ error: 'Usuario no encontrado' }, { status: 404 });
     }
 
-    // 3. Fetch Real-time points from Loyverse
-    let loyalty_points = 0;
-    let loyalty_tier = 'Estándar';
-
-    if (user.loyverse_customer_id) {
-      const loyverseToken = process.env.LOYVERSE_ACCESS_TOKEN || '';
-      if (loyverseToken) {
-        try {
-          const res = await fetch(`https://api.loyverse.com/v1.0/customers/${user.loyverse_customer_id}`, {
-            headers: { Authorization: `Bearer ${loyverseToken}` }
-            // Nota: Next.js revalidate export at the top handles cache automatically for this route
-          });
-          if (res.ok) {
-            const data = await res.json();
-            loyalty_points = data.total_points || 0;
-            loyalty_tier = data.customer_group?.name || 'Estándar';
-          }
-        } catch (e) {
-          console.error('Error fetching Loyverse customer data:', e);
-        }
-      }
-    }
+    // 3. Fetch Real-time points (Loyverse API or Simulated Local)
+    const loyaltyData = await getLoyaltyInfoFromLoyverse(user.loyverse_customer_id || '', userId);
+    const loyalty_points = loyaltyData.loyalty_points;
+    const loyalty_tier = loyaltyData.loyalty_tier;
 
     // 4. Fetch local redemptions history (Last 10)
     // Nota: La API de Loyverse v1.0 no expone historial de puntos ganados,

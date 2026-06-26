@@ -17,17 +17,27 @@ export async function GET() {
 
     const { data: benefits, error } = await supabase
       .from('loyalty_benefits')
-      .select('*')
-      .eq('active', true)
-      .order('points_required', { ascending: true });
+      .select('*');
 
     if (error) {
       throw error;
     }
 
+    const mappedBenefits = (benefits || [])
+      .filter(b => b.active !== false && b.is_active !== false)
+      .map(b => ({
+        ...b,
+        id: b.id,
+        name: b.name,
+        description: b.description,
+        points_cost: b.points_cost || b.points_required || 0,
+        is_active: true
+      }))
+      .sort((a, b) => a.points_cost - b.points_cost);
+
     return NextResponse.json({
       success: true,
-      benefits: benefits || []
+      benefits: mappedBenefits
     });
 
   } catch (error: any) {

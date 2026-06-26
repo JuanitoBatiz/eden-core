@@ -28,7 +28,7 @@ export async function GET(req: Request) {
 
     let query = adminSupabase
       .from('users')
-      .select('id, name, phone, role, active, created_at, loyalty_points, loyalty_tier', { count: 'exact' });
+      .select('id, name, phone, role, active, created_at, loyverse_customer_id', { count: 'exact' });
 
     if (search) {
       query = query.or(`name.ilike.%${search}%,phone.ilike.%${search}%`);

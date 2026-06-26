@@ -1,11 +1,18 @@
 import { NextResponse } from 'next/server';
 import { requireRole } from '@/lib/auth';
 import { createClient } from '@supabase/supabase-js';
+import { refundLoyverseReceipt } from '@/lib/loyverse';
 
 // Valid state transitions
 const VALID_TRANSITIONS: Record<string, string[]> = {
-  'received': ['in_preparation', 'cancelled'],
-  'in_preparation': ['delivered', 'cancelled'],
+  'received': ['awaiting_payment', 'in_preparation', 'cancelled'],
+  'awaiting_payment': ['in_preparation', 'cancelled'],
+  // in_preparation goes to ready
+  'in_preparation': ['ready', 'cancelled'],
+  // ready can go to in_transit (delivery) or delivered (pickup)
+  'ready': ['in_transit', 'delivered', 'cancelled'],
+  // in_transit goes to delivered
+  'in_transit': ['delivered', 'cancelled'],
   // No transitions allowed out of 'delivered' or 'cancelled' in this basic state machine
   'delivered': [],
   'cancelled': []
@@ -32,7 +39,7 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
     const body = await req.json();
     const { status: newStatus } = body;
 
-    if (!['received', 'in_preparation', 'delivered', 'cancelled'].includes(newStatus)) {
+    if (!['received', 'awaiting_payment', 'in_preparation', 'ready', 'in_transit', 'delivered', 'cancelled'].includes(newStatus)) {
       return NextResponse.json({ error: 'Estado inválido proporcionado.' }, { status: 400 });
     }
 
@@ -48,7 +55,7 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
     // 2. Fetch current status to validate transition
     const { data: order, error: orderErr } = await adminSupabase
       .from('orders')
-      .select('status')
+      .select('status, payment_status, loyverse_receipt_id')
       .eq('id', orderId)
       .single();
 
@@ -76,9 +83,30 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
     }
 
     // 3. Update Status
+    const updateData: any = { status: newStatus };
+    
+    // Si se cancela una orden que ya estaba pagada, requiere reembolso
+    if (newStatus === 'cancelled') {
+      if (order.payment_status === 'payment_approved') {
+        updateData.refund_status = 'pending';
+      }
+      
+      // Si la orden ya había sido enviada a Loyverse (usualmente al aprobar el pago),
+      // debemos enviar el comando de devolución/cancelación al POS.
+      if (order.loyverse_receipt_id) {
+        try {
+          await refundLoyverseReceipt(order.loyverse_receipt_id);
+        } catch (err) {
+          console.error('Failed to void receipt in Loyverse POS:', err);
+          // Opcionalmente podrías marcar un campo en DB como 'loyverse_refund_failed: true' para reintentar después,
+          // pero por ahora solo logueamos el error para no bloquear la cancelación en la web.
+        }
+      }
+    }
+
     const { error: updateErr } = await adminSupabase
       .from('orders')
-      .update({ status: newStatus })
+      .update(updateData)
       .eq('id', orderId);
 
     if (updateErr) {

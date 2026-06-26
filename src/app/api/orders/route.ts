@@ -1,6 +1,5 @@
 import { NextResponse } from 'next/server';
 import { createAdminClient, isSupabaseConfigured } from '@/lib/supabase';
-import { createLoyverseReceipt } from '@/lib/loyverse';
 import { requireRole, verifyAccessToken } from '@/lib/auth';
 import { OrderCreateRequest } from '@/types/api-contracts';
 import { calculateOrderTotal } from '@/lib/pricing';
@@ -27,7 +26,7 @@ export async function GET(req: Request) {
     let query = adminSupabase
       .from('orders')
       .select('*')
-      .in('status', ['received', 'in_preparation', 'delivered', 'cancelled'])
+      .in('status', ['received', 'in_preparation', 'ready', 'in_transit', 'delivered', 'cancelled'])
       .order('created_at', { ascending: true });
 
     if (statusQuery) {
@@ -67,7 +66,7 @@ export async function POST(req: Request) {
     const adminSupabase = createAdminClient();
 
     const orderData = await req.json();
-    const { customer_name, customer_phone, customer_email, items, notes } = orderData as OrderCreateRequest;
+    const { customer_name, customer_phone, customer_email, items, notes, service_type, delivery_address } = orderData as OrderCreateRequest;
 
     if (!customer_name || !items || items.length === 0) {
       return NextResponse.json(
@@ -113,6 +112,8 @@ export async function POST(req: Request) {
       items: validItems,
       total,
       notes: notes || '',
+      service_type: service_type || 'pickup',
+      delivery_address: delivery_address || null,
       status: 'received',
       payment_status: 'pending_payment'
     };
@@ -126,28 +127,6 @@ export async function POST(req: Request) {
     if (insertErr || !createdOrder) {
       throw new Error(`Error al crear la orden: ${insertErr?.message}`);
     }
-
-    // 5. Sincronización asíncrona con Loyverse (no bloquea la respuesta al cliente)
-    createLoyverseReceipt({
-      id: createdOrder.id,
-      customer_name: createdOrder.customer_name,
-      customer_phone: createdOrder.customer_phone,
-      items: createdOrder.items,
-      total: createdOrder.total,
-      notes: createdOrder.notes
-    }).then(async (loyverseResult) => {
-      if (loyverseResult.receipt_id) {
-        await adminSupabase
-          .from('orders')
-          .update({
-            loyverse_receipt_id: loyverseResult.receipt_id,
-            loyverse_receipt_number: loyverseResult.receipt_number
-          })
-          .eq('id', createdOrder.id);
-      }
-    }).catch(err => {
-      console.error('Error synchronizing with Loyverse POS:', err);
-    });
 
     return NextResponse.json({
       success: true,

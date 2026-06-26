@@ -126,14 +126,16 @@ a {
   color: var(--color-green-dark);
   display: flex;
   flex-direction: column;
+  white-space: nowrap;
 }
 
 .logo-sub {
   font-family: var(--font-script);
-  font-size: 1.2rem;
+  font-size: 1.1rem;
   color: var(--color-terracotta);
-  line-height: 0.5;
-  margin-top: 4px;
+  line-height: 1;
+  margin-top: -2px;
+  margin-left: 2px;
 }
 
 .cart-icon-btn {
@@ -182,7 +184,7 @@ a {
 }
 
 .sticky-header-container + main.container {
-  padding-top: 144px;
+  padding-top: 180px;
 }
 
 /* Category Navigation */
@@ -230,10 +232,11 @@ a {
 }
 
 .category-btn.active {
-  background-color: var(--color-terracotta);
-  color: var(--color-white);
-  border-color: var(--color-terracotta);
-  box-shadow: 0 4px 10px rgba(192, 90, 62, 0.25);
+  background-color: var(--color-white);
+  color: var(--color-green-dark);
+  border-color: var(--color-ochre);
+  box-shadow: 0 4px 12px rgba(212, 163, 95, 0.2);
+  transform: translateY(-1px);
 }
 
 /* Circular Category Icon Wrappers */
@@ -278,28 +281,7 @@ a {
   transform: scale(1.08);
 }
 
-/* Active state for category badges */
-.category-btn.active .category-icon-wrapper {
-  background-color: var(--color-white);
-}
-.category-btn.active[data-category="ensaladas"] .category-icon-wrapper {
-  color: #2e7d32;
-}
-.category-btn.active[data-category="jugos"] .category-icon-wrapper {
-  color: #f4511e;
-}
-.category-btn.active[data-category="infusiones"] .category-icon-wrapper {
-  color: #8d6e63;
-}
-.category-btn.active[data-category="burritos-sandwiches"] .category-icon-wrapper {
-  color: #b8860b;
-}
-.category-btn.active[data-category="bowls"] .category-icon-wrapper {
-  color: var(--color-green-dark);
-}
-.category-btn.active[data-category="embotellada"] .category-icon-wrapper {
-  color: #03a9f4;
-}
+/* /* Removed specific active overrides for icon wrappers so they maintain their elegant subtle background */
 
 .category-btn-text {
   font-size: 0.9rem;
@@ -486,6 +468,84 @@ a {
   color: var(--color-white);
 }
 
+/* Minimalist Clean Bottled Section */
+.bottled-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 16px;
+}
+
+.bottled-card {
+  background-color: var(--color-white);
+  border: 1px solid var(--color-ochre-light);
+  border-radius: 16px;
+  padding: 18px 22px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+  transition: var(--transition-smooth);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.02);
+}
+
+.bottled-card:hover {
+  border-color: var(--color-ochre);
+  box-shadow: 0 6px 16px rgba(27, 59, 43, 0.06);
+  transform: translateY(-2px);
+}
+
+.bottled-info {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.bottled-name {
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: var(--color-green-dark);
+}
+
+.bottled-desc {
+  font-size: 0.85rem;
+  color: var(--color-text-muted);
+  line-height: 1.3;
+}
+
+.bottled-action {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.bottled-price {
+  font-size: 1.25rem;
+  font-weight: 800;
+  color: var(--color-green-dark);
+  white-space: nowrap;
+}
+
+.bottled-add-btn {
+  background-color: var(--color-cream-light);
+  color: var(--color-green-dark);
+  border: 1px solid var(--color-ochre);
+  padding: 8px 16px;
+  border-radius: 24px;
+  font-weight: 700;
+  font-size: 0.9rem;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  transition: var(--transition-smooth);
+}
+
+.bottled-add-btn:hover {
+  background-color: var(--color-green-dark);
+  color: var(--color-white);
+  border-color: var(--color-green-dark);
+}
+
 /* Customizer Modal */
 .modal-overlay {
   position: fixed;
@@ -510,7 +570,7 @@ a {
   border-radius: 25px;
   border: 1px solid var(--color-ochre);
   box-shadow: 0 10px 40px rgba(0,0,0,0.2);
-  overflow-y: auto;
+  overflow: hidden;
   display: flex;
   flex-direction: column;
   position: relative;
@@ -523,8 +583,7 @@ a {
   display: flex;
   justify-content: space-between;
   align-items: flex-start;
-  position: sticky;
-  top: 0;
+  flex-shrink: 0;
   background-color: var(--color-cream-light);
   z-index: 10;
 }
@@ -561,7 +620,10 @@ a {
 
 .modal-body {
   padding: 20px;
+  flex: 1 1 auto;
   overflow-y: auto;
+  min-height: 0;
+  -webkit-overflow-scrolling: touch;
 }
 
 .option-group {
@@ -663,10 +725,10 @@ a {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  position: sticky;
-  bottom: 0;
+  flex-shrink: 0;
   background-color: var(--color-cream-light);
-  z-index: 10;
+  z-index: 20;
+  box-shadow: 0 -4px 12px rgba(0,0,0,0.05);
 }
 
 .modal-total-label {
@@ -824,7 +886,12 @@ a {
   background: none;
   border: none;
   cursor: pointer;
-  padding: 6px 12px;
+  padding: 12px;
+  min-width: 48px;
+  min-height: 48px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   font-weight: bold;
   transition: var(--transition-fast);
 }
@@ -1271,11 +1338,21 @@ a {
    Admin Panel Specific Styles
    ========================================= */
 
+.admin-page-title {
+  font-size: 2.2rem;
+  margin-bottom: 8px;
+}
+
+.admin-page-subtitle {
+  font-size: 0.95rem;
+}
+
 .admin-header {
   display: flex;
   justify-content: space-between;
   align-items: flex-end;
   margin-bottom: 30px;
+  gap: 20px;
 }
 
 .admin-header-stats {
@@ -1371,11 +1448,9 @@ a {
   }
 
   /* Components flex layouts */
-  .admin-bank-config-container {
-    flex-direction: column !important;
-  }
-  
-  .admin-finance-container {
+  .admin-bank-config-container,
+  .admin-finance-container,
+  .admin-edenpass-container {
     flex-direction: column !important;
   }
 }
@@ -1395,4 +1470,440 @@ a {
   .admin-header-stats .divider {
     display: none;
   }
+}
+
+/* =========================================
+   Mobile Global Adjustments
+   ========================================= */
+@media (max-width: 640px) {
+  .cart-drawer {
+    max-width: 100vw;
+    width: 100%;
+    border-left: none;
+  }
+  
+  .modal-content {
+    width: 100%;
+    height: 100%;
+    max-height: 100vh;
+    border-radius: 0;
+    border: none;
+  }
+
+  /* Admin Mobile Adjustments */
+  .admin-page-title {
+    font-size: 1.6rem;
+    line-height: 1.2;
+  }
+
+  .admin-page-subtitle {
+    font-size: 0.85rem;
+  }
+
+  .admin-header-stats {
+    font-size: 0.85rem;
+    padding: 12px;
+  }
+
+  .admin-tabs {
+    margin-left: -20px;
+    margin-right: -20px;
+    padding-left: 20px;
+    padding-right: 20px;
+    margin-bottom: 20px;
+    gap: 10px;
+  }
+
+  .admin-tab-btn {
+    font-size: 0.9rem;
+    padding: 8px 12px;
+  }
+
+  .container {
+    padding-left: 20px !important;
+    padding-right: 20px !important;
+  }
+
+  .sticky-header-container + main.container {
+    padding-top: 190px;
+  }
+
+  /* Admin Header tweaks */
+  .logo-img {
+    width: 40px;
+    height: 40px;
+  }
+  .logo-text {
+    font-size: 1.1rem;
+    line-height: 1.1;
+  }
+  .logo-sub {
+    font-size: 0.85rem;
+  }
+  .cart-icon-btn {
+    padding: 6px 12px;
+    font-size: 0.85rem;
+  }
+  .header-content {
+    gap: 10px;
+  }
+}
+
+/* =========================================
+   Profile / Eden Pass System CSS
+   ========================================= */
+
+.profile-page-wrapper {
+  min-height: 100vh;
+  background-color: var(--color-cream-light);
+  padding-bottom: 96px;
+}
+
+.profile-header-bar {
+  background-color: var(--color-white);
+  position: sticky;
+  top: 0;
+  z-index: 40;
+  border-bottom: 1px solid var(--color-ochre-light);
+  padding: 16px 20px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.02);
+}
+
+.profile-header-title {
+  font-size: 1.25rem;
+  font-weight: 800;
+  color: var(--color-green-dark);
+  font-family: var(--font-serif);
+  margin: 0;
+}
+
+.profile-back-btn, .profile-action-btn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: var(--transition-fast);
+}
+
+.profile-back-btn {
+  color: var(--color-text-muted);
+  padding: 8px;
+  margin-left: -8px;
+}
+
+.profile-back-btn:hover {
+  color: var(--color-text-dark);
+}
+
+.profile-action-btn {
+  font-size: 0.9rem;
+  color: var(--color-terracotta);
+  font-weight: 700;
+}
+
+.profile-action-btn:hover {
+  color: var(--color-terracotta-hover);
+}
+
+.profile-main-content {
+  max-width: 32rem; /* approx 512px */
+  margin: 0 auto;
+  padding: 32px 20px 0 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.profile-card {
+  background-color: var(--color-white);
+  border-radius: 20px;
+  border: 1px solid var(--color-ochre-light);
+  padding: 24px;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.03);
+  display: flex;
+  flex-direction: column;
+}
+
+.profile-card-title {
+  font-size: 1.15rem;
+  font-weight: 800;
+  color: var(--color-green-dark);
+  margin-bottom: 16px;
+  font-family: var(--font-serif);
+}
+
+.profile-points-layout {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.profile-points-hero {
+  font-size: 2.5rem;
+  font-weight: 900;
+  color: var(--color-green-dark);
+  line-height: 1;
+  margin: 0;
+}
+
+.profile-points-label {
+  font-size: 0.9rem;
+  color: var(--color-text-muted);
+  margin-top: 4px;
+  font-weight: 500;
+}
+
+.profile-tier-layout {
+  text-align: right;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+}
+
+.profile-tier-name {
+  font-weight: 800;
+  color: var(--color-terracotta);
+  font-size: 1.1rem;
+  margin: 0;
+}
+
+.profile-tier-progress {
+  font-size: 0.8rem;
+  color: var(--color-text-muted);
+  margin-top: 4px;
+  background-color: var(--color-cream-dark);
+  padding: 4px 10px;
+  border-radius: 12px;
+}
+
+.profile-history-list {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.profile-history-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 0.95rem;
+  padding-bottom: 12px;
+  border-bottom: 1px dashed var(--color-ochre-light);
+}
+
+.profile-history-item:last-child {
+  border-bottom: none;
+  padding-bottom: 0;
+}
+
+.profile-history-desc {
+  color: var(--color-text-dark);
+  font-weight: 500;
+}
+
+.profile-history-pts {
+  color: var(--color-terracotta);
+  font-weight: 700;
+}
+
+/* Eden Pass QR Component */
+.edenpass-qr-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+}
+
+.edenpass-qr-title {
+  font-size: 1.5rem;
+  font-weight: 900;
+  color: var(--color-green-dark);
+  margin-bottom: 4px;
+  font-family: var(--font-serif);
+}
+
+.edenpass-qr-subtitle {
+  color: var(--color-text-muted);
+  font-size: 0.9rem;
+  margin-bottom: 24px;
+}
+
+.edenpass-qr-box {
+  position: relative;
+  padding: 20px;
+  background-color: var(--color-cream-light);
+  border-radius: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 220px;
+  min-width: 220px;
+  border: 1px solid var(--color-ochre-light);
+}
+
+.edenpass-qr-wrapper {
+  background-color: var(--color-white);
+  padding: 16px;
+  border-radius: 16px;
+  box-shadow: 0 4px 15px rgba(0,0,0,0.05);
+  animation: fadeIn 0.4s ease-out;
+}
+
+.edenpass-timer-badge {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.85rem;
+  color: var(--color-text-dark);
+  background-color: var(--color-cream-dark);
+  padding: 6px 16px;
+  border-radius: 20px;
+  margin-bottom: 16px;
+  margin-top: 24px;
+  font-weight: 600;
+}
+
+.edenpass-indicator {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+}
+
+.edenpass-indicator.good {
+  background-color: #10b981;
+  animation: pulse 2s infinite;
+}
+
+.edenpass-indicator.warning {
+  background-color: #ef4444;
+  animation: pulse 1s infinite;
+}
+
+.edenpass-refresh-btn {
+  width: 100%;
+  display: flex;
+  items-center: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 14px;
+  background-color: var(--color-green-dark);
+  color: var(--color-white);
+  border: none;
+  border-radius: 30px;
+  font-weight: 700;
+  transition: var(--transition-smooth);
+  cursor: pointer;
+}
+
+.edenpass-refresh-btn:hover {
+  background-color: #12271c;
+  transform: translateY(-1px);
+}
+
+.edenpass-refresh-btn:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+  transform: none;
+}
+
+/* =========================================
+   Service Selector Boutique (Cart Footer)
+   ========================================= */
+.service-selector-container {
+  margin-bottom: 20px;
+  padding: 16px;
+  background: var(--color-cream-light);
+  border: 1px solid var(--color-ochre-light);
+  border-radius: 16px;
+}
+
+.service-selector-title {
+  display: block;
+  font-family: var(--font-serif);
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: var(--color-green-dark);
+  margin-bottom: 12px;
+  text-align: center;
+}
+
+.service-selector-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 6px;
+  background: white;
+  padding: 5px;
+  border-radius: 14px;
+  border: 1px solid rgba(192, 90, 62, 0.15);
+  box-shadow: inset 0 2px 4px rgba(0,0,0,0.02);
+}
+
+.service-option-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  padding: 10px 2px;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 10px;
+  color: var(--color-text-muted);
+  font-size: 0.8rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.service-option-card:hover {
+  color: var(--color-green-dark);
+  background: rgba(44, 62, 45, 0.04);
+}
+
+.service-option-card.active {
+  background: var(--color-green-dark);
+  color: white;
+  box-shadow: 0 4px 12px rgba(44, 62, 45, 0.2);
+  transform: scale(1.02);
+}
+
+/* Delivery Input Box */
+.delivery-address-box {
+  margin-top: 14px;
+  animation: fadeIn 0.3s ease-out;
+}
+
+.delivery-address-input {
+  width: 100%;
+  padding: 12px 14px;
+  border: 1.5px solid var(--color-terracotta);
+  border-radius: 12px;
+  background: white;
+  font-size: 0.9rem;
+  color: var(--color-text-dark);
+  outline: none;
+  box-shadow: 0 4px 12px rgba(192, 90, 62, 0.06);
+  transition: border-color 0.2s;
+}
+
+.delivery-address-input:focus {
+  border-color: var(--color-green-dark);
+}
+
+.delivery-hint {
+  display: block;
+  font-size: 0.78rem;
+  color: var(--color-terracotta);
+  margin-top: 6px;
+  font-weight: 600;
+  text-align: center;
 }

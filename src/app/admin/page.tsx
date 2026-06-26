@@ -5,6 +5,7 @@ import { usePermissions } from '@/hooks/usePermissions';
 import MenuManager from '@/components/admin/MenuManager';
 import UsersManager from '@/components/admin/UsersManager';
 import BankConfigManager from '@/components/admin/BankConfigManager';
+import RefundsManager from '@/components/admin/RefundsManager';
 import { 
   Check, 
   X, 
@@ -37,11 +38,12 @@ export default function AdminPage() {
   const { can, loading: permsLoading } = usePermissions();
 
   // Financial Tab State
-  const [activeTab, setActiveTab] = useState<'cocina' | 'finanzas' | 'edenpass' | 'menu' | 'usuarios' | 'banco'>('cocina');
-  const [pendingPayments, setPendingPayments] = useState<any[]>([]);
+  const [activeTab, setActiveTab] = useState<'cocina' | 'finanzas' | 'reembolsos' | 'edenpass' | 'menu' | 'usuarios' | 'banco'>('cocina');
+  const [pendingPayments, setPendingPayments] = useState<Order[]>([]);
+  const [auditOrders, setAuditOrders] = useState<Order[]>([]);
+  const [activeFinancialOrder, setActiveFinancialOrder] = useState<string | null>(null);
   const [selectedProofUrl, setSelectedProofUrl] = useState<string | null>(null);
   const [rejectReason, setRejectReason] = useState('');
-  const [activeFinancialOrder, setActiveFinancialOrder] = useState<string | null>(null);
 
   // EdenPass Tab State
   const [customerProfile, setCustomerProfile] = useState<any>(null);
@@ -78,11 +80,21 @@ export default function AdminPage() {
     window.location.href = '/';
   };
 
-  // Fetch active orders — credentials:'include' envía cookie httpOnly automáticamente
+  // Handle 401s universally
+  const handleUnauthorized = (status: number) => {
+    if (status === 401) {
+      window.location.href = '/?login=true';
+      return true;
+    }
+    return false;
+  };
+
+  // Fetch active orders
   const fetchOrders = async () => {
     setIsRefreshing(true);
     try {
       const res = await fetch('/api/orders', { credentials: 'include' });
+      if (handleUnauthorized(res.status)) return;
       const data = await res.json();
       if (res.ok) {
         setOrders(data.orders);
@@ -98,6 +110,7 @@ export default function AdminPage() {
   const fetchPendingPayments = async () => {
     try {
       const res = await fetch('/api/orders/pending-payment', { credentials: 'include' });
+      if (handleUnauthorized(res.status)) return;
       const data = await res.json();
       if (res.ok) {
         setPendingPayments(data.pendingPayments);
@@ -107,12 +120,35 @@ export default function AdminPage() {
     }
   };
 
+  const fetchAuditOrders = async () => {
+    try {
+      const res = await fetch('/api/admin/finances/audit', { credentials: 'include' });
+      if (handleUnauthorized(res.status)) return;
+      const data = await res.json();
+      if (res.ok) {
+        setAuditOrders(data.auditOrders);
+      }
+    } catch (e) {
+      console.error('Error fetching audit orders:', e);
+    }
+  };
+
+  const cleanupOldProofs = async () => {
+    try {
+      await fetch('/api/admin/finances/cleanup', { method: 'DELETE', credentials: 'include' });
+    } catch (e) {
+      console.error('Error running cleanup:', e);
+    }
+  };
+
   // Setup Polling
   useEffect(() => {
     if (!authChecked) return;
     
     fetchOrders();
     fetchPendingPayments();
+    fetchAuditOrders();
+    cleanupOldProofs();
 
     let isMounted = true;
     let timerId: NodeJS.Timeout;
@@ -122,7 +158,8 @@ export default function AdminPage() {
       try {
         await Promise.all([
           fetchOrders(),
-          fetchPendingPayments()
+          fetchPendingPayments(),
+          fetchAuditOrders()
         ]);
       } catch (error) {
         console.error('Error during polling:', error);
@@ -333,7 +370,7 @@ export default function AdminPage() {
   };
 
   // Update order status via PATCH API
-  const updateStatus = async (id: string, newStatus: 'in_preparation' | 'delivered' | 'cancelled') => {
+  const updateStatus = async (id: string, newStatus: string) => {
     try {
       const payload: OrderStatusUpdateRequest = { status: newStatus as any };
       const res = await fetch(`/api/orders/${id}/status`, {
@@ -386,6 +423,8 @@ export default function AdminPage() {
 
   const pendingOrders = orders.filter((o: any) => o.status === 'received');
   const preparingOrders = orders.filter((o: any) => o.status === 'in_preparation');
+  const readyOrders = orders.filter((o: any) => o.status === 'ready');
+  const inTransitOrders = orders.filter((o: any) => o.status === 'in_transit');
 
   return (
     <>
@@ -417,13 +456,13 @@ export default function AdminPage() {
         </div>
       </header>
 
-      <main className="container" style={{ padding: '40px 0 60px 0' }}>
+      <main className="container" style={{ paddingTop: '40px', paddingBottom: '60px' }}>
         <div className="admin-header">
           <div>
-            <h1 style={{ fontFamily: 'var(--font-serif)', fontSize: '2.2rem', color: 'var(--color-green-dark)' }}>
+            <h1 className="admin-page-title" style={{ fontFamily: 'var(--font-serif)', color: 'var(--color-green-dark)' }}>
               Monitoreo de Órdenes Web
             </h1>
-            <p style={{ color: 'var(--color-text-muted)', fontSize: '0.9rem' }}>
+            <p className="admin-page-subtitle" style={{ color: 'var(--color-text-muted)' }}>
               Gestiona los pedidos de los clientes en tiempo real. Se sincronizan directamente con Loyverse POS.
             </p>
           </div>
@@ -443,10 +482,14 @@ export default function AdminPage() {
               <span style={{ fontWeight: 600 }}>Cocina - Preparando: </span>
               <strong style={{ color: 'var(--color-green-dark)', fontSize: '1.1rem' }}>{preparingOrders.length}</strong>
             </div>
+            <div className="divider" style={{ width: '1px', backgroundColor: 'var(--color-ochre)', height: '20px' }}></div>
+            <div>
+              <span style={{ fontWeight: 600 }}>Listas / En Camino: </span>
+              <strong style={{ color: '#0284c7', fontSize: '1.1rem' }}>{readyOrders.length + inTransitOrders.length}</strong>
+            </div>
           </div>
         </div>
 
-        {/* TABS */}
         {/* TABS */}
         <div className="admin-tabs">
           <button 
@@ -465,6 +508,14 @@ export default function AdminPage() {
                 {pendingPayments.length}
               </span>
             )}
+          </button>
+          
+          <button 
+            onClick={() => setActiveTab('reembolsos')}
+            className={`admin-tab-btn ${activeTab === 'reembolsos' ? 'active active-finanzas' : ''}`}
+            style={activeTab === 'reembolsos' ? { borderColor: '#8b5cf6', color: '#8b5cf6' } : {}}
+          >
+            Reembolsos
           </button>
           
           {can('can_scan_qr') && (
@@ -516,6 +567,8 @@ export default function AdminPage() {
               <KanbanBoard 
                 pendingOrders={pendingOrders}
                 preparingOrders={preparingOrders}
+                readyOrders={readyOrders}
+                inTransitOrders={inTransitOrders}
                 updateStatus={updateStatus}
                 getWhatsAppCancelLink={getWhatsAppCancelLink}
               />
@@ -524,6 +577,7 @@ export default function AdminPage() {
             {activeTab === 'finanzas' && (
               <FinanceApproval 
                 pendingPayments={pendingPayments}
+                auditOrders={auditOrders}
                 activeFinancialOrder={activeFinancialOrder}
                 selectedProofUrl={selectedProofUrl}
                 rejectReason={rejectReason}
@@ -533,6 +587,10 @@ export default function AdminPage() {
                 approvePayment={approvePayment}
                 rejectPayment={rejectPayment}
               />
+            )}
+
+            {activeTab === 'reembolsos' && (
+              <RefundsManager />
             )}
 
             {activeTab === 'edenpass' && (

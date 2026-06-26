@@ -14,6 +14,7 @@ export interface LoyverseItem {
 
 export interface LoyverseReceiptPayload {
   store_id: string;
+  customer_id?: string;
   note?: string;
   line_items: Array<{
     variant_id?: string;
@@ -69,6 +70,7 @@ async function getCashPaymentTypeId(): Promise<string | null> {
  */
 export async function createLoyverseReceipt(order: {
   id: string;
+  customer_id?: string;
   customer_name: string;
   customer_phone: string;
   items: any[];
@@ -103,7 +105,7 @@ export async function createLoyverseReceipt(order: {
   }).join('\n');
 
   if (!isLoyverseConfigured) {
-    const mockPayload = {
+    const mockPayload: any = {
       store_id: LOYVERSE_STORE_ID,
       note: `Pedido Web #${order.id.slice(-4).toUpperCase()}\nCliente: ${order.customer_name} (${order.customer_phone})\n\nDETALLE:\n${itemsText}\n\nNotas Generales: ${order.notes || 'Ninguna'}`,
       line_items: lineItems,
@@ -114,6 +116,9 @@ export async function createLoyverseReceipt(order: {
         }
       ]
     };
+    if (order.customer_id) {
+      mockPayload.customer_id = order.customer_id;
+    }
     console.log('[MOCK LOYVERSE] Creando recibo en Loyverse:', JSON.stringify(mockPayload, null, 2));
     // Return a mock Loyverse receipt ID and number
     return {
@@ -134,6 +139,9 @@ export async function createLoyverseReceipt(order: {
       line_items: lineItems,
       payments: payments
     };
+    if (order.customer_id) {
+      payload.customer_id = order.customer_id;
+    }
 
     const res = await fetch(`${LOYVERSE_API_URL}/receipts`, {
       method: 'POST',

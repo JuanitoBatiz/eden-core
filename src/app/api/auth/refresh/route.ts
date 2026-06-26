@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { verifyRefreshToken, generateAccessToken } from '@/lib/auth';
+import { verifyRefreshToken, generateAccessToken, generateRefreshToken } from '@/lib/auth';
 import { createAdminClient, isSupabaseConfigured, serverMockUsers } from '@/lib/supabase';
 import { parse, serialize } from 'cookie';
 
@@ -29,7 +29,7 @@ export async function POST(req: Request) {
 
       const { data, error } = await adminSupabase
         .from('users')
-        .select('id, phone, role, active')
+        .select('id, name, phone, role, active')
         .eq('id', userId)
         .single();
 
@@ -57,14 +57,16 @@ export async function POST(req: Request) {
 
     // Emitir nuevo access_token con datos actualizados del usuario
     const accessToken = generateAccessToken({ user_id: user.id, phone: user.phone, role: user.role });
+    const newRefreshToken = generateRefreshToken({ user_id: user.id });
 
     const isProduction = process.env.NODE_ENV === 'production';
     const ACCESS_MAX_AGE = 15 * 60; // 15 minutos
+    const REFRESH_MAX_AGE = 30 * 24 * 60 * 60; // 30 días
 
     // Setear el nuevo access_token como cookie httpOnly — no retornar en body
     const response = NextResponse.json({
       success: true,
-      user: { id: user.id, role: user.role }
+      user: { id: user.id, role: user.role, name: user.name, phone: user.phone }
       // NOTA INTENCIONAL: access_token NO va en el body, viaja solo en cookie httpOnly
     });
 
@@ -73,6 +75,14 @@ export async function POST(req: Request) {
       secure: isProduction,
       sameSite: 'strict',
       maxAge: ACCESS_MAX_AGE,
+      path: '/'
+    }));
+
+    response.headers.append('Set-Cookie', serialize('refresh_token', newRefreshToken, {
+      httpOnly: true,
+      secure: isProduction,
+      sameSite: 'strict',
+      maxAge: REFRESH_MAX_AGE,
       path: '/'
     }));
 

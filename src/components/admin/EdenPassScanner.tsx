@@ -28,10 +28,10 @@ export default function EdenPassScanner({
   redeemBenefit
 }: EdenPassScannerProps) {
   return (
-    <div style={{ display: 'flex', gap: '30px', alignItems: 'flex-start' }}>
+    <div className="admin-edenpass-container" style={{ display: 'flex', gap: '30px', alignItems: 'flex-start' }}>
       
       {/* ESCÁNER Y BÚSQUEDA */}
-      <div style={{ flex: '1', display: 'flex', flexDirection: 'column', gap: '20px' }}>
+      <div style={{ flex: '1', display: 'flex', flexDirection: 'column', gap: '20px', width: '100%' }}>
         <div style={{ backgroundColor: 'white', padding: '20px', borderRadius: '15px', border: '1px solid #e5e7eb' }}>
           <h3 style={{ color: '#8b5cf6', display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '15px' }}>
             <ScanLine size={20} /> Escáner de Código QR
@@ -75,7 +75,7 @@ export default function EdenPassScanner({
       </div>
 
       {/* PERFIL Y BENEFICIOS */}
-      <div style={{ flex: '2', backgroundColor: '#f9fafb', borderRadius: '15px', padding: '30px', border: '1px solid #e5e7eb', minHeight: '60vh' }}>
+      <div style={{ flex: '2', backgroundColor: '#f9fafb', borderRadius: '15px', padding: '30px', border: '1px solid #e5e7eb', minHeight: '60vh', width: '100%' }}>
         {!customerProfile ? (
             <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100%', color: '#9ca3af' }}>
               <UserCircle size={64} style={{ marginBottom: '15px', opacity: 0.5 }} />

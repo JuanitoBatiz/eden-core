@@ -59,7 +59,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
       return NextResponse.json({ error: 'El beneficio especificado no existe o no está activo.' }, { status: 404 });
     }
 
-    if (!benefit.active) {
+    if (benefit.active === false || benefit.is_active === false) {
       return NextResponse.json({ error: 'Este beneficio se encuentra inactivo.' }, { status: 400 });
     }
 
@@ -74,7 +74,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
         cashier_id: tokenPayload.user_id,
         benefit_id: benefit.id,
         benefit_description: benefit.name,
-        points_used: benefit.points_required,
+        points_used: benefit.points_required || benefit.points_cost || 0,
         order_id: order_id || null
       }]);
 

@@ -66,11 +66,8 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'Cliente no registrado en la plataforma' }, { status: 404 });
     }
 
-    // 6. Consultar Loyverse para puntos en vivo usando la librería compartida
-    let loyverseData = { loyalty_points: 0, loyalty_tier: 'Estándar' };
-    if (customer.loyverse_customer_id) {
-      loyverseData = await getLoyaltyInfoFromLoyverse(customer.loyverse_customer_id);
-    }
+    // 6. Consultar Loyverse o simulación local para puntos en vivo
+    const loyverseData = await getLoyaltyInfoFromLoyverse(customer.loyverse_customer_id || '', customer.id);
 
     // 7. Retornar Perfil
     return NextResponse.json({

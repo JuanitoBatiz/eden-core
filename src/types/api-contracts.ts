@@ -36,7 +36,8 @@ export interface OrderCreateRequest {
   customer_email?: string;
   items: OrderItemRequest[];
   notes?: string;
-  service_type?: string;
+  service_type?: 'pickup' | 'delivery';
+  delivery_address?: string;
 }
 
 export interface RedeemBenefitRequest {
@@ -49,7 +50,7 @@ export interface QrValidateRequest {
 }
 
 export interface OrderStatusUpdateRequest {
-  status: 'received' | 'in_preparation' | 'delivered' | 'cancelled';
+  status: 'received' | 'in_preparation' | 'ready' | 'in_transit' | 'delivered' | 'cancelled' | 'awaiting_payment';
 }
 
 export interface OrderRejectPaymentRequest {
@@ -65,10 +66,14 @@ export interface Order {
   items: OrderItemRequest[];
   total: number;
   notes?: string;
-  status: 'received' | 'in_preparation' | 'delivered' | 'cancelled';
+  service_type: 'pickup' | 'delivery';
+  delivery_address?: string;
+  status: 'received' | 'in_preparation' | 'ready' | 'in_transit' | 'delivered' | 'cancelled' | 'awaiting_payment';
   payment_status: 'pending_payment' | 'payment_submitted' | 'payment_approved' | 'payment_rejected';
   proof_url?: string;
   rejection_reason?: string;
+  refund_status?: 'none' | 'pending' | 'completed';
+  refund_proof_url?: string;
   loyverse_receipt_id?: string;
   loyverse_receipt_number?: string;
 }

@@ -3,15 +3,15 @@
 import React, { useState, useEffect } from 'react';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
-import { 
-  ShoppingBag, 
-  Plus, 
-  Minus, 
-  X, 
-  ChevronRight, 
-  Check, 
-  ArrowRight, 
-  MessageSquare, 
+import {
+  ShoppingBag,
+  Plus,
+  Minus,
+  X,
+  ChevronRight,
+  Check,
+  ArrowRight,
+  MessageSquare,
   Sparkles,
   Info,
   Salad,
@@ -19,9 +19,13 @@ import {
   Coffee,
   Sandwich,
   Soup,
-  GlassWater
+  GlassWater,
+  UserCircle,
+  Store,
+  Bike,
+  Utensils
 } from 'lucide-react';
-import { MenuItem, MenuCategory } from '@/lib/menuData';
+import { MenuItem, MenuCategory, CATEGORIES as fallbackCategories, MENU_ITEMS as fallbackMenuItems, SALAD_OPTIONS as fallbackSaladOptions } from '@/lib/menuData';
 import { SmsRequest, VerifyOtpRequest, OrderCreateRequest } from '@/types/api-contracts';
 import ProductImage from '@/components/ProductImage';
 
@@ -61,7 +65,7 @@ export default function MenuPage() {
   const router = useRouter();
 
   // Menu Data State
-  const [menuData, setMenuData] = useState<{CATEGORIES: MenuCategory[], MENU_ITEMS: MenuItem[], SALAD_OPTIONS: any} | null>(null);
+  const [menuData, setMenuData] = useState<{ CATEGORIES: MenuCategory[], MENU_ITEMS: MenuItem[], SALAD_OPTIONS: any } | null>(null);
   const [menuError, setMenuError] = useState(false);
 
   // Navigation and Scroll-hide Header
@@ -85,32 +89,68 @@ export default function MenuPage() {
 
   // Checkout & Auth Modal State
   const [isAuthOpen, setIsAuthOpen] = useState(false);
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [authMethod, setAuthMethod] = useState<'phone' | 'google'>('phone');
   const [customerName, setCustomerName] = useState('');
   const [customerPhone, setCustomerPhone] = useState('');
   const [smsSent, setSmsSent] = useState(false);
-  const [smsCode, setSmsCode] = useState(['', '', '', '']);
+  const [smsCode, setSmsCode] = useState(['', '', '', '', '', '']);
   const [sentCode, setSentCode] = useState(''); // Stores code returned by development API
   const [isVerifying, setIsVerifying] = useState(false);
   const [isSubmittingOrder, setIsSubmittingOrder] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
+
+  // Service Type State
+  const [serviceType, setServiceType] = useState<'pickup' | 'delivery' | 'dine_in'>('pickup');
+  const [deliveryAddress, setDeliveryAddress] = useState('');
 
   // Read cart from localStorage on mount
   useEffect(() => {
     const savedCart = localStorage.getItem('eden_cart');
     if (savedCart) {
       try {
-        setCart(JSON.parse(savedCart));
+        const parsed = JSON.parse(savedCart);
+        // Evitar error 500 al enviar IDs viejos (tipo 'ensalada-chica') en lugar de UUIDs de la nueva base de datos
+        const isOldCart = parsed.some((item: any) => item.id && !item.id.includes('-'));
+        if (isOldCart) {
+          localStorage.removeItem('eden_cart');
+          setCart([]);
+        } else {
+          setCart(parsed);
+        }
       } catch (e) {
         console.error(e);
       }
     }
   }, []);
 
-  // Fetch Menu from API
+  // Silent Auth Check on Mount
   useEffect(() => {
-    fetch('/api/menu')
+    fetch('/api/auth/refresh', { method: 'POST' })
       .then(res => {
+        if (res.ok) return res.json();
+        throw new Error('No valid session');
+      })
+      .then(data => {
+        if (data.success && data.user) {
+          setIsAuthenticated(true);
+          if (data.user.name) setCustomerName(data.user.name);
+          if (data.user.phone) setCustomerPhone(data.user.phone);
+        }
+      })
+      .catch(() => {
+        // Not authenticated, do nothing
+      });
+  }, []);
+
+  // Fetch Menu from API (con temporizador de 8s y respaldo automático)
+  useEffect(() => {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 8000);
+
+    fetch('/api/menu', { signal: controller.signal })
+      .then(res => {
+        clearTimeout(timeoutId);
         if (!res.ok) throw new Error('Error de red al cargar el menú');
         return res.json();
       })
@@ -121,9 +161,19 @@ export default function MenuPage() {
         }
       })
       .catch(err => {
-        console.error(err);
-        setMenuError(true);
+        console.error('Menu fetch failed or timed out, loading fallback:', err);
+        const fallback = {
+          CATEGORIES: fallbackCategories,
+          MENU_ITEMS: fallbackMenuItems,
+          SALAD_OPTIONS: fallbackSaladOptions
+        };
+        setMenuData(fallback);
+        if (fallback.CATEGORIES?.length > 0) {
+          setActiveCategory(fallback.CATEGORIES[0].id);
+        }
       });
+
+    return () => clearTimeout(timeoutId);
   }, []);
 
   // Scroll direction listener to show/hide header unificado (instant response)
@@ -131,10 +181,10 @@ export default function MenuPage() {
     if (typeof window === 'undefined') return;
 
     let lastScrollY = window.scrollY;
-    
+
     const handleScroll = () => {
       const scrollY = window.scrollY;
-      
+
       // Always show near the top of the page
       if (scrollY < 50) {
         setIsNavVisible(true);
@@ -143,7 +193,7 @@ export default function MenuPage() {
       } else if (scrollY < lastScrollY) {
         setIsNavVisible(true);
       }
-      
+
       lastScrollY = scrollY;
     };
 
@@ -160,7 +210,7 @@ export default function MenuPage() {
   // Get Limit Constraints for Customization
   const getConstraints = () => {
     if (!selectedProduct) return { proteins: 0, toppings: 0, seeds: 0, dressings: 1 };
-    
+
     if (selectedProduct.name === 'Ensalada Chica') {
       return { proteins: 1, toppings: 4, seeds: 2, dressings: 1 };
     }
@@ -216,8 +266,8 @@ export default function MenuPage() {
     if (!selectedProduct) return;
 
     // Build item details
-    const price = selectedProduct.prices 
-      ? selectedProduct.prices[customSize] 
+    const price = selectedProduct.prices
+      ? selectedProduct.prices[customSize]
       : selectedProduct.price;
 
     // Calculate Extras addition
@@ -282,8 +332,12 @@ export default function MenuPage() {
 
   // Auth / Checkout Flows
   const handleCheckoutClick = () => {
-    setIsCartOpen(false);
-    setIsAuthOpen(true);
+    if (isAuthenticated) {
+      submitOrder();
+    } else {
+      setIsCartOpen(false);
+      setIsAuthOpen(true);
+    }
   };
 
   const handleSendSmsCode = async () => {
@@ -301,7 +355,7 @@ export default function MenuPage() {
         body: JSON.stringify(payload)
       });
       const data = await res.json();
-      
+
       if (!res.ok) {
         setErrorMsg(data.error || 'Error al enviar código SMS.');
         return;
@@ -321,8 +375,8 @@ export default function MenuPage() {
   const handleVerifySmsCode = async () => {
     setErrorMsg('');
     const fullCode = smsCode.join('');
-    if (fullCode.length !== 4) {
-      setErrorMsg('Ingresa el código de 4 dígitos.');
+    if (fullCode.length !== 6) {
+      setErrorMsg('Ingresa el código de 6 dígitos.');
       return;
     }
 
@@ -368,13 +422,21 @@ export default function MenuPage() {
 
   // submitOrder usa credentials:'include' para que la cookie httpOnly viaje automáticamente
   const submitOrder = async () => {
+    setErrorMsg('');
     setIsSubmittingOrder(true);
     try {
+      let finalNotes = cart.map((item: any) => item.notes).filter(Boolean).join('; ');
+      if (serviceType === 'dine_in') {
+        finalNotes = `[COMER EN LOCAL] \n${finalNotes}`;
+      }
+
       const payload: OrderCreateRequest = {
         customer_name: customerName,
         customer_phone: customerPhone,
         items: cart,
-        notes: cart.map((item: any) => item.notes).filter(Boolean).join('; ')
+        notes: finalNotes,
+        service_type: serviceType === 'dine_in' ? 'pickup' : serviceType,
+        delivery_address: serviceType === 'delivery' ? deliveryAddress : undefined
       };
 
       const res = await fetch('/api/orders', {
@@ -385,6 +447,16 @@ export default function MenuPage() {
       });
 
       const data = await res.json();
+
+      if (res.status === 401) {
+        setIsAuthenticated(false);
+        setIsCartOpen(false);
+        setIsAuthOpen(true);
+        setErrorMsg('Tu sesión expiró. Por favor verifica tu número de nuevo.');
+        setIsSubmittingOrder(false);
+        setIsVerifying(false);
+        return;
+      }
 
       if (res.status === 409) {
         let errorText = "⚠️ Cambios en disponibilidad:\n";
@@ -463,17 +535,18 @@ export default function MenuPage() {
           <div className="container header-content">
             <div className="logo-container">
               <img src="/logo.png" alt="Edén Logo" className="logo-img" />
-              <div className="logo-text">
-                EDÉN
-                <span className="logo-sub">barra de ensaladas</span>
-              </div>
+              <div className="logo-text">EDÉN</div>
             </div>
-            
-            <button className="cart-icon-btn" onClick={() => setIsCartOpen(true)}>
-              <ShoppingBag size={20} />
-              <span>Carrito</span>
-              {cart.length > 0 && <span className="cart-count">{cart.reduce((s,i)=>s+i.quantity, 0)}</span>}
-            </button>
+            <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+              <button onClick={() => router.push('/perfil')} style={{ padding: '6px', borderRadius: '50%', border: 'none', background: 'var(--color-cream-light)', cursor: 'pointer', color: 'var(--color-green-dark)', display: 'flex', alignItems: 'center', justifyContent: 'center' }} title="Mi Perfil">
+                <UserCircle size={22} />
+              </button>
+              <button className="cart-icon-btn" onClick={() => setIsCartOpen(true)}>
+                <ShoppingBag size={20} />
+                <span>Carrito</span>
+                {cart.length > 0 && <span className="cart-count">{cart.reduce((s, i) => s + i.quantity, 0)}</span>}
+              </button>
+            </div>
           </div>
         </header>
 
@@ -482,17 +555,17 @@ export default function MenuPage() {
           <ul className="category-list">
             {CATEGORIES.map((category: any) => (
               <li key={category.id}>
-                <button 
+                <button
                   className={`category-btn ${activeCategory === category.id ? 'active' : ''}`}
                   data-category={category.id}
                   onClick={() => {
                     setActiveCategory(category.id);
                     const el = document.getElementById(`section-${category.id}`);
                     if (el) {
-                      const headerOffset = 155;
+                      const headerOffset = 185;
                       const elementPosition = el.getBoundingClientRect().top;
                       const offsetPosition = elementPosition + window.scrollY - headerOffset;
-                      
+
                       window.scrollTo({
                         top: offsetPosition,
                         behavior: 'smooth'
@@ -512,13 +585,15 @@ export default function MenuPage() {
       </div>
 
       {/* MAIN CONTAINER */}
-      <main className="container">
+      <main className="container" style={{ paddingTop: '180px' }}>
         {/* HERO */}
         <section className="hero">
-          <p className="hero-subtitle">Tradición, Abundancia y Comunidad</p>
           <h1 className="hero-title">Deliciosa barra de ensaladas y jugos naturales</h1>
           <p className="hero-desc">
             Escanea tu QR, arma tu pedido personalizado desde tu mesa y recógelo directamente en la barra al instante.
+          </p>
+          <p style={{ marginTop: '10px', fontSize: '0.8rem', color: 'var(--color-green-dark)', opacity: 0.65, fontStyle: 'italic', fontWeight: 500 }}>
+            * Imágenes con fines ilustrativos y de referencia visual.
           </p>
         </section>
 
@@ -534,34 +609,54 @@ export default function MenuPage() {
                 <div className="section-title-line"></div>
               </div>
 
-              <div className="products-grid">
-                {items.map((product: any) => (
-                  <div key={product.id} className="product-card">
-                    <div className="product-img-container">
-                      <ProductImage src={product.image} alt={product.name} className="product-img" />
-                    </div>
-                    <div className="product-info">
-                      <h3 className="product-name">{product.name}</h3>
-                      {product.description && <p className="product-desc">{product.description}</p>}
-                      <div className="product-footer">
-                        {product.prices ? (
-                          <div className="product-price-multi">
-                            <span className="price-option"><span className="price-label">Chico</span> ${product.prices['Chico']}</span>
-                            <span className="price-divider">|</span>
-                            <span className="price-option"><span className="price-label">Grande</span> ${product.prices['Grande']}</span>
-                          </div>
-                        ) : (
-                          <span className="product-price">${product.price}</span>
-                        )}
-                        <button className="add-btn" onClick={() => handleAddToCartClick(product)}>
+              {cat.id === 'embotellada' || cat.name?.toLowerCase().includes('embotellad') ? (
+                <div className="bottled-grid">
+                  {items.map((product: any) => (
+                    <div key={product.id} className="bottled-card">
+                      <div className="bottled-info">
+                        <h3 className="bottled-name">{product.name}</h3>
+                        {product.description && <p className="bottled-desc">{product.description}</p>}
+                      </div>
+                      <div className="bottled-action">
+                        <span className="bottled-price">${product.price}</span>
+                        <button className="bottled-add-btn" onClick={() => handleAddToCartClick(product)}>
                           <Plus size={16} />
-                          <span>{product.customizable ? 'Personalizar' : 'Agregar'}</span>
+                          <span>Agregar</span>
                         </button>
                       </div>
                     </div>
-                  </div>
-                ))}
-              </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="products-grid">
+                  {items.map((product: any) => (
+                    <div key={product.id} className="product-card">
+                      <div className="product-img-container">
+                        <ProductImage src={product.image} alt={product.name} className="product-img" />
+                      </div>
+                      <div className="product-info">
+                        <h3 className="product-name">{product.name}</h3>
+                        {product.description && <p className="product-desc">{product.description}</p>}
+                        <div className="product-footer">
+                          {product.prices ? (
+                            <div className="product-price-multi">
+                              <span className="price-option"><span className="price-label">Chico</span> ${product.prices['Chico']}</span>
+                              <span className="price-divider">|</span>
+                              <span className="price-option"><span className="price-label">Grande</span> ${product.prices['Grande']}</span>
+                            </div>
+                          ) : (
+                            <span className="product-price">${product.price}</span>
+                          )}
+                          <button className="add-btn" onClick={() => handleAddToCartClick(product)}>
+                            <Plus size={16} />
+                            <span>{product.customizable ? 'Personalizar' : 'Agregar'}</span>
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
             </section>
           );
         })}
@@ -573,10 +668,10 @@ export default function MenuPage() {
           <img src="/logo.png" alt="Edén Logo" style={{ width: '60px', height: '60px', borderRadius: '50%', backgroundColor: '#fff', padding: '5px' }} />
           <h2 style={{ fontFamily: 'var(--font-serif)', fontSize: '1.8rem', color: 'var(--color-cream-light)' }}>Edén</h2>
           <p style={{ maxWidth: '400px', fontSize: '0.9rem', opacity: 0.8 }}>
-            Bosques y montañas en cada bocado. Higiene, orden y sabor artesanal en Otumba, Estado de México.
+            Higiene, orden y sabor artesanal en Otumba, Estado de México.
           </p>
           <div style={{ fontSize: '0.8rem', opacity: 0.6, marginTop: '20px' }}>
-            © 2026 Edén. Todos los derechos reservados. Pago físico al recibir tu pedido.
+            © 2026 Edén. Todos los derechos reservados.
           </div>
         </div>
       </footer>
@@ -603,9 +698,9 @@ export default function MenuPage() {
                   <div className="option-grid">
                     {Object.keys(selectedProduct.prices).map((size: any) => (
                       <label key={size} className="option-card-label">
-                        <input 
-                          type="radio" 
-                          name="size" 
+                        <input
+                          type="radio"
+                          name="size"
                           className="option-card-input"
                           checked={customSize === size}
                           onChange={() => setCustomSize(size)}
@@ -621,7 +716,7 @@ export default function MenuPage() {
               )}
 
               {/* Salads Options */}
-              {selectedProduct.category === 'ensaladas' && (
+              {menuData?.CATEGORIES?.find((c: any) => c.id === selectedProduct.category)?.name === 'Ensaladas' && (
                 <>
                   {/* Proteins */}
                   <div className="option-group">
@@ -635,8 +730,8 @@ export default function MenuPage() {
                     <div className="option-grid">
                       {SALAD_OPTIONS.proteins.map((protein: any) => (
                         <label key={protein.id} className="option-card-label">
-                          <input 
-                            type="checkbox" 
+                          <input
+                            type="checkbox"
                             className="option-card-input"
                             checked={selectedProteins.includes(protein.id)}
                             onChange={() => toggleOption(protein.id, selectedProteins, setSelectedProteins, constraints.proteins)}
@@ -664,8 +759,8 @@ export default function MenuPage() {
                     <div className="option-grid">
                       {SALAD_OPTIONS.toppings.map((topping: any) => (
                         <label key={topping.id} className="option-card-label">
-                          <input 
-                            type="checkbox" 
+                          <input
+                            type="checkbox"
                             className="option-card-input"
                             checked={selectedToppings.includes(topping.id)}
                             onChange={() => toggleOption(topping.id, selectedToppings, setSelectedToppings, constraints.toppings)}
@@ -693,8 +788,8 @@ export default function MenuPage() {
                     <div className="option-grid">
                       {SALAD_OPTIONS.seedsAndNuts.map((seed: any) => (
                         <label key={seed.id} className="option-card-label">
-                          <input 
-                            type="checkbox" 
+                          <input
+                            type="checkbox"
                             className="option-card-input"
                             checked={selectedSeeds.includes(seed.id)}
                             onChange={() => toggleOption(seed.id, selectedSeeds, setSelectedSeeds, constraints.seeds)}
@@ -718,8 +813,8 @@ export default function MenuPage() {
                     <div className="option-grid">
                       {SALAD_OPTIONS.dressings.map((dressing: any) => (
                         <label key={dressing.id} className="option-card-label">
-                          <input 
-                            type="radio" 
+                          <input
+                            type="radio"
                             name="dressing"
                             className="option-card-input"
                             checked={selectedDressings.includes(dressing.id)}
@@ -736,7 +831,7 @@ export default function MenuPage() {
               )}
 
               {/* Bowls Customizer (2 Fruits, 2 Seeds) */}
-              {(selectedProduct.id === 'bowl-avena' || selectedProduct.id === 'bowl-yogurt') && (
+              {(selectedProduct.name === 'Bowl de Avena' || selectedProduct.name === 'Bowl de Yogurt') && (
                 <>
                   <div className="option-group">
                     <div className="option-group-title">
@@ -745,8 +840,8 @@ export default function MenuPage() {
                     <div className="option-grid">
                       {SALAD_OPTIONS.toppings.filter((t: any) => ['mango', 'fresa', 'platano', 'uva', 'kiwi', 'pina', 'blueberry', 'frambuesa'].includes(t.id)).map((topping: any) => (
                         <label key={topping.id} className="option-card-label">
-                          <input 
-                            type="checkbox" 
+                          <input
+                            type="checkbox"
                             className="option-card-input"
                             checked={selectedToppings.includes(topping.id)}
                             onChange={() => {
@@ -772,8 +867,8 @@ export default function MenuPage() {
                     <div className="option-grid">
                       {SALAD_OPTIONS.seedsAndNuts.map((seed: any) => (
                         <label key={seed.id} className="option-card-label">
-                          <input 
-                            type="checkbox" 
+                          <input
+                            type="checkbox"
                             className="option-card-input"
                             checked={selectedSeeds.includes(seed.id)}
                             onChange={() => {
@@ -815,7 +910,7 @@ export default function MenuPage() {
                       const isChecked = selectedFlavors.includes(flavor);
                       return (
                         <label key={flavor} className="option-card-label">
-                          <input 
+                          <input
                             type={selectedProduct.maxFlavors && selectedProduct.maxFlavors > 1 ? "checkbox" : "radio"}
                             name="flavor"
                             className="option-card-input"
@@ -846,12 +941,12 @@ export default function MenuPage() {
               {/* Notes */}
               <div className="option-group" style={{ borderBottom: 'none', paddingBottom: 0 }}>
                 <div className="option-group-title">Notas especiales para tu pedido</div>
-                <textarea 
-                  className="notes-textarea" 
+                <textarea
+                  className="notes-textarea"
                   placeholder={
-                    selectedProduct.category === 'jugos' || 
-                    selectedProduct.category === 'infusiones' || 
-                    selectedProduct.category === 'embotellada'
+                    selectedProduct.category === 'jugos' ||
+                      selectedProduct.category === 'infusiones' ||
+                      selectedProduct.category === 'embotellada'
                       ? "Ej: sin hielo, con popote, sin azúcar, etc..."
                       : "Ej: sin aderezo, aderezo aparte, sin cebolla, etc..."
                   }
@@ -869,7 +964,8 @@ export default function MenuPage() {
                   ${(() => {
                     const price = selectedProduct.prices ? selectedProduct.prices[customSize] : selectedProduct.price;
                     let extra = 0;
-                    if (selectedProduct.category === 'ensaladas') {
+                    const isEnsalada = menuData?.CATEGORIES?.find((c: any) => c.id === selectedProduct.category)?.name === 'Ensaladas';
+                    if (isEnsalada) {
                       if (selectedProteins.length > constraints.proteins) {
                         extra += (selectedProteins.length - constraints.proteins) * 30;
                       }
@@ -884,14 +980,14 @@ export default function MenuPage() {
                   })()}
                 </div>
               </div>
-              
-              <button 
-                className="confirm-add-btn" 
+
+              <button
+                className="confirm-add-btn"
                 onClick={handleConfirmCustomization}
                 disabled={
-                  (selectedProduct.category === 'ensaladas' && selectedDressings.length === 0) || 
-                  ((selectedProduct.id === 'bowl-avena' || selectedProduct.id === 'bowl-yogurt') && 
-                   (selectedToppings.length !== 2 || selectedSeeds.length !== 2)) ||
+                  (menuData?.CATEGORIES?.find((c: any) => c.id === selectedProduct.category)?.name === 'Ensaladas' && selectedDressings.length === 0) ||
+                  ((selectedProduct.name === 'Bowl de Avena' || selectedProduct.name === 'Bowl de Yogurt') &&
+                    (selectedToppings.length !== 2 || selectedSeeds.length !== 2)) ||
                   (selectedProduct.flavors !== undefined && selectedFlavors.length === 0)
                 }
               >
@@ -929,7 +1025,7 @@ export default function MenuPage() {
                     <div key={item.cartId} className="cart-item">
                       <div className="cart-item-info">
                         <span className="cart-item-name">{item.name} {item.size && `(${item.size})`}</span>
-                        
+
                         {item.customizations && (
                           <div className="cart-item-customizations">
                             {item.customizations.proteins.length > 0 && (
@@ -972,13 +1068,76 @@ export default function MenuPage() {
 
             {cart.length > 0 && (
               <div className="cart-footer">
+                <div className="service-selector-container">
+                  <label className="service-selector-title">¿Dónde disfrutarás tu pedido?</label>
+
+                  <div className="service-selector-grid">
+                    <button
+                      className={`service-option-card ${serviceType === 'pickup' ? 'active' : ''}`}
+                      onClick={() => setServiceType('pickup')}
+                      type="button"
+                    >
+                      <ShoppingBag size={18} />
+                      <span>Llevar</span>
+                    </button>
+
+                    <button
+                      className={`service-option-card ${serviceType === 'dine_in' ? 'active' : ''}`}
+                      onClick={() => setServiceType('dine_in')}
+                      type="button"
+                    >
+                      <Utensils size={18} />
+                      <span>Aquí</span>
+                    </button>
+
+                    <button
+                      className={`service-option-card ${serviceType === 'delivery' ? 'active' : ''}`}
+                      onClick={() => setServiceType('delivery')}
+                      type="button"
+                    >
+                      <Bike size={18} />
+                      <span>Envío</span>
+                    </button>
+                  </div>
+
+                  {serviceType === 'delivery' && (
+                    <div className="delivery-address-box">
+                      <input
+                        type="text"
+                        className="delivery-address-input"
+                        placeholder="Calle, núm., col. y referencias (ej. portón negro)..."
+                        value={deliveryAddress}
+                        onChange={e => setDeliveryAddress(e.target.value)}
+                        autoFocus
+                      />
+                      <span className="delivery-hint"> Te lo llevamos caliente y fresco hasta tu puerta</span>
+                    </div>
+                  )}
+                </div>
+
+                {errorMsg && !isAuthOpen && (
+                  <div style={{ backgroundColor: '#ffebee', color: '#c62828', padding: '10px', borderRadius: '8px', fontSize: '0.85rem', marginBottom: '10px', fontWeight: 600, textAlign: 'center' }}>
+                    {errorMsg}
+                  </div>
+                )}
                 <div className="cart-totals-row">
                   <span>Total</span>
                   <span>${calculateSubtotal()}</span>
                 </div>
-                <button className="checkout-btn" onClick={handleCheckoutClick}>
-                  <span>Confirmar Pedido</span>
-                  <ArrowRight size={18} />
+                <button
+                  className="checkout-btn"
+                  onClick={() => {
+                    if (serviceType === 'delivery' && !deliveryAddress.trim()) {
+                      setErrorMsg('Por favor ingresa tu dirección de entrega para el pedido a domicilio.');
+                      return;
+                    }
+                    setErrorMsg('');
+                    handleCheckoutClick();
+                  }}
+                  disabled={isSubmittingOrder}
+                >
+                  <span>{isSubmittingOrder ? 'Procesando Pedido...' : 'Confirmar Pedido'}</span>
+                  {!isSubmittingOrder && <ArrowRight size={18} />}
                 </button>
                 <div style={{ display: 'flex', gap: '8px', alignItems: 'center', marginTop: '12px', fontSize: '0.75rem', color: 'var(--color-text-muted)', justifyContent: 'center' }}>
                   <Info size={14} />
@@ -1014,10 +1173,10 @@ export default function MenuPage() {
 
               <div className="form-group">
                 <label className="form-label">Nombre Completo</label>
-                <input 
-                  type="text" 
-                  className="form-input" 
-                  placeholder="Ej. Brandon Chavez" 
+                <input
+                  type="text"
+                  className="form-input"
+                  placeholder="Ej. Brandon Chavez"
                   value={customerName}
                   onChange={e => setCustomerName(e.target.value)}
                   disabled={smsSent}
@@ -1029,13 +1188,13 @@ export default function MenuPage() {
                   <div className="form-group" style={{ marginTop: '15px' }}>
                     <label className="form-label">Método de Verificación</label>
                     <div className="auth-choice-btns">
-                      <button 
+                      <button
                         className={`auth-choice-btn ${authMethod === 'phone' ? 'active' : ''}`}
                         onClick={() => setAuthMethod('phone')}
                       >
                         Celular
                       </button>
-                      <button 
+                      <button
                         className={`auth-choice-btn ${authMethod === 'google' ? 'active' : ''}`}
                         onClick={() => setAuthMethod('google')}
                       >
@@ -1047,18 +1206,18 @@ export default function MenuPage() {
                   {authMethod === 'phone' ? (
                     <div className="form-group" style={{ marginTop: '15px' }}>
                       <label className="form-label">Número de Celular</label>
-                      <input 
-                        type="tel" 
+                      <input
+                        type="tel"
                         maxLength={10}
-                        className="form-input" 
-                        placeholder="10 dígitos (ej. 6237591105)" 
+                        className="form-input"
+                        placeholder="10 dígitos (ej. 6237591105)"
                         value={customerPhone}
                         onChange={e => setCustomerPhone(e.target.value.replace(/\D/g, ''))}
                       />
-                      
-                      <button 
-                        className="checkout-btn" 
-                        style={{ marginTop: '20px' }} 
+
+                      <button
+                        className="checkout-btn"
+                        style={{ marginTop: '20px' }}
                         onClick={handleSendSmsCode}
                       >
                         Enviar Código de Verificación
@@ -1068,10 +1227,10 @@ export default function MenuPage() {
                     <div>
                       <button className="google-auth-btn" onClick={handleGoogleLogin}>
                         <svg width="18" height="18" viewBox="0 0 18 18">
-                          <path fill="#4285F4" d="M17.6 9.2c0-.6-.1-1.2-.2-1.8H9v3.4h4.8c-.2 1-.8 1.9-1.6 2.5v2.1h2.6c1.5-1.4 2.4-3.5 2.4-6.2z"/>
-                          <path fill="#34A853" d="M9 18c2.4 0 4.5-.8 6-2.2l-2.6-2.1c-.7.5-1.7.8-3.4.8-2.6 0-4.8-1.8-5.6-4.2H.8v2.2C2.3 15.5 5.4 18 9 18z"/>
-                          <path fill="#FBBC05" d="M3.4 10.3c-.2-.6-.3-1.2-.3-1.8s.1-1.2.3-1.8V4.5H.8C.3 5.5 0 6.7 0 8s.3 2.5.8 3.5l2.6-1.2z"/>
-                          <path fill="#EA4335" d="M9 3.6c1.3 0 2.5.5 3.4 1.3l2.6-2.5C13.5.9 11.4 0 9 0 5.4 0 2.3 2.5.8 5.5l2.6 2.2c.8-2.4 3-4.1 5.6-4.1z"/>
+                          <path fill="#4285F4" d="M17.6 9.2c0-.6-.1-1.2-.2-1.8H9v3.4h4.8c-.2 1-.8 1.9-1.6 2.5v2.1h2.6c1.5-1.4 2.4-3.5 2.4-6.2z" />
+                          <path fill="#34A853" d="M9 18c2.4 0 4.5-.8 6-2.2l-2.6-2.1c-.7.5-1.7.8-3.4.8-2.6 0-4.8-1.8-5.6-4.2H.8v2.2C2.3 15.5 5.4 18 9 18z" />
+                          <path fill="#FBBC05" d="M3.4 10.3c-.2-.6-.3-1.2-.3-1.8s.1-1.2.3-1.8V4.5H.8C.3 5.5 0 6.7 0 8s.3 2.5.8 3.5l2.6-1.2z" />
+                          <path fill="#EA4335" d="M9 3.6c1.3 0 2.5.5 3.4 1.3l2.6-2.5C13.5.9 11.4 0 9 0 5.4 0 2.3 2.5.8 5.5l2.6 2.2c.8-2.4 3-4.1 5.6-4.1z" />
                         </svg>
                         <span>Iniciar Sesión con Google</span>
                       </button>
@@ -1084,10 +1243,10 @@ export default function MenuPage() {
                   <p style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)', textAlign: 'center' }}>
                     Enviamos un SMS al {customerPhone}
                   </p>
-                  
+
                   <div className="sms-code-container">
                     {smsCode.map((digit, index) => (
-                      <input 
+                      <input
                         key={index}
                         id={`otp-input-${index}`}
                         type="text"
@@ -1101,7 +1260,7 @@ export default function MenuPage() {
                             nextCode[index] = val;
                             setSmsCode(nextCode);
                             // Auto-focus next input
-                            if (val !== '' && index < 3) {
+                            if (val !== '' && index < 5) {
                               document.getElementById(`otp-input-${index + 1}`)?.focus();
                             }
                           }
@@ -1117,24 +1276,24 @@ export default function MenuPage() {
 
                   {sentCode && (
                     <div className="sms-code-preview-banner">
-                      <strong>📱 Modo de Desarrollo:</strong> Ingresa el código generado: <strong>{sentCode}</strong> o <strong>1234</strong>
+                      <strong>📱 Modo de Desarrollo:</strong> Ingresa el código generado: <strong>{sentCode}</strong> o <strong>123456</strong>
                     </div>
                   )}
 
-                  <button 
-                    className="checkout-btn" 
-                    style={{ marginTop: '20px' }} 
+                  <button
+                    className="checkout-btn"
+                    style={{ marginTop: '20px' }}
                     disabled={isVerifying}
                     onClick={handleVerifySmsCode}
                   >
                     {isSubmittingOrder ? 'Procesando Pedido...' : 'Verificar y Enviar Orden'}
                   </button>
 
-                  <button 
+                  <button
                     style={{ background: 'none', border: 'none', color: 'var(--color-terracotta)', fontWeight: '600', display: 'block', margin: '15px auto 0 auto', cursor: 'pointer' }}
                     onClick={() => {
                       setSmsSent(false);
-                      setSmsCode(['', '', '', '']);
+                      setSmsCode(['', '', '', '', '', '']);
                     }}
                   >
                     Regresar / Corregir Celular

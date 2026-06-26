@@ -1,213 +1,201 @@
 import React from 'react';
-import { Clock, ChefHat, ClipboardList, MessageCircle, AlertCircle } from 'lucide-react';
+import { Clock, ChefHat, ClipboardList, MessageCircle, AlertCircle, PackageCheck, Bike, MapPin } from 'lucide-react';
 import { Order } from '@/types/api-contracts';
 
 interface KanbanBoardProps {
   pendingOrders: Order[];
   preparingOrders: Order[];
-  updateStatus: (id: string, newStatus: 'in_preparation' | 'delivered' | 'cancelled') => void;
+  readyOrders?: Order[];
+  inTransitOrders?: Order[];
+  updateStatus: (id: string, newStatus: string) => void;
   getWhatsAppCancelLink: (order: Order) => string;
 }
 
-export default function KanbanBoard({ pendingOrders, preparingOrders, updateStatus, getWhatsAppCancelLink }: KanbanBoardProps) {
-  return (
-    <div className="admin-grid">
-      {/* COLUMN 1: ORDERS LIST */}
-      <div style={{ display: 'flex', flexDirection: 'column', gap: '30px' }}>
+export default function KanbanBoard({ pendingOrders, preparingOrders, readyOrders = [], inTransitOrders = [], updateStatus, getWhatsAppCancelLink }: KanbanBoardProps) {
+  
+  const getNextStatus = (order: Order) => {
+    switch (order.status) {
+      case 'received': return 'awaiting_payment';
+      case 'awaiting_payment': return 'in_preparation';
+      case 'in_preparation': return 'ready';
+      case 'ready': return order.service_type === 'delivery' ? 'in_transit' : 'delivered';
+      case 'in_transit': return 'delivered';
+      default: return order.status;
+    }
+  };
+
+  const getStatusButtonText = (order: Order) => {
+    switch (order.status) {
+      case 'received': return 'Confirmar Ingredientes';
+      case 'awaiting_payment': return 'Validar Pago (Finanzas)';
+      case 'in_preparation': return 'Marcar como Lista';
+      case 'ready': return order.service_type === 'delivery' ? 'Enviar a Domicilio' : 'Entregada al Cliente';
+      case 'in_transit': return 'Confirmar Recepción';
+      default: return 'Avanzar';
+    }
+  };
+
+  const renderOrderCard = (order: Order, isPending: boolean = false) => (
+    <div 
+      key={order.id} 
+      className={`admin-order-card ${order.status}`}
+      style={{ padding: '16px', display: 'flex', flexDirection: 'column', gap: '12px', boxSizing: 'border-box', overflow: 'hidden' }}
+    >
+      {/* HEADER META */}
+      <div>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
+          <span style={{ fontFamily: 'var(--font-serif)', fontWeight: 700, fontSize: '1.05rem', color: 'var(--color-green-dark)' }}>
+            Orden #{order.id.slice(-4).toUpperCase()}
+          </span>
+          <span style={{ fontSize: '0.78rem', color: 'var(--color-text-muted)' }}>
+            {new Date(order.created_at).toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit' })}
+          </span>
+        </div>
         
-        {/* ORDERS EN REVISIÓN */}
-        <div className="admin-panel-section" style={{ borderLeft: '5px solid var(--color-terracotta)' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '15px' }}>
-            <Clock color="var(--color-terracotta)" />
-            <h2 style={{ fontSize: '1.4rem', color: 'var(--color-green-dark)' }}>Pedidos Recibidos (En Revisión)</h2>
-          </div>
-
-          {pendingOrders.length === 0 ? (
-            <p style={{ color: 'var(--color-text-muted)', fontStyle: 'italic', padding: '20px 0' }}>
-              No hay nuevos pedidos en espera. ¡Todo al día!
-            </p>
-          ) : (
-            <div className="admin-orders-list">
-              {pendingOrders.map(order => (
-                <div key={order.id} className="admin-order-card en_revision">
-                  <div className="admin-order-header">
-                    <div className="admin-order-meta">
-                      <span className="admin-order-id">Orden #{order.id.slice(-4).toUpperCase()}</span>
-                      <span className="admin-order-client">
-                        Cliente: <strong>{order.customer_name}</strong> | Tel: {order.customer_phone}
-                      </span>
-                    </div>
-                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end' }}>
-                      <span style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)' }}>
-                        Recibido: {new Date(order.created_at).toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit' })}
-                      </span>
-                      <span style={{ fontWeight: 700, color: 'var(--color-terracotta)', fontSize: '0.9rem' }}>
-                        Loyverse Ticket: {order.loyverse_receipt_number || 'Enviando...'}
-                      </span>
-                    </div>
-                  </div>
-
-                  {/* ITEMS BREAKDOWN */}
-                  <div style={{ margin: '12px 0', padding: '12px', backgroundColor: 'var(--color-cream-dark)', borderRadius: '8px' }}>
-                    <h4 style={{ fontSize: '0.85rem', textTransform: 'uppercase', color: 'var(--color-text-muted)', marginBottom: '8px', display: 'flex', gap: '6px', alignItems: 'center' }}>
-                      <ClipboardList size={14} />
-                      <span>Productos a preparar</span>
-                    </h4>
-                    {order.items.map((item, idx) => (
-                      <div key={idx} style={{ fontSize: '0.9rem', marginBottom: '8px', borderBottom: idx < order.items.length - 1 ? '1px dashed rgba(0,0,0,0.05)' : 'none', paddingBottom: '4px' }}>
-                        <strong>{item.quantity}x {item.name}</strong> {item.variant && `(${item.variant})`}
-                        {item.customizations && (
-                          <div style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)', marginLeft: '12px', marginTop: '2px' }}>
-                            {item.customizations.proteins?.length > 0 && <div>• Prot: {item.customizations.proteins.join(', ')}</div>}
-                            {item.customizations.toppings?.length > 0 && <div>• Toppings: {item.customizations.toppings.join(', ')}</div>}
-                            {item.customizations.seedsAndNuts?.length > 0 && <div>• Semillas/Frutos: {item.customizations.seedsAndNuts.join(', ')}</div>}
-                            {item.customizations.dressings?.length > 0 && <div>• Aderezo: {item.customizations.dressings.join(', ')}</div>}
-                            {item.customizations.flavors?.length > 0 && <div>• Sabor: {item.customizations.flavors.join(', ')}</div>}
-                          </div>
-                        )}
-                      </div>
-                    ))}
-                    
-                    {order.notes && (
-                      <div style={{ marginTop: '10px', fontSize: '0.8rem', borderLeft: '2px solid var(--color-terracotta)', paddingLeft: '8px', color: 'var(--color-terracotta)' }}>
-                        <strong>Notas:</strong> "{order.notes}"
-                      </div>
-                    )}
-                  </div>
-
-                  <div className="admin-order-actions">
-                    <button className="admin-btn admin-btn-accept" onClick={() => updateStatus(order.id, 'in_preparation')}>
-                      Aceptar Pedido
-                    </button>
-                    <button className="admin-btn admin-btn-cancel" onClick={() => updateStatus(order.id, 'cancelled')}>
-                      Rechazar / Falta Ingrediente
-                    </button>
-                    <a 
-                      href={getWhatsAppCancelLink(order)} 
-                      target="_blank" 
-                      rel="noopener noreferrer" 
-                      className="admin-btn"
-                      style={{ display: 'flex', alignItems: 'center', gap: '4px', backgroundColor: '#e0f2f1', color: '#00796b' }}
-                    >
-                      <MessageCircle size={14} />
-                      <span>Mandar WhatsApp</span>
-                    </a>
-                    <span style={{ marginLeft: 'auto', fontWeight: 700, color: 'var(--color-green-dark)' }}>
-                      Total: ${order.total}
-                    </span>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-
-        {/* ORDERS PREPARANDO */}
-        <div className="admin-panel-section" style={{ borderLeft: '5px solid var(--color-green-dark)' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '15px' }}>
-            <ChefHat color="var(--color-green-dark)" />
-            <h2 style={{ fontSize: '1.4rem', color: 'var(--color-green-dark)' }}>Pedidos en Cocina (Preparando)</h2>
-          </div>
-
-          {preparingOrders.length === 0 ? (
-            <p style={{ color: 'var(--color-text-muted)', fontStyle: 'italic', padding: '20px 0' }}>
-              No hay pedidos en preparación actualmente.
-            </p>
-          ) : (
-            <div className="admin-orders-list">
-              {preparingOrders.map(order => (
-                <div key={order.id} className="admin-order-card preparando">
-                  <div className="admin-order-header">
-                    <div className="admin-order-meta">
-                      <span className="admin-order-id">Orden #{order.id.slice(-4).toUpperCase()}</span>
-                      <span className="admin-order-client">
-                        Cliente: <strong>{order.customer_name}</strong> | Tel: {order.customer_phone}
-                      </span>
-                    </div>
-                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end' }}>
-                      <span style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)' }}>
-                        En preparación...
-                      </span>
-                      <span style={{ fontWeight: 700, color: 'var(--color-green-dark)', fontSize: '0.9rem' }}>
-                        Ticket: {order.loyverse_receipt_number}
-                      </span>
-                    </div>
-                  </div>
-
-                  {/* ITEMS BREAKDOWN */}
-                  <div style={{ margin: '12px 0', padding: '12px', backgroundColor: 'var(--color-cream-dark)', borderRadius: '8px' }}>
-                    {order.items.map((item, idx) => (
-                      <div key={idx} style={{ fontSize: '0.9rem', marginBottom: '6px' }}>
-                        <strong>{item.quantity}x {item.name}</strong> {item.variant && `(${item.variant})`}
-                        {item.customizations && (
-                          <div style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)', marginLeft: '12px' }}>
-                            {item.customizations.proteins?.length > 0 && <span>Prot: {item.customizations.proteins.join(', ')} | </span>}
-                            {item.customizations.toppings?.length > 0 && <span>Toppings: {item.customizations.toppings.join(', ')} | </span>}
-                            {item.customizations.seedsAndNuts?.length > 0 && <span>Semillas: {item.customizations.seedsAndNuts.join(', ')} | </span>}
-                            {item.customizations.dressings?.length > 0 && <span>Aderezo: {item.customizations.dressings.join(', ')} | </span>}
-                            {item.customizations.flavors?.length > 0 && <span>Sabor: {item.customizations.flavors.join(', ')}</span>}
-                          </div>
-                        )}
-                      </div>
-                    ))}
-                    {order.notes && (
-                      <div style={{ marginTop: '10px', fontSize: '0.8rem', color: 'var(--color-terracotta)' }}>
-                        <strong>Notas:</strong> "{order.notes}"
-                      </div>
-                    )}
-                  </div>
-
-                  <div className="admin-order-actions">
-                    <button className="admin-btn admin-btn-ready" onClick={() => updateStatus(order.id, 'delivered')}>
-                      Marcar como Listo / Notificar Cliente
-                    </button>
-                    <button className="admin-btn admin-btn-cancel" onClick={() => updateStatus(order.id, 'cancelled')}>
-                      Cancelar Pedido
-                    </button>
-                    <span style={{ marginLeft: 'auto', fontWeight: 700, color: 'var(--color-green-dark)' }}>
-                      Total: ${order.total}
-                    </span>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
+        <div style={{ fontSize: '0.85rem', color: 'var(--color-text-dark)', lineHeight: '1.3' }}>
+          <strong>{order.customer_name}</strong>
+          <span style={{ color: 'var(--color-text-muted)', fontSize: '0.8rem', display: 'block' }}>Tel: {order.customer_phone}</span>
         </div>
       </div>
 
-      {/* COLUMN 2: OPERATIONS INFO & SETTINGS */}
-      <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-        <div className="admin-panel-section">
-          <h3 style={{ fontSize: '1.2rem', marginBottom: '12px', color: 'var(--color-green-dark)' }}>Guía de Operaciones</h3>
-          <ul style={{ paddingLeft: '18px', fontSize: '0.85rem', display: 'flex', flexDirection: 'column', gap: '10px', color: 'var(--color-text-dark)' }}>
-            <li>
-              <strong>Paso 1:</strong> El cliente hace el pedido. Aparecerá en **En Revisión** y viajará automáticamente a la impresora/KDS de Loyverse.
-            </li>
-            <li>
-              <strong>Paso 2:</strong> Verifica los ingredientes físicos en tu cocina.
-            </li>
-            <li>
-              <strong>Paso 3 (Aceptar):</strong> Si tienes todo, presiona **Aceptar Pedido**. El cliente verá "Preparando Orden" en su celular en tiempo real.
-            </li>
-            <li>
-              <strong>Paso 3 (Rechazar):</strong> Si falta algún ingrediente crucial (ej. espinaca), presiona **Rechazar**. Se reembolsará el ticket en Loyverse de inmediato y podrás mandarles un mensaje pre-llenado de WhatsApp en un clic.
-            </li>
-            <li>
-              <strong>Paso 4:</strong> Una vez lista la comida, presiona **Marcar como Listo**. El cliente recibirá la alerta de recoger y realizar su cobro en la caja física.
-            </li>
-          </ul>
+      {/* BADGES & POS TICKET */}
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', alignItems: 'center' }}>
+        <span style={{ fontSize: '0.75rem', fontWeight: 600, color: order.service_type === 'delivery' ? '#0284c7' : '#059669', backgroundColor: order.service_type === 'delivery' ? '#e0f2fe' : '#d1fae5', padding: '3px 8px', borderRadius: '12px' }}>
+          {order.service_type === 'delivery' ? 'A Domicilio' : 'Para Llevar'}
+        </span>
+        <span style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--color-ochre-dark)', backgroundColor: 'var(--color-ochre-light)', padding: '3px 8px', borderRadius: '12px' }}>
+          Ticket POS: {order.loyverse_receipt_number || '⏳ Pendiente'}
+        </span>
+      </div>
+
+      {/* ADDRESS IF DELIVERY */}
+      {order.service_type === 'delivery' && order.delivery_address && (
+        <div style={{ fontSize: '0.78rem', color: '#4b5563', backgroundColor: 'rgba(2, 132, 199, 0.06)', padding: '8px 10px', borderRadius: '8px', border: '1px solid rgba(2, 132, 199, 0.15)', display: 'flex', alignItems: 'flex-start', gap: '6px' }}>
+          <MapPin size={14} color="#0284c7" style={{ flexShrink: 0, marginTop: '2px' }} />
+          <span style={{ wordBreak: 'break-word', lineHeight: '1.3' }}>{order.delivery_address}</span>
+        </div>
+      )}
+
+      {/* ITEMS BREAKDOWN (MINIMALIST WHITE BOX) */}
+      <div style={{ padding: '10px 12px', backgroundColor: '#ffffff', borderRadius: '8px', border: '1px solid rgba(0,0,0,0.06)', boxShadow: '0 1px 2px rgba(0,0,0,0.02)' }}>
+        {isPending && (
+          <div style={{ fontSize: '0.78rem', fontWeight: 700, textTransform: 'uppercase', color: 'var(--color-terracotta)', marginBottom: '8px', display: 'flex', gap: '6px', alignItems: 'center' }}>
+            <ClipboardList size={14} />
+            <span>Por Preparar</span>
+          </div>
+        )}
+        {order.items.map((item, idx) => (
+          <div key={idx} style={{ fontSize: '0.85rem', marginBottom: idx < order.items.length - 1 ? '8px' : '0', borderBottom: idx < order.items.length - 1 ? '1px dashed rgba(0,0,0,0.08)' : 'none', paddingBottom: idx < order.items.length - 1 ? '6px' : '0' }}>
+            <div style={{ color: 'var(--color-text-dark)' }}>
+              <strong style={{ color: 'var(--color-green-dark)' }}>{item.quantity}x</strong> {item.name} {item.variant && <span style={{ fontWeight: 500 }}>({item.variant})</span>}
+            </div>
+            {item.customizations && (
+              <div style={{ fontSize: '0.76rem', color: 'var(--color-text-muted)', marginLeft: '14px', marginTop: '3px', lineHeight: '1.3' }}>
+                {item.customizations.proteins?.length > 0 && <div>• Prot: {item.customizations.proteins.join(', ')}</div>}
+                {item.customizations.toppings?.length > 0 && <div>• Toppings: {item.customizations.toppings.join(', ')}</div>}
+                {item.customizations.seedsAndNuts?.length > 0 && <div>• Semillas: {item.customizations.seedsAndNuts.join(', ')}</div>}
+                {item.customizations.dressings?.length > 0 && <div>• Aderezo: {item.customizations.dressings.join(', ')}</div>}
+                {item.customizations.flavors?.length > 0 && <div>• Sabor: {item.customizations.flavors.join(', ')}</div>}
+              </div>
+            )}
+          </div>
+        ))}
+        
+        {order.notes && (
+          <div style={{ marginTop: '8px', paddingTop: '6px', borderTop: '1px solid rgba(0,0,0,0.06)', fontSize: '0.78rem', color: 'var(--color-terracotta)', fontStyle: 'italic' }}>
+            <AlertCircle size={13} style={{ display: 'inline', verticalAlign: 'middle', marginRight: '4px' }} />
+            <strong>Notas:</strong> "{order.notes}"
+          </div>
+        )}
+      </div>
+
+      {/* FOOTER ACTIONS & TOTAL (ZERO OVERFLOW) */}
+      <div style={{ marginTop: 'auto', paddingTop: '10px', borderTop: '1px solid rgba(0,0,0,0.08)', display: 'flex', flexDirection: 'column', gap: '10px' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <span style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)', fontWeight: 600 }}>Total cobrado:</span>
+          <span style={{ fontSize: '1.05rem', fontWeight: 800, color: 'var(--color-green-dark)' }}>${order.total}</span>
         </div>
 
-        <div className="admin-panel-section" style={{ backgroundColor: 'var(--color-ochre-light)', borderColor: 'var(--color-ochre)' }}>
-          <h3 style={{ fontSize: '1.2rem', marginBottom: '8px', color: 'var(--color-green-dark)' }}>
-            <AlertCircle size={18} style={{ display: 'inline', marginRight: '6px', verticalAlign: 'text-bottom' }} />
-            Información Técnica
-          </h3>
-          <p style={{ fontSize: '0.8rem', lineHeight: '1.4' }}>
-            El sistema está operando en <strong>Modo Sincronizado Completo</strong>. Si hay variables de Supabase configuradas, actualizará mediante WebSockets. De lo contrario, opera en modo de sondeo optimizado localmente para garantizar el servicio continuo.
-          </p>
+        <button 
+          className="admin-btn admin-btn-accept" 
+          style={{ width: '100%', padding: '10px', fontSize: '0.85rem', borderRadius: '8px', textAlign: 'center', boxShadow: '0 2px 4px rgba(0,0,0,0.05)' }} 
+          onClick={() => updateStatus(order.id, getNextStatus(order))}
+        >
+          {getStatusButtonText(order)}
+        </button>
+
+        {isPending && (
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
+            <button 
+              className="admin-btn admin-btn-cancel" 
+              style={{ width: '100%', padding: '8px 4px', fontSize: '0.75rem', borderRadius: '8px', margin: 0 }} 
+              onClick={() => updateStatus(order.id, 'cancelled')}
+            >
+              Rechazar
+            </button>
+            <a 
+              href={getWhatsAppCancelLink(order)} 
+              target="_blank" 
+              rel="noopener noreferrer" 
+              className="admin-btn"
+              style={{ width: '100%', padding: '8px 4px', fontSize: '0.75rem', borderRadius: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px', backgroundColor: '#e0f2f1', color: '#00796b', boxSizing: 'border-box', textDecoration: 'none' }}
+            >
+              <MessageCircle size={13} />
+              <span>WhatsApp</span>
+            </a>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+
+  return (
+    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '20px', width: '100%', alignItems: 'start', paddingBottom: '20px' }}>
+      
+      {/* COLUMN 1: REVISIÓN */}
+      <div className="admin-panel-section" style={{ width: '100%', borderTop: '4px solid var(--color-terracotta)' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '15px' }}>
+          <Clock color="var(--color-terracotta)" />
+          <h2 style={{ fontSize: '1.2rem', color: 'var(--color-green-dark)' }}>Recibidos ({pendingOrders.length})</h2>
+        </div>
+        <div className="admin-orders-list">
+          {pendingOrders.map(o => renderOrderCard(o, true))}
         </div>
       </div>
+
+      {/* COLUMN 2: PREPARANDO */}
+      <div className="admin-panel-section" style={{ width: '100%', borderTop: '4px solid var(--color-green-dark)' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '15px' }}>
+          <ChefHat color="var(--color-green-dark)" />
+          <h2 style={{ fontSize: '1.2rem', color: 'var(--color-green-dark)' }}>Preparando ({preparingOrders.length})</h2>
+        </div>
+        <div className="admin-orders-list">
+          {preparingOrders.map(o => renderOrderCard(o, false))}
+        </div>
+      </div>
+
+      {/* COLUMN 3: LISTAS */}
+      <div className="admin-panel-section" style={{ width: '100%', borderTop: '4px solid var(--color-ochre)' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '15px' }}>
+          <PackageCheck color="var(--color-ochre)" />
+          <h2 style={{ fontSize: '1.2rem', color: 'var(--color-green-dark)' }}>Listas ({readyOrders.length})</h2>
+        </div>
+        <div className="admin-orders-list">
+          {readyOrders.map(o => renderOrderCard(o, false))}
+        </div>
+      </div>
+
+      {/* COLUMN 4: EN CAMINO */}
+      <div className="admin-panel-section" style={{ width: '100%', borderTop: '4px solid #0284c7' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '15px' }}>
+          <Bike color="#0284c7" />
+          <h2 style={{ fontSize: '1.2rem', color: 'var(--color-green-dark)' }}>En Camino ({inTransitOrders.length})</h2>
+        </div>
+        <div className="admin-orders-list">
+          {inTransitOrders.map(o => renderOrderCard(o, false))}
+        </div>
+      </div>
+
     </div>
   );
 }
