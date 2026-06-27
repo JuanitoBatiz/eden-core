@@ -590,7 +590,7 @@ export default function MenuPage() {
         <section className="hero">
           <h1 className="hero-title">Deliciosa barra de ensaladas y jugos naturales</h1>
           <p className="hero-desc">
-            Sabor artesanal y servicio ágil. Arma tu pedido en línea, acumula puntos con EdenPass y disfruta tu comida en sucursal o recíbela en la puerta de tu casa.
+            Sabor natural y servicio ágil. Arma tu pedido en línea, acumula puntos con EdenPass y disfruta tu comida en sucursal o recíbela en la puerta de tu casa.
           </p>
           <p style={{ marginTop: '10px', fontSize: '0.8rem', color: 'var(--color-green-dark)', opacity: 0.65, fontStyle: 'italic', fontWeight: 500 }}>
             * Imágenes con fines ilustrativos y de referencia visual.
@@ -672,9 +672,9 @@ export default function MenuPage() {
           </p>
 
           <div style={{ display: 'flex', gap: '20px', marginTop: '10px' }}>
-            <a 
-              href="https://www.instagram.com/edenensaladas?igsh=OHZpZGFsZm5vc2hk" 
-              target="_blank" 
+            <a
+              href="https://www.instagram.com/edenensaladas?igsh=OHZpZGFsZm5vc2hk"
+              target="_blank"
               rel="noopener noreferrer"
               style={{ color: 'var(--color-cream-light)', opacity: 0.85, transition: 'all 0.2s ease', display: 'flex', alignItems: 'center', justifyContent: 'center', width: '44px', height: '44px', borderRadius: '50%', backgroundColor: 'rgba(255,255,255,0.1)', border: '1px solid rgba(255,255,255,0.15)' }}
               onMouseOver={(e) => { e.currentTarget.style.opacity = '1'; e.currentTarget.style.transform = 'scale(1.08)'; e.currentTarget.style.backgroundColor = 'var(--color-ochre)'; }}
@@ -682,14 +682,14 @@ export default function MenuPage() {
               aria-label="Instagram de Edén"
             >
               <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <rect width="20" height="20" x="2" y="2" rx="5" ry="5"/>
-                <path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"/>
-                <line x1="17.5" x2="17.51" y1="6.5" y2="6.5"/>
+                <rect width="20" height="20" x="2" y="2" rx="5" ry="5" />
+                <path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z" />
+                <line x1="17.5" x2="17.51" y1="6.5" y2="6.5" />
               </svg>
             </a>
-            <a 
-              href="https://www.facebook.com/share/18cVG24wEM/?mibextid=wwXIfr" 
-              target="_blank" 
+            <a
+              href="https://www.facebook.com/share/18cVG24wEM/?mibextid=wwXIfr"
+              target="_blank"
               rel="noopener noreferrer"
               style={{ color: 'var(--color-cream-light)', opacity: 0.85, transition: 'all 0.2s ease', display: 'flex', alignItems: 'center', justifyContent: 'center', width: '44px', height: '44px', borderRadius: '50%', backgroundColor: 'rgba(255,255,255,0.1)', border: '1px solid rgba(255,255,255,0.15)' }}
               onMouseOver={(e) => { e.currentTarget.style.opacity = '1'; e.currentTarget.style.transform = 'scale(1.08)'; e.currentTarget.style.backgroundColor = 'var(--color-ochre)'; }}
@@ -697,7 +697,7 @@ export default function MenuPage() {
               aria-label="Facebook de Edén"
             >
               <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M18 2h-3a5 5 0 0 0-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 0 1 1-1h3z"/>
+                <path d="M18 2h-3a5 5 0 0 0-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 0 1 1-1h3z" />
               </svg>
             </a>
           </div>
@@ -1221,25 +1221,25 @@ export default function MenuPage() {
               </div>
 
               {!smsSent ? (
-                  <div className="form-group" style={{ marginTop: '15px' }}>
-                    <label className="form-label">Número de Celular (EdenPass)</label>
-                    <input
-                      type="tel"
-                      maxLength={10}
-                      className="form-input"
-                      placeholder="10 dígitos (ej. 6237591105)"
-                      value={customerPhone}
-                      onChange={e => setCustomerPhone(e.target.value.replace(/\D/g, ''))}
-                    />
+                <div className="form-group" style={{ marginTop: '15px' }}>
+                  <label className="form-label">Número de Celular (EdenPass)</label>
+                  <input
+                    type="tel"
+                    maxLength={10}
+                    className="form-input"
+                    placeholder="10 dígitos (ej. 6237591105)"
+                    value={customerPhone}
+                    onChange={e => setCustomerPhone(e.target.value.replace(/\D/g, ''))}
+                  />
 
-                    <button
-                      className="checkout-btn"
-                      style={{ marginTop: '20px' }}
-                      onClick={handleSendSmsCode}
-                    >
-                      Enviar Código de Verificación
-                    </button>
-                  </div>
+                  <button
+                    className="checkout-btn"
+                    style={{ marginTop: '20px' }}
+                    onClick={handleSendSmsCode}
+                  >
+                    Enviar Código de Verificación
+                  </button>
+                </div>
               ) : (
                 <div style={{ marginTop: '20px' }}>
                   <label className="form-label" style={{ textAlign: 'center', display: 'block' }}>Código de Verificación SMS</label>

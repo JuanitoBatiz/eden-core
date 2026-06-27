@@ -82,7 +82,7 @@ export const MENU_ITEMS: MenuItem[] = [
   {
     id: 'ensalada-chica',
     name: 'Ensalada Chica',
-    description: '1 proteína, base lechuga, 4 toppings, 1 semilla, 1 fruto seco y aderezo a elegir.',
+    description: 'Nuestra porción ideal. Una cama de hojas crujientes coronada con la proteína de tu elección, deliciosos toppings de temporada, semillas y tu aderezo favorito.',
     price: 95,
     image: '/images/salad_bowl.png',
     category: 'ensaladas',
@@ -91,7 +91,7 @@ export const MENU_ITEMS: MenuItem[] = [
   {
     id: 'ensalada-grande',
     name: 'Ensalada Grande',
-    description: '2 proteínas, base lechuga, 6 toppings, 2 semillas, 2 frutos secos y aderezo a elegir.',
+    description: 'Para el antojo en serio. Abundante mix de vegetales frescos con doble porción de proteína, generosos toppings artesanales y nuestra selección de semillas tostadas.',
     price: 150,
     image: '/images/salad_bowl.png',
     category: 'ensaladas',
@@ -102,7 +102,7 @@ export const MENU_ITEMS: MenuItem[] = [
   {
     id: 'jugos-clasicos',
     name: 'Jugos Naturales',
-    description: 'Mandarina, Naranja, Sandía, Verde, Pepino o Limonada.',
+    description: 'Exprimidos al momento para conservar todas sus vitaminas. Un boost de energía pura y refrescante con frutas selectas de temporada.',
     price: 70,
     prices: { 'Chico': 70, 'Grande': 80 },
     image: '/images/cold_pressed_juice.png',
@@ -113,7 +113,7 @@ export const MENU_ITEMS: MenuItem[] = [
   {
     id: 'jugo-mixto',
     name: 'Jugo Mixto',
-    description: 'Jugo personalizado de 2 frutas a elegir.',
+    description: 'Tu combinación perfecta. Fusionamos tus dos frutas favoritas en un jugo 100% natural, preparado al instante para refrescar tu día.',
     price: 80,
     prices: { 'Chico': 80, 'Grande': 90 },
     image: '/images/cold_pressed_juice.png',
@@ -125,7 +125,7 @@ export const MENU_ITEMS: MenuItem[] = [
   {
     id: 'smoothies-deluxe',
     name: 'Smoothies Deluxe',
-    description: 'Aguacate, Zanahoria, Mandarina, Piña, Carambola o Kiwi.',
+    description: 'Nuestra línea exótica. Textura extra cremosa y combinaciones únicas llenas de antioxidantes. El equilibrio perfecto entre salud y un sabor espectacular.',
     price: 80,
     prices: { 'Chico': 80, 'Grande': 90 },
     image: '/images/fruit_smoothie.png',
@@ -136,7 +136,7 @@ export const MENU_ITEMS: MenuItem[] = [
   {
     id: 'smoothies-clasicos',
     name: 'Smoothies Clásicos',
-    description: 'Mango, Sandía, Naranja, Plátano o Fresa.',
+    description: 'Los favoritos de siempre, preparados al punto de nieve con la fruta más fresca de la estación. Helados, dulces y naturalmente deliciosos.',
     price: 70,
     prices: { 'Chico': 70, 'Grande': 80 },
     image: '/images/fruit_smoothie.png',
@@ -149,7 +149,7 @@ export const MENU_ITEMS: MenuItem[] = [
   {
     id: 'infusiones-premium',
     name: 'Infusión Premium',
-    description: 'Negro-Durazno, Frutos rojos, Matcha-Sencha, Hierbabuena-Menta, Manzana-Canela, Manzanilla-Aloe Vera.',
+    description: 'Tés helados y mezclas herbales preparadas artesanalmente. Refrescantes, aromáticas y el maridaje perfecto para tus alimentos.',
     price: 55,
     prices: { 'Chico': 55, 'Grande': 65 },
     image: '/images/cold_pressed_juice.png', // Fallback to glass or we can styled it beautifully
@@ -162,7 +162,7 @@ export const MENU_ITEMS: MenuItem[] = [
   {
     id: 'burrito-pollo',
     name: 'Burrito de Pollo',
-    description: 'Envuelto en tortilla gigante con lechuga, aguacate, zanahoria rayada, pepino rayado, frijoles, col y aderezo chipotle.',
+    description: 'Un envuelto calientito y saciador. Jugosa pechuga de pollo, cama de vegetales crujientes, frijolitos y un toque de nuestro aderezo chipotle de la casa.',
     price: 75,
     image: '/images/chicken_wrap.png',
     category: 'burritos-sandwiches'
@@ -170,7 +170,7 @@ export const MENU_ITEMS: MenuItem[] = [
   {
     id: 'sandwich-pollo',
     name: 'Sándwich / Torta de Pollo',
-    description: 'Preparado con pollo jugoso, lechuga y verduras frescas en pan artesanal.',
+    description: 'Clásico, reconfortante y lleno de sabor. Pollo perfectamente sazonado entre rebanadas de pan artesanal tostado, vegetales frescos y aderezo.',
     price: 75,
     image: '/images/chicken_wrap.png',
     category: 'burritos-sandwiches'
@@ -178,7 +178,7 @@ export const MENU_ITEMS: MenuItem[] = [
   {
     id: 'sandwich-pavo',
     name: 'Sándwich / Torta de Jamón de Pavo',
-    description: 'Jamón de pavo premium con aderezo, queso y vegetales frescos.',
+    description: 'Ligero pero delicioso. Finas rebanadas de pavo premium con queso fundido y una cama de vegetales frescos en nuestro pan de la casa.',
     price: 65,
     image: '/images/chicken_wrap.png',
     category: 'burritos-sandwiches'
@@ -186,7 +186,7 @@ export const MENU_ITEMS: MenuItem[] = [
   {
     id: 'rollito-pollo',
     name: 'Rollitos Vietnamitas de Pollo',
-    description: 'Rollos de papel de arroz rellenos de pollo, lechuga, fideos de arroz y vegetales crocantes.',
+    description: 'Nuestra joya oriental. Frescos bocados envueltos en delicado papel de arroz, crujientes por dentro y perfectos para remojar en nuestra salsa secreta.',
     price: 95,
     image: '/images/chicken_wrap.png',
     category: 'burritos-sandwiches'
@@ -194,7 +194,7 @@ export const MENU_ITEMS: MenuItem[] = [
   {
     id: 'rollito-tsurimi',
     name: 'Rollitos Vietnamitas de Tsurimi',
-    description: 'Fresco tsurimi con finos vegetales envoltura en hoja de arroz.',
+    description: 'Una experiencia fresca y exótica. Tsurimi desmenuzado con toques orientales, verduras crocantes y envueltos artesanalmente al momento.',
     price: 90,
     image: '/images/chicken_wrap.png',
     category: 'burritos-sandwiches'
@@ -204,7 +204,7 @@ export const MENU_ITEMS: MenuItem[] = [
   {
     id: 'bowl-avena',
     name: 'Bowl de Avena',
-    description: 'Avena cremosa acompañada de 2 frutas y 2 semillas a elegir.',
+    description: 'El desayuno perfecto o postre sin culpa. Base de avena cremosa, endulzada naturalmente y coronada con fruta fresca y crujientes semillas a tu elección.',
     price: 60,
     image: '/images/salad_bowl.png',
     category: 'bowls',
@@ -213,7 +213,7 @@ export const MENU_ITEMS: MenuItem[] = [
   {
     id: 'bowl-yogurt',
     name: 'Bowl de Yogurt',
-    description: 'Yogurt natural acompañado de 2 frutas y 2 semillas a elegir.',
+    description: 'Cremoso, fresco y lleno de probióticos. Una base de yogurt natural acompañada de la mejor selección de frutas de temporada y semillas tostadas.',
     price: 55,
     image: '/images/salad_bowl.png',
     category: 'bowls',
@@ -222,7 +222,7 @@ export const MENU_ITEMS: MenuItem[] = [
   {
     id: 'coctel-fruta',
     name: 'Cóctel de Frutas',
-    description: 'Mezcla fresca de frutas de temporada con un toque de miel.',
+    description: 'La frescura de la estación en un solo plato. Fruta recién picada, naturalmente dulce y perfecta para un antojo ligero a cualquier hora.',
     price: 65,
     image: '/images/salad_bowl.png',
     category: 'bowls'
