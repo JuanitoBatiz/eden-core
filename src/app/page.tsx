@@ -140,7 +140,7 @@ export default function MenuPage() {
 
   // Silent Auth Check on Mount
   useEffect(() => {
-    fetch('/api/auth/refresh', { method: 'POST' })
+    fetch('/api/auth/refresh', { method: 'POST', credentials: 'include' })
       .then(res => {
         if (res.ok) return res.json();
         throw new Error('No valid session');
