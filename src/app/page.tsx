@@ -590,7 +590,7 @@ export default function MenuPage() {
         <section className="hero">
           <h1 className="hero-title">Deliciosa barra de ensaladas y jugos naturales</h1>
           <p className="hero-desc">
-            Escanea tu QR, arma tu pedido personalizado desde tu mesa y recógelo directamente en la barra al instante.
+            Sabor artesanal y servicio ágil. Arma tu pedido en línea, acumula puntos con EdenPass y disfruta tu comida en sucursal o recíbela en la puerta de tu casa.
           </p>
           <p style={{ marginTop: '10px', fontSize: '0.8rem', color: 'var(--color-green-dark)', opacity: 0.65, fontStyle: 'italic', fontWeight: 500 }}>
             * Imágenes con fines ilustrativos y de referencia visual.
