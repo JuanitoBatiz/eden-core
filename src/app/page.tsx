@@ -1171,10 +1171,7 @@ export default function MenuPage() {
                   <span>{isSubmittingOrder ? 'Procesando Pedido...' : 'Confirmar Pedido'}</span>
                   {!isSubmittingOrder && <ArrowRight size={18} />}
                 </button>
-                <div style={{ display: 'flex', gap: '8px', alignItems: 'center', marginTop: '12px', fontSize: '0.75rem', color: 'var(--color-text-muted)', justifyContent: 'center' }}>
-                  <Info size={14} />
-                  <span>El pago se realiza en mostrador al recoger tu orden.</span>
-                </div>
+
               </div>
             )}
           </div>
