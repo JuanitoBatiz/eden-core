@@ -1224,59 +1224,25 @@ export default function MenuPage() {
               </div>
 
               {!smsSent ? (
-                <>
                   <div className="form-group" style={{ marginTop: '15px' }}>
-                    <label className="form-label">Método de Verificación</label>
-                    <div className="auth-choice-btns">
-                      <button
-                        className={`auth-choice-btn ${authMethod === 'phone' ? 'active' : ''}`}
-                        onClick={() => setAuthMethod('phone')}
-                      >
-                        Celular
-                      </button>
-                      <button
-                        className={`auth-choice-btn ${authMethod === 'google' ? 'active' : ''}`}
-                        onClick={() => setAuthMethod('google')}
-                      >
-                        Google
-                      </button>
-                    </div>
+                    <label className="form-label">Número de Celular (EdenPass)</label>
+                    <input
+                      type="tel"
+                      maxLength={10}
+                      className="form-input"
+                      placeholder="10 dígitos (ej. 6237591105)"
+                      value={customerPhone}
+                      onChange={e => setCustomerPhone(e.target.value.replace(/\D/g, ''))}
+                    />
+
+                    <button
+                      className="checkout-btn"
+                      style={{ marginTop: '20px' }}
+                      onClick={handleSendSmsCode}
+                    >
+                      Enviar Código de Verificación
+                    </button>
                   </div>
-
-                  {authMethod === 'phone' ? (
-                    <div className="form-group" style={{ marginTop: '15px' }}>
-                      <label className="form-label">Número de Celular</label>
-                      <input
-                        type="tel"
-                        maxLength={10}
-                        className="form-input"
-                        placeholder="10 dígitos (ej. 6237591105)"
-                        value={customerPhone}
-                        onChange={e => setCustomerPhone(e.target.value.replace(/\D/g, ''))}
-                      />
-
-                      <button
-                        className="checkout-btn"
-                        style={{ marginTop: '20px' }}
-                        onClick={handleSendSmsCode}
-                      >
-                        Enviar Código de Verificación
-                      </button>
-                    </div>
-                  ) : (
-                    <div>
-                      <button className="google-auth-btn" onClick={handleGoogleLogin}>
-                        <svg width="18" height="18" viewBox="0 0 18 18">
-                          <path fill="#4285F4" d="M17.6 9.2c0-.6-.1-1.2-.2-1.8H9v3.4h4.8c-.2 1-.8 1.9-1.6 2.5v2.1h2.6c1.5-1.4 2.4-3.5 2.4-6.2z" />
-                          <path fill="#34A853" d="M9 18c2.4 0 4.5-.8 6-2.2l-2.6-2.1c-.7.5-1.7.8-3.4.8-2.6 0-4.8-1.8-5.6-4.2H.8v2.2C2.3 15.5 5.4 18 9 18z" />
-                          <path fill="#FBBC05" d="M3.4 10.3c-.2-.6-.3-1.2-.3-1.8s.1-1.2.3-1.8V4.5H.8C.3 5.5 0 6.7 0 8s.3 2.5.8 3.5l2.6-1.2z" />
-                          <path fill="#EA4335" d="M9 3.6c1.3 0 2.5.5 3.4 1.3l2.6-2.5C13.5.9 11.4 0 9 0 5.4 0 2.3 2.5.8 5.5l2.6 2.2c.8-2.4 3-4.1 5.6-4.1z" />
-                        </svg>
-                        <span>Iniciar Sesión con Google</span>
-                      </button>
-                    </div>
-                  )}
-                </>
               ) : (
                 <div style={{ marginTop: '20px' }}>
                   <label className="form-label" style={{ textAlign: 'center', display: 'block' }}>Código de Verificación SMS</label>
