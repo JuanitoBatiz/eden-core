@@ -3,8 +3,7 @@ import { requireRole } from '@/lib/auth';
 import { createClient } from '@supabase/supabase-js';
 import { getLoyaltyInfoFromLoyverse } from '@/lib/loyalty';
 
-// Esto asegura que la ruta tenga cache de 30 segundos usando el sistema de revalidate de App Router
-export const revalidate = 30;
+// export const revalidate = 30; // REMOVED: Caching user-specific data causes cache poisoning
 
 export async function GET(req: Request) {
   try {
