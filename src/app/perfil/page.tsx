@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { ChevronLeft, LogOut } from 'lucide-react';
+import { ChevronLeft, LogOut, Award, Sparkles } from 'lucide-react';
 import EdenPassQR from '@/components/loyalty/EdenPassQR';
 
 export default function PerfilPage() {
@@ -17,12 +17,12 @@ export default function PerfilPage() {
         if (res.ok) {
           setIsAuthenticated(true);
         } else {
-          router.push('/?login=true');
+          setIsAuthenticated(false);
         }
       })
-      .catch(() => router.push('/?login=true'))
+      .catch(() => setIsAuthenticated(false))
       .finally(() => setLoading(false));
-  }, [router]);
+  }, []);
 
   useEffect(() => {
     if (!isAuthenticated) return;
@@ -68,7 +68,43 @@ export default function PerfilPage() {
     );
   }
 
-  if (!isAuthenticated) return null;
+  if (!isAuthenticated) {
+    return (
+      <div className="profile-page-wrapper" style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', justifyContent: 'space-between', padding: '24px 20px', background: 'var(--color-cream-light)' }}>
+        <header style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          <button onClick={() => router.push('/')} className="profile-back-btn" style={{ position: 'static', display: 'flex', alignItems: 'center', gap: '4px', textDecoration: 'none', background: 'rgba(34, 60, 43, 0.08)', borderRadius: '12px', padding: '8px 14px', border: 'none', cursor: 'pointer', color: 'var(--color-green-dark)', fontWeight: 700 }}>
+            <ChevronLeft size={20} /> <span style={{ fontSize: '0.95rem' }}>Menú</span>
+          </button>
+          <div style={{ fontFamily: 'var(--font-serif)', fontSize: '1.4rem', color: 'var(--color-green-dark)', fontWeight: 700, letterSpacing: '1px' }}>EDÉN</div>
+          <div style={{ width: '70px' }}></div>
+        </header>
+
+        <div style={{ maxWidth: '420px', margin: 'auto', textAlign: 'center', padding: '44px 28px', backgroundColor: '#ffffff', borderRadius: '32px', boxShadow: '0 24px 50px rgba(34, 60, 43, 0.08)', border: '2px solid rgba(212, 163, 115, 0.25)' }}>
+          <div style={{ width: '76px', height: '76px', borderRadius: '24px', background: 'linear-gradient(135deg, var(--color-green-dark) 0%, #15261b 100%)', color: 'var(--color-ochre)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 20px auto', boxShadow: '0 12px 28px rgba(34, 60, 43, 0.22)' }}>
+            <Award size={40} />
+          </div>
+
+          <span style={{ fontSize: '0.74rem', fontWeight: 800, letterSpacing: '2.5px', color: 'var(--color-terracotta)', textTransform: 'uppercase', display: 'block', marginBottom: '8px' }}>PROGRAMA INSTITUCIONAL</span>
+          <h1 style={{ fontFamily: 'var(--font-serif)', fontSize: '2rem', color: 'var(--color-green-dark)', margin: '0 0 16px 0', lineHeight: 1.25, fontWeight: 700 }}>Únete a la Familia Edén</h1>
+          
+          <p style={{ fontSize: '0.96rem', color: 'var(--color-text-main)', opacity: 0.85, lineHeight: 1.6, margin: '0 auto 32px auto' }}>
+            Haz tu primer pedido en nuestro menú digital para activar tu membresía exclusiva <strong>EdenPass</strong>, acumular recompensas reales en cada visita y agilizar tus entregas en sucursal.
+          </p>
+
+          <button 
+            onClick={() => router.push('/')} 
+            style={{ width: '100%', padding: '18px 24px', borderRadius: '18px', background: 'linear-gradient(135deg, var(--color-green-dark) 0%, #172b1e 100%)', color: '#f4ebd9', border: 'none', fontSize: '1.05rem', fontWeight: 700, cursor: 'pointer', boxShadow: '0 10px 24px rgba(34, 60, 43, 0.25)', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px', transition: 'all 0.2s ease' }}
+          >
+            <Sparkles size={18} color="var(--color-ochre)" /> Hacer mi Primer Pedido
+          </button>
+        </div>
+
+        <footer style={{ textAlign: 'center', fontSize: '0.8rem', color: 'var(--color-text-muted)', paddingBottom: '10px' }}>
+          Restaurante Institucional Edén • Otumba, Estado de México
+        </footer>
+      </div>
+    );
+  }
 
   return (
     <div className="profile-page-wrapper">
