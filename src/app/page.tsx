@@ -23,9 +23,7 @@ import {
   UserCircle,
   Store,
   Bike,
-  Utensils,
-  Instagram,
-  Facebook
+  Utensils
 } from 'lucide-react';
 import { MenuItem, MenuCategory, CATEGORIES as fallbackCategories, MENU_ITEMS as fallbackMenuItems, SALAD_OPTIONS as fallbackSaladOptions } from '@/lib/menuData';
 import { SmsRequest, VerifyOtpRequest, OrderCreateRequest } from '@/types/api-contracts';
@@ -683,7 +681,11 @@ export default function MenuPage() {
               onMouseOut={(e) => { e.currentTarget.style.opacity = '0.85'; e.currentTarget.style.transform = 'scale(1)'; e.currentTarget.style.backgroundColor = 'rgba(255,255,255,0.1)'; }}
               aria-label="Instagram de Edén"
             >
-              <Instagram size={22} />
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <rect width="20" height="20" x="2" y="2" rx="5" ry="5"/>
+                <path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"/>
+                <line x1="17.5" x2="17.51" y1="6.5" y2="6.5"/>
+              </svg>
             </a>
             <a 
               href="https://www.facebook.com/share/18cVG24wEM/?mibextid=wwXIfr" 
@@ -694,7 +696,9 @@ export default function MenuPage() {
               onMouseOut={(e) => { e.currentTarget.style.opacity = '0.85'; e.currentTarget.style.transform = 'scale(1)'; e.currentTarget.style.backgroundColor = 'rgba(255,255,255,0.1)'; }}
               aria-label="Facebook de Edén"
             >
-              <Facebook size={22} />
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M18 2h-3a5 5 0 0 0-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 0 1 1-1h3z"/>
+              </svg>
             </a>
           </div>
 
