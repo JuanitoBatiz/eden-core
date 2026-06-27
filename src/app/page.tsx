@@ -705,6 +705,14 @@ export default function MenuPage() {
           <div style={{ fontSize: '0.8rem', opacity: 0.6, marginTop: '15px' }}>
             © 2026 Edén. Todos los derechos reservados.
           </div>
+
+          {/* WATERMARK */}
+          <div style={{ marginTop: '30px', display: 'flex', flexDirection: 'column', alignItems: 'center', opacity: 0.7, transition: 'opacity 0.3s', paddingBottom: '20px' }} onMouseOver={e => e.currentTarget.style.opacity = '1'} onMouseOut={e => e.currentTarget.style.opacity = '0.7'}>
+            <a href="https://hummingxbi.com" target="_blank" rel="noopener noreferrer" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', textDecoration: 'none', color: 'inherit' }}>
+              <span style={{ fontSize: '0.7rem', letterSpacing: '2px', marginBottom: '8px', color: 'var(--color-cream-light)' }}>TECNOLOGÍA POR</span>
+              <img src="/images/logoclaro.png" alt="HummingX BI" style={{ height: '22px', objectFit: 'contain' }} />
+            </a>
+          </div>
         </div>
       </footer>
 
