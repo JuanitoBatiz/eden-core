@@ -23,7 +23,9 @@ import {
   UserCircle,
   Store,
   Bike,
-  Utensils
+  Utensils,
+  Instagram,
+  Facebook
 } from 'lucide-react';
 import { MenuItem, MenuCategory, CATEGORIES as fallbackCategories, MENU_ITEMS as fallbackMenuItems, SALAD_OPTIONS as fallbackSaladOptions } from '@/lib/menuData';
 import { SmsRequest, VerifyOtpRequest, OrderCreateRequest } from '@/types/api-contracts';
@@ -670,7 +672,33 @@ export default function MenuPage() {
           <p style={{ maxWidth: '400px', fontSize: '0.9rem', opacity: 0.8 }}>
             Higiene, orden y sabor artesanal en Otumba, Estado de México.
           </p>
-          <div style={{ fontSize: '0.8rem', opacity: 0.6, marginTop: '20px' }}>
+
+          <div style={{ display: 'flex', gap: '20px', marginTop: '10px' }}>
+            <a 
+              href="https://www.instagram.com/edenensaladas?igsh=OHZpZGFsZm5vc2hk" 
+              target="_blank" 
+              rel="noopener noreferrer"
+              style={{ color: 'var(--color-cream-light)', opacity: 0.85, transition: 'all 0.2s ease', display: 'flex', alignItems: 'center', justifyContent: 'center', width: '44px', height: '44px', borderRadius: '50%', backgroundColor: 'rgba(255,255,255,0.1)', border: '1px solid rgba(255,255,255,0.15)' }}
+              onMouseOver={(e) => { e.currentTarget.style.opacity = '1'; e.currentTarget.style.transform = 'scale(1.08)'; e.currentTarget.style.backgroundColor = 'var(--color-ochre)'; }}
+              onMouseOut={(e) => { e.currentTarget.style.opacity = '0.85'; e.currentTarget.style.transform = 'scale(1)'; e.currentTarget.style.backgroundColor = 'rgba(255,255,255,0.1)'; }}
+              aria-label="Instagram de Edén"
+            >
+              <Instagram size={22} />
+            </a>
+            <a 
+              href="https://www.facebook.com/share/18cVG24wEM/?mibextid=wwXIfr" 
+              target="_blank" 
+              rel="noopener noreferrer"
+              style={{ color: 'var(--color-cream-light)', opacity: 0.85, transition: 'all 0.2s ease', display: 'flex', alignItems: 'center', justifyContent: 'center', width: '44px', height: '44px', borderRadius: '50%', backgroundColor: 'rgba(255,255,255,0.1)', border: '1px solid rgba(255,255,255,0.15)' }}
+              onMouseOver={(e) => { e.currentTarget.style.opacity = '1'; e.currentTarget.style.transform = 'scale(1.08)'; e.currentTarget.style.backgroundColor = 'var(--color-ochre)'; }}
+              onMouseOut={(e) => { e.currentTarget.style.opacity = '0.85'; e.currentTarget.style.transform = 'scale(1)'; e.currentTarget.style.backgroundColor = 'rgba(255,255,255,0.1)'; }}
+              aria-label="Facebook de Edén"
+            >
+              <Facebook size={22} />
+            </a>
+          </div>
+
+          <div style={{ fontSize: '0.8rem', opacity: 0.6, marginTop: '15px' }}>
             © 2026 Edén. Todos los derechos reservados.
           </div>
         </div>
