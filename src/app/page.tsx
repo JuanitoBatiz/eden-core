@@ -104,6 +104,20 @@ export default function MenuPage() {
   const [serviceType, setServiceType] = useState<'pickup' | 'delivery' | 'dine_in'>('pickup');
   const [deliveryAddress, setDeliveryAddress] = useState('');
 
+  // Active Orders State (For floating banner)
+  const [activeOrders, setActiveOrders] = useState<any[]>([]);
+
+  useEffect(() => {
+    fetch('/api/me/orders', { credentials: 'include' })
+      .then(res => res.json())
+      .then(data => {
+        if (data.success && data.active_orders?.length > 0) {
+          setActiveOrders(data.active_orders);
+        }
+      })
+      .catch(console.error);
+  }, []);
+
   // Read cart from localStorage on mount
   useEffect(() => {
     const savedCart = localStorage.getItem('eden_cart');
@@ -1313,6 +1327,42 @@ export default function MenuPage() {
               )}
             </div>
           </div>
+        </div>
+      )}
+
+      {/* ACTIVE ORDERS FLOATING BUTTON */}
+      {activeOrders.length > 0 && !isCartOpen && !selectedProduct && !isAuthOpen && (
+        <div 
+          onClick={() => router.push(`/orden/${activeOrders[0].id}`)}
+          style={{
+            position: 'fixed',
+            bottom: '90px', // Above the cart button
+            right: '20px',
+            backgroundColor: 'var(--color-ochre)',
+            color: 'var(--color-green-dark)',
+            padding: '12px 20px',
+            borderRadius: '30px',
+            boxShadow: '0 8px 24px rgba(212, 163, 115, 0.4)',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '10px',
+            cursor: 'pointer',
+            zIndex: 90,
+            fontWeight: 700,
+            fontSize: '0.95rem',
+            animation: 'float 3s ease-in-out infinite',
+            border: '2px solid rgba(255,255,255,0.2)'
+          }}
+        >
+          <div style={{
+            width: '10px',
+            height: '10px',
+            backgroundColor: '#27ae60',
+            borderRadius: '50%',
+            boxShadow: '0 0 8px #27ae60'
+          }} className="pulse-dot"></div>
+          <span>Ver Orden Activa</span>
+          <ChevronRight size={18} />
         </div>
       )}
     </>
