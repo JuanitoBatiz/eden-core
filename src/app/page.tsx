@@ -1184,17 +1184,25 @@ export default function MenuPage() {
       {/* AUTH & MINI REGISTRATION MODAL */}
       {isAuthOpen && (
         <div className="modal-overlay" onClick={() => setIsAuthOpen(false)}>
-          <div className="modal-content" onClick={e => e.stopPropagation()} style={{ maxWidth: '450px' }}>
-            <div className="modal-header">
-              <h2>Mini Registro</h2>
-              <button className="close-btn" onClick={() => setIsAuthOpen(false)}>
+          <div className="modal-content" onClick={e => e.stopPropagation()} style={{ maxWidth: '460px', padding: '32px 28px', borderRadius: '28px', border: '2px solid rgba(212, 163, 115, 0.3)', boxShadow: '0 24px 48px rgba(34, 60, 43, 0.12)' }}>
+            <div className="modal-header" style={{ borderBottom: 'none', paddingBottom: '12px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                <div style={{ width: '42px', height: '42px', borderRadius: '14px', background: 'linear-gradient(135deg, var(--color-green-dark) 0%, #15261b 100%)', color: 'var(--color-ochre)', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 6px 16px rgba(34, 60, 43, 0.2)' }}>
+                  <Sparkles size={22} />
+                </div>
+                <div>
+                  <span style={{ fontSize: '0.72rem', fontWeight: 800, letterSpacing: '2.5px', color: 'var(--color-terracotta)', textTransform: 'uppercase', display: 'block' }}>EDENPASS INSTITUCIONAL</span>
+                  <h2 style={{ fontFamily: 'var(--font-serif)', fontSize: '1.65rem', color: 'var(--color-green-dark)', margin: 0, fontWeight: 700 }}>Tu Orden en Cocina</h2>
+                </div>
+              </div>
+              <button className="close-btn" onClick={() => setIsAuthOpen(false)} style={{ backgroundColor: 'rgba(0,0,0,0.04)', borderRadius: '50%', width: '36px', height: '36px' }}>
                 <X size={20} />
               </button>
             </div>
 
-            <div className="modal-body">
-              <p style={{ fontSize: '0.9rem', color: 'var(--color-text-muted)', marginBottom: '15px' }}>
-                Completa tu nombre y verifica tu cuenta para mandar tu pedido instantáneamente a la pantalla de cocina.
+            <div className="modal-body" style={{ paddingTop: '8px' }}>
+              <p style={{ fontSize: '0.94rem', color: 'var(--color-text-main)', opacity: 0.85, lineHeight: 1.55, marginBottom: '22px' }}>
+                Verifica tu número para enlazar tu pedido con la comanda de cocina y acumular recompensas reales.
               </p>
 
               {errorMsg && (

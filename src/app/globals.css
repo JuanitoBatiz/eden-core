@@ -1864,6 +1864,59 @@ a {
   transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
+/* SMS Code Container */
+.sms-code-container {
+  display: flex;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+  max-width: 360px;
+  margin: 24px auto 16px auto;
+}
+
+.sms-code-input {
+  flex: 1;
+  min-width: 42px;
+  max-width: 54px;
+  height: 60px;
+  text-align: center;
+  font-size: 1.6rem;
+  font-weight: 700;
+  font-family: var(--font-serif);
+  color: var(--color-green-dark);
+  background-color: #ffffff;
+  border: 2px solid rgba(34, 60, 43, 0.15);
+  border-radius: 14px;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.04);
+  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.sms-code-input:focus {
+  outline: none;
+  border-color: var(--color-green-dark);
+  background-color: #ffffff;
+  box-shadow: 0 0 0 4px rgba(34, 60, 43, 0.12), 0 8px 20px rgba(34, 60, 43, 0.08);
+  transform: translateY(-2px);
+}
+
+.sms-helper {
+  font-size: 0.85rem;
+  text-align: center;
+  color: var(--color-text-muted);
+}
+
+.sms-code-preview-banner {
+  background: linear-gradient(135deg, #fffcf0 0%, #fff8e1 100%);
+  border: 1px solid rgba(212, 163, 115, 0.4);
+  border-radius: 14px;
+  padding: 14px 16px;
+  margin-top: 20px;
+  text-align: center;
+  font-size: 0.9rem;
+  color: var(--color-green-dark);
+  box-shadow: 0 4px 12px rgba(212, 163, 115, 0.1);
+}
+
 .service-option-card:hover {
   color: var(--color-green-dark);
   background: rgba(44, 62, 45, 0.04);
