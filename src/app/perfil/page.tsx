@@ -84,7 +84,7 @@ export default function PerfilPage() {
             <Award size={40} />
           </div>
 
-          <span style={{ fontSize: '0.74rem', fontWeight: 800, letterSpacing: '2.5px', color: 'var(--color-terracotta)', textTransform: 'uppercase', display: 'block', marginBottom: '8px' }}>PROGRAMA INSTITUCIONAL</span>
+          <span style={{ fontSize: '0.74rem', fontWeight: 800, letterSpacing: '2.5px', color: 'var(--color-terracotta)', textTransform: 'uppercase', display: 'block', marginBottom: '8px' }}>MEMBRESÍA EXCLUSIVA</span>
           <h1 style={{ fontFamily: 'var(--font-serif)', fontSize: '2rem', color: 'var(--color-green-dark)', margin: '0 0 16px 0', lineHeight: 1.25, fontWeight: 700 }}>Únete a la Familia Edén</h1>
           
           <p style={{ fontSize: '0.96rem', color: 'var(--color-text-main)', opacity: 0.85, lineHeight: 1.6, margin: '0 auto 32px auto' }}>
@@ -100,7 +100,7 @@ export default function PerfilPage() {
         </div>
 
         <footer style={{ textAlign: 'center', fontSize: '0.8rem', color: 'var(--color-text-muted)', paddingBottom: '10px' }}>
-          Restaurante Institucional Edén • Otumba, Estado de México
+          Restaurante Edén • Otumba, Estado de México
         </footer>
       </div>
     );
