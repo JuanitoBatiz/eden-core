@@ -748,7 +748,7 @@ export default function MenuPage() {
           {/* WATERMARK */}
           <div style={{ marginTop: '30px', display: 'flex', flexDirection: 'column', alignItems: 'center', opacity: 0.7, transition: 'opacity 0.3s', paddingBottom: '20px' }} onMouseOver={e => e.currentTarget.style.opacity = '1'} onMouseOut={e => e.currentTarget.style.opacity = '0.7'}>
             <a href="https://hummingxbi.com" target="_blank" rel="noopener noreferrer" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', textDecoration: 'none', color: 'inherit' }}>
-              <span style={{ fontSize: '0.7rem', letterSpacing: '2px', marginBottom: '8px', color: 'var(--color-cream-light)' }}>ENTORNO DESARROLLADO POR</span>
+              <span style={{ fontSize: '0.7rem', letterSpacing: '2px', marginBottom: '8px', color: 'var(--color-cream-light)' }}> PRODUCED BY </span>
               <img src="/images/logoclaro.png" alt="HummingX BI" style={{ height: '26px', width: '26px', borderRadius: '50%', objectFit: 'cover' }} />
             </a>
           </div>
