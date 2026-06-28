@@ -22,10 +22,11 @@ export interface MenuCategory {
 
 export const CATEGORIES: MenuCategory[] = [
   { id: 'ensaladas', name: 'Ensaladas', icon: '🥗' },
-  { id: 'jugos', name: 'Jugos y Smoothies', icon: '🍹' },
-  { id: 'infusiones', name: 'Infusiones', icon: '🍵' },
   { id: 'burritos-sandwiches', name: 'Wraps y Sándwiches', icon: '🌯' },
-  { id: 'bowls', name: 'Bowls y Cocteles', icon: '🥣' },
+  { id: 'jugos', name: 'Jugos', icon: '🍹' },
+  { id: 'smoothies', name: 'Smoothies', icon: '🥤' },
+  { id: 'infusiones', name: 'Infusiones', icon: '🍵' },
+  { id: 'bowls', name: 'Bowls y Postres', icon: '🥣' },
   { id: 'embotellada', name: 'Embotellados', icon: '🥤' }
 ];
 
@@ -80,19 +81,11 @@ export const SALAD_OPTIONS = {
 export const MENU_ITEMS: MenuItem[] = [
   // --- ENSALADAS ---
   {
-    id: 'ensalada-chica',
-    name: 'Ensalada Chica',
-    description: 'Nuestra porción ideal. Una cama de hojas crujientes coronada con la proteína de tu elección, deliciosos toppings de temporada, semillas y tu aderezo favorito.',
+    id: 'ensalada',
+    name: 'Ensalada',
+    description: 'Nuestra deliciosa ensalada fresca. Una cama de hojas crujientes coronada con la proteína de tu elección, deliciosos toppings de temporada, semillas y tu aderezo favorito. Arma tu combinación perfecta en tamaño Chica o Grande.',
     price: 95,
-    image: '/images/salad_bowl.png',
-    category: 'ensaladas',
-    customizable: true
-  },
-  {
-    id: 'ensalada-grande',
-    name: 'Ensalada Grande',
-    description: 'Para el antojo en serio. Abundante mix de vegetales frescos con doble porción de proteína, generosos toppings artesanales y nuestra selección de semillas tostadas.',
-    price: 150,
+    prices: { 'Chica': 95, 'Grande': 150 },
     image: '/images/salad_bowl.png',
     category: 'ensaladas',
     customizable: true
@@ -129,7 +122,7 @@ export const MENU_ITEMS: MenuItem[] = [
     price: 80,
     prices: { 'Chico': 80, 'Grande': 90 },
     image: '/images/fruit_smoothie.png',
-    category: 'jugos',
+    category: 'smoothies',
     customizable: true,
     flavors: ['Aguacate', 'Zanahoria', 'Mandarina', 'Piña', 'Carambola', 'Kiwi']
   },
@@ -140,7 +133,7 @@ export const MENU_ITEMS: MenuItem[] = [
     price: 70,
     prices: { 'Chico': 70, 'Grande': 80 },
     image: '/images/fruit_smoothie.png',
-    category: 'jugos',
+    category: 'smoothies',
     customizable: true,
     flavors: ['Mango', 'Sandía', 'Naranja', 'Plátano', 'Fresa']
   },
@@ -165,7 +158,8 @@ export const MENU_ITEMS: MenuItem[] = [
     description: 'Un envuelto calientito y saciador. Jugosa pechuga de pollo, cama de vegetales crujientes, frijolitos y un toque de nuestro aderezo chipotle de la casa.',
     price: 75,
     image: '/images/chicken_wrap.png',
-    category: 'burritos-sandwiches'
+    category: 'burritos-sandwiches',
+    customizable: true
   },
   {
     id: 'sandwich-pollo',
@@ -173,7 +167,8 @@ export const MENU_ITEMS: MenuItem[] = [
     description: 'Clásico, reconfortante y lleno de sabor. Pollo perfectamente sazonado entre rebanadas de pan artesanal tostado, vegetales frescos y aderezo.',
     price: 75,
     image: '/images/chicken_wrap.png',
-    category: 'burritos-sandwiches'
+    category: 'burritos-sandwiches',
+    customizable: true
   },
   {
     id: 'sandwich-pavo',
@@ -181,12 +176,13 @@ export const MENU_ITEMS: MenuItem[] = [
     description: 'Ligero pero delicioso. Finas rebanadas de pavo premium con queso fundido y una cama de vegetales frescos en nuestro pan de la casa.',
     price: 65,
     image: '/images/chicken_wrap.png',
-    category: 'burritos-sandwiches'
+    category: 'burritos-sandwiches',
+    customizable: true
   },
   {
     id: 'rollito-pollo',
     name: 'Rollitos Vietnamitas de Pollo',
-    description: 'Nuestra joya oriental. Frescos bocados envueltos en delicado papel de arroz, crujientes por dentro y perfectos para remojar en nuestra salsa secreta.',
+    description: 'Orden de 2 rollitos. Nuestra joya oriental. Frescos bocados envueltos en delicado papel de arroz, crujientes por dentro y perfectos para remojar en nuestra salsa secreta.',
     price: 95,
     image: '/images/chicken_wrap.png',
     category: 'burritos-sandwiches'
@@ -194,13 +190,30 @@ export const MENU_ITEMS: MenuItem[] = [
   {
     id: 'rollito-tsurimi',
     name: 'Rollitos Vietnamitas de Tsurimi',
-    description: 'Una experiencia fresca y exótica. Tsurimi desmenuzado con toques orientales, verduras crocantes y envueltos artesanalmente al momento.',
+    description: 'Orden de 2 rollitos. Una experiencia fresca y exótica. Tsurimi desmenuzado con toques orientales, verduras crocantes y envueltos artesanalmente al momento.',
     price: 90,
     image: '/images/chicken_wrap.png',
     category: 'burritos-sandwiches'
   },
+  {
+    id: 'rollito-mixto',
+    name: 'Rollitos Vietnamitas Mixtos',
+    description: 'Orden de 2 rollitos (uno de pollo y uno de tsurimi). Una combinación perfecta envuelta artesanalmente en delicado papel de arroz con verduras crocantes.',
+    price: 95,
+    image: '/images/chicken_wrap.png',
+    category: 'burritos-sandwiches'
+  },
+  {
+    id: 'ciabatta',
+    name: 'Ciabatta',
+    description: 'Sándwich artesanal en crujiente pan ciabatta horneado, relleno con ingredientes frescos de calidad premium.',
+    price: 95,
+    image: '/images/chicken_wrap.png',
+    category: 'burritos-sandwiches',
+    customizable: true
+  },
 
-  // --- BOWLS ---
+  // --- BOWLS Y POSTRES ---
   {
     id: 'bowl-avena',
     name: 'Bowl de Avena',
@@ -227,6 +240,22 @@ export const MENU_ITEMS: MenuItem[] = [
     image: '/images/salad_bowl.png',
     category: 'bowls'
   },
+  {
+    id: 'bowl-rafaella',
+    name: 'Bowl Rafaella',
+    description: 'Especialidad de la casa con un sabor exquisito y reconfortante. Preparado con ingredientes selectos y toque artesanal.',
+    price: 95,
+    image: '/images/salad_bowl.png',
+    category: 'bowls'
+  },
+  {
+    id: 'hotcakes-avena',
+    name: 'Hotcakes de Avena',
+    description: 'Esponjosos y saludables hotcakes elaborados con base de avena. Un postre o desayuno nutritivo lleno de sabor.',
+    price: 85,
+    image: '/images/salad_bowl.png',
+    category: 'bowls'
+  },
 
   // --- EMBOTELLADOS ---
   {
@@ -237,21 +266,10 @@ export const MENU_ITEMS: MenuItem[] = [
     category: 'embotellada'
   },
   {
-    id: 'electrolit',
-    name: 'Electrolit',
-    price: 25,
+    id: 'cafe',
+    name: 'Café',
+    price: 35,
     image: '/images/cold_pressed_juice.png',
-    category: 'embotellada',
-    customizable: true,
-    flavors: ['Coco', 'Uva', 'Fresa', 'Mora Azul', 'Limón']
-  },
-  {
-    id: 'refresco-cero',
-    name: 'Refresco Cero Azúcar',
-    price: 25,
-    image: '/images/cold_pressed_juice.png',
-    category: 'embotellada',
-    customizable: true,
-    flavors: ['Coca-Cola Sin Azúcar', 'Sprite Zero', 'Sidral Mundet Sin Azúcar']
+    category: 'embotellada'
   }
 ];

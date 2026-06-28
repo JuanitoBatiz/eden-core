@@ -33,9 +33,12 @@ import ProductImage from '@/components/ProductImage';
 function getCategoryIcon(name: string) {
   switch (name) {
     case 'Ensaladas': return <Salad size={20} />;
+    case 'Jugos':
     case 'Jugos y Smoothies': return <CupSoda size={20} />;
+    case 'Smoothies': return <CupSoda size={20} />;
     case 'Infusiones': return <Coffee size={20} />;
     case 'Wraps y Sándwiches': return <Sandwich size={20} />;
+    case 'Bowls y Postres':
     case 'Bowls y Cocteles': return <Soup size={20} />;
     case 'Embotellados': return <GlassWater size={20} />;
     default: return null;
@@ -85,6 +88,8 @@ export default function MenuPage() {
   const [selectedDressings, setSelectedDressings] = useState<string[]>([]);
   const [selectedExtras, setSelectedExtras] = useState<string[]>([]);
   const [selectedFlavors, setSelectedFlavors] = useState<string[]>([]);
+  const [selectedBread, setSelectedBread] = useState<string>('Pan Blanco');
+  const [selectedOmissions, setSelectedOmissions] = useState<string[]>([]);
   const [customNotes, setCustomNotes] = useState('');
 
   // Checkout & Auth Modal State
@@ -225,11 +230,12 @@ export default function MenuPage() {
   const getConstraints = () => {
     if (!selectedProduct) return { proteins: 0, toppings: 0, seeds: 0, dressings: 1 };
 
-    if (selectedProduct.name === 'Ensalada Chica') {
+    const isSalad = selectedProduct.category === 'ensaladas' || selectedProduct.category === '299824bb-ede2-47ed-bf0e-b5fd9548af73' || selectedProduct.name?.toLowerCase().includes('ensalada');
+    if (isSalad) {
+      if (customSize === 'Grande' || selectedProduct.name === 'Ensalada Grande') {
+        return { proteins: 2, toppings: 6, seeds: 4, dressings: 1 };
+      }
       return { proteins: 1, toppings: 4, seeds: 2, dressings: 1 };
-    }
-    if (selectedProduct.name === 'Ensalada Grande') {
-      return { proteins: 2, toppings: 6, seeds: 4, dressings: 1 };
     }
     if (selectedProduct.name === 'Bowl de Avena' || selectedProduct.name === 'Bowl de Yogurt') {
       return { proteins: 0, toppings: 2, seeds: 2, dressings: 0 };
@@ -241,13 +247,16 @@ export default function MenuPage() {
   const handleAddToCartClick = (product: MenuItem) => {
     setSelectedProduct(product);
     // Reset selection defaults
-    setCustomSize(product.prices ? Object.keys(product.prices)[0] : 'Chico');
+    const initialSize = product.prices ? (product.prices['Chica'] !== undefined ? 'Chica' : product.prices['Chico'] !== undefined ? 'Chico' : Object.keys(product.prices)[0]) : 'Chico';
+    setCustomSize(initialSize);
     setSelectedProteins([]);
     setSelectedToppings([]);
     setSelectedSeeds([]);
     setSelectedDressings([]);
     setSelectedExtras([]);
     setSelectedFlavors([]);
+    setSelectedBread('Pan Blanco');
+    setSelectedOmissions([]);
     setCustomNotes('');
 
     // If product is not customizable, add directly to cart
@@ -299,8 +308,14 @@ export default function MenuPage() {
     if (selectedSeeds.length > constraints.seeds) {
       extraPrice += (selectedSeeds.length - constraints.seeds) * 15;
     }
+    // Overlimit extra dressings
+    if (selectedDressings.length > constraints.dressings) {
+      extraPrice += (selectedDressings.length - constraints.dressings) * 15;
+    }
 
     const itemPrice = price + extraPrice;
+
+    const isSandwich = selectedProduct.id === 'sandwich-pavo' || selectedProduct.id === 'sandwich-pollo' || selectedProduct.name?.includes('Sándwich / Torta');
 
     // Construct customizable labels
     const customizations = {
@@ -308,7 +323,11 @@ export default function MenuPage() {
       toppings: selectedToppings.map((t: any) => SALAD_OPTIONS.toppings.find((item: any) => item.id === t)?.name || t),
       seedsAndNuts: selectedSeeds.map((s: any) => SALAD_OPTIONS.seedsAndNuts.find((item: any) => item.id === s)?.name || s),
       dressings: selectedDressings.map((d: any) => SALAD_OPTIONS.dressings.find((item: any) => item.id === d)?.name || d),
-      extras: selectedExtras,
+      extras: [
+        ...selectedExtras,
+        ...(isSandwich && selectedBread ? [selectedBread] : []),
+        ...selectedOmissions
+      ],
       flavors: selectedFlavors
     };
 
@@ -548,7 +567,7 @@ export default function MenuPage() {
         <header className="header">
           <div className="container header-content">
             <div className="logo-container">
-              <img src="/images/logo_eden2.png" alt="Edén Logo" className="logo-img" />
+              <img src="logo.png" alt="Edén Logo" className="logo-img" />
               <div className="logo-text">EDÉN</div>
             </div>
             <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
@@ -643,32 +662,38 @@ export default function MenuPage() {
                 </div>
               ) : (
                 <div className="products-grid">
-                  {items.map((product: any) => (
-                    <div key={product.id} className="product-card">
-                      <div className="product-img-container">
-                        <ProductImage src={product.image} alt={product.name} className="product-img" />
-                      </div>
-                      <div className="product-info">
-                        <h3 className="product-name">{product.name}</h3>
-                        {product.description && <p className="product-desc">{product.description}</p>}
-                        <div className="product-footer">
-                          {product.prices ? (
-                            <div className="product-price-multi">
-                              <span className="price-option"><span className="price-label">Chico</span> ${product.prices['Chico']}</span>
-                              <span className="price-divider">|</span>
-                              <span className="price-option"><span className="price-label">Grande</span> ${product.prices['Grande']}</span>
-                            </div>
-                          ) : (
-                            <span className="product-price">${product.price}</span>
-                          )}
-                          <button className="add-btn" onClick={() => handleAddToCartClick(product)}>
-                            <Plus size={16} />
-                            <span>{product.customizable ? 'Personalizar' : 'Agregar'}</span>
-                          </button>
+                  {items.map((product: any) => {
+                    const isSaladItem = cat.id === 'ensaladas' || cat.id === '299824bb-ede2-47ed-bf0e-b5fd9548af73' || cat.name?.toLowerCase().includes('ensalada') || product.category === 'ensaladas' || product.category === '299824bb-ede2-47ed-bf0e-b5fd9548af73' || product.name?.toLowerCase().includes('ensalada');
+                    return (
+                      <div key={product.id} className="product-card">
+                        <div className="product-img-container">
+                          <ProductImage src={product.image} alt={product.name} className="product-img" />
+                        </div>
+                        <div className="product-info">
+                          <h3 className="product-name">{product.name}</h3>
+                          {product.description && <p className="product-desc">{product.description}</p>}
+                          <div className="product-footer">
+                            {product.prices ? (
+                              <div className="product-price-multi">
+                                {Object.entries(product.prices).map(([sizeName, priceVal], idx, arr) => (
+                                  <React.Fragment key={sizeName}>
+                                    <span className="price-option"><span className="price-label">{sizeName}</span> ${priceVal as number}</span>
+                                    {idx < arr.length - 1 && <span className="price-divider">|</span>}
+                                  </React.Fragment>
+                                ))}
+                              </div>
+                            ) : (
+                              <span className="product-price">${product.price}</span>
+                            )}
+                            <button className="add-btn" onClick={() => handleAddToCartClick(product)}>
+                              <Plus size={16} />
+                              <span>{isSaladItem ? 'Crea tu ensalada' : product.customizable ? 'Personalizar' : 'Agregar'}</span>
+                            </button>
+                          </div>
                         </div>
                       </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               )}
             </section>
@@ -736,7 +761,11 @@ export default function MenuPage() {
           <div className="modal-content" onClick={e => e.stopPropagation()}>
             <div className="modal-header">
               <div className="modal-title-wrap">
-                <span className="modal-subtitle">PERSONALIZAR</span>
+                <span className="modal-subtitle">
+                  {selectedProduct.category === 'ensaladas' || selectedProduct.category === '299824bb-ede2-47ed-bf0e-b5fd9548af73' || menuData?.CATEGORIES?.find((c: any) => c.id === selectedProduct.category)?.name === 'Ensaladas' || selectedProduct.name?.toLowerCase().includes('ensalada')
+                    ? 'CREA TU ENSALADA'
+                    : 'PERSONALIZAR'}
+                </span>
                 <h2>{selectedProduct.name}</h2>
               </div>
               <button className="close-btn" onClick={() => setSelectedProduct(null)}>
@@ -745,7 +774,7 @@ export default function MenuPage() {
             </div>
 
             <div className="modal-body">
-              {/* Size Selector for drinks */}
+              {/* Size Selector for multi-size products */}
               {selectedProduct.prices && (
                 <div className="option-group">
                   <div className="option-group-title">Tamaño del producto</div>
@@ -770,12 +799,12 @@ export default function MenuPage() {
               )}
 
               {/* Salads Options */}
-              {menuData?.CATEGORIES?.find((c: any) => c.id === selectedProduct.category)?.name === 'Ensaladas' && (
+              {(selectedProduct.category === 'ensaladas' || selectedProduct.category === '299824bb-ede2-47ed-bf0e-b5fd9548af73' || menuData?.CATEGORIES?.find((c: any) => c.id === selectedProduct.category)?.name === 'Ensaladas' || selectedProduct.name?.toLowerCase().includes('ensalada')) && (
                 <>
                   {/* Proteins */}
                   <div className="option-group">
                     <div className="option-group-title">
-                      <span>Proteínas a elegir</span>
+                      <span>Proteínas a elegir (Mínimo 1)</span>
                       <span className="option-group-limit">Límite base: {constraints.proteins}</span>
                     </div>
                     <p style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)', marginBottom: '8px' }}>
@@ -804,7 +833,7 @@ export default function MenuPage() {
                   {/* Toppings */}
                   <div className="option-group">
                     <div className="option-group-title">
-                      <span>Toppings a elegir</span>
+                      <span>Toppings a elegir (Mínimo 1)</span>
                       <span className="option-group-limit">Límite base: {constraints.toppings}</span>
                     </div>
                     <p style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)', marginBottom: '8px' }}>
@@ -862,20 +891,26 @@ export default function MenuPage() {
                   {/* Dressings */}
                   <div className="option-group">
                     <div className="option-group-title">
-                      <span>Aderezos (1 obligatorio)</span>
+                      <span>Aderezos (Mínimo 1)</span>
+                      <span className="option-group-limit">Límite base: {constraints.dressings}</span>
                     </div>
+                    <p style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)', marginBottom: '8px' }}>
+                      (Adicionales tienen costo extra de +$15 c/u)
+                    </p>
                     <div className="option-grid">
                       {SALAD_OPTIONS.dressings.map((dressing: any) => (
                         <label key={dressing.id} className="option-card-label">
                           <input
-                            type="radio"
-                            name="dressing"
+                            type="checkbox"
                             className="option-card-input"
                             checked={selectedDressings.includes(dressing.id)}
-                            onChange={() => setSelectedDressings([dressing.id])}
+                            onChange={() => toggleOption(dressing.id, selectedDressings, setSelectedDressings, constraints.dressings)}
                           />
                           <div className="option-card-content">
                             <span>{dressing.name}</span>
+                            {selectedDressings.length >= constraints.dressings && !selectedDressings.includes(dressing.id) && (
+                              <span className="option-card-extra-price">+$15</span>
+                            )}
                           </div>
                         </label>
                       ))}
@@ -992,6 +1027,75 @@ export default function MenuPage() {
                 </div>
               )}
 
+              {/* Bread Selector for Sandwiches */}
+              {(selectedProduct.id === 'sandwich-pavo' || selectedProduct.id === 'sandwich-pollo' || selectedProduct.name?.includes('Sándwich / Torta')) && (
+                <div className="option-group">
+                  <div className="option-group-title">
+                    <span>Tipo de Pan (1 obligatorio)</span>
+                  </div>
+                  <div className="option-grid">
+                    {['Pan Blanco', 'Centeno', 'Multigrano'].map((bread) => (
+                      <label key={bread} className="option-card-label">
+                        <input
+                          type="radio"
+                          name="bread"
+                          className="option-card-input"
+                          checked={selectedBread === bread}
+                          onChange={() => setSelectedBread(bread)}
+                        />
+                        <div className="option-card-content">
+                          <span>{bread}</span>
+                        </div>
+                      </label>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Omission Options */}
+              {(() => {
+                let omissions: string[] = [];
+                if (selectedProduct.id === 'burrito-pollo' || selectedProduct.name?.includes('Burrito')) {
+                  omissions = ['Sin aderezo', 'Sin zanahoria', 'Sin pepino', 'Sin frijoles', 'Sin chile', 'Sin aguacate'];
+                } else if (selectedProduct.id === 'ciabatta' || selectedProduct.name?.includes('Ciabatta')) {
+                  omissions = ['Sin espinaca', 'Sin guacamole', 'Sin queso', 'Sin mayonesa', 'Sin huevo', 'Sin jamón', 'Sin pepino'];
+                } else if (selectedProduct.id === 'sandwich-pavo' || selectedProduct.id === 'sandwich-pollo' || selectedProduct.name?.includes('Sándwich / Torta')) {
+                  omissions = ['Sin cebolla', 'Sin aguacate', 'Sin mayonesa', 'Sin frijoles', 'Sin jitomate', 'Sin col', 'Sin chile'];
+                }
+                if (omissions.length === 0) return null;
+                return (
+                  <div className="option-group">
+                    <div className="option-group-title">
+                      <span>Omitir Ingredientes (Opcional)</span>
+                    </div>
+                    <div className="option-grid">
+                      {omissions.map((omit) => {
+                        const isChecked = selectedOmissions.includes(omit);
+                        return (
+                          <label key={omit} className="option-card-label">
+                            <input
+                              type="checkbox"
+                              className="option-card-input"
+                              checked={isChecked}
+                              onChange={() => {
+                                if (isChecked) {
+                                  setSelectedOmissions(selectedOmissions.filter(o => o !== omit));
+                                } else {
+                                  setSelectedOmissions([...selectedOmissions, omit]);
+                                }
+                              }}
+                            />
+                            <div className="option-card-content">
+                              <span>{omit}</span>
+                            </div>
+                          </label>
+                        );
+                      })}
+                    </div>
+                  </div>
+                );
+              })()}
+
               {/* Notes */}
               <div className="option-group" style={{ borderBottom: 'none', paddingBottom: 0 }}>
                 <div className="option-group-title">Notas especiales para tu pedido</div>
@@ -999,6 +1103,7 @@ export default function MenuPage() {
                   className="notes-textarea"
                   placeholder={
                     selectedProduct.category === 'jugos' ||
+                      selectedProduct.category === 'smoothies' ||
                       selectedProduct.category === 'infusiones' ||
                       selectedProduct.category === 'embotellada'
                       ? "Ej: sin hielo, con popote, sin azúcar, etc..."
@@ -1018,7 +1123,7 @@ export default function MenuPage() {
                   ${(() => {
                     const price = selectedProduct.prices ? selectedProduct.prices[customSize] : selectedProduct.price;
                     let extra = 0;
-                    const isEnsalada = menuData?.CATEGORIES?.find((c: any) => c.id === selectedProduct.category)?.name === 'Ensaladas';
+                    const isEnsalada = selectedProduct.category === 'ensaladas' || selectedProduct.category === '299824bb-ede2-47ed-bf0e-b5fd9548af73' || menuData?.CATEGORIES?.find((c: any) => c.id === selectedProduct.category)?.name === 'Ensaladas' || selectedProduct.name?.toLowerCase().includes('ensalada');
                     if (isEnsalada) {
                       if (selectedProteins.length > constraints.proteins) {
                         extra += (selectedProteins.length - constraints.proteins) * 30;
@@ -1028,6 +1133,9 @@ export default function MenuPage() {
                       }
                       if (selectedSeeds.length > constraints.seeds) {
                         extra += (selectedSeeds.length - constraints.seeds) * 15;
+                      }
+                      if (selectedDressings.length > constraints.dressings) {
+                        extra += (selectedDressings.length - constraints.dressings) * 15;
                       }
                     }
                     return price + extra;
@@ -1039,7 +1147,7 @@ export default function MenuPage() {
                 className="confirm-add-btn"
                 onClick={handleConfirmCustomization}
                 disabled={
-                  (menuData?.CATEGORIES?.find((c: any) => c.id === selectedProduct.category)?.name === 'Ensaladas' && selectedDressings.length === 0) ||
+                  ((selectedProduct.category === 'ensaladas' || selectedProduct.category === '299824bb-ede2-47ed-bf0e-b5fd9548af73' || menuData?.CATEGORIES?.find((c: any) => c.id === selectedProduct.category)?.name === 'Ensaladas' || selectedProduct.name?.toLowerCase().includes('ensalada')) && (selectedDressings.length === 0 || selectedProteins.length === 0 || selectedToppings.length === 0)) ||
                   ((selectedProduct.name === 'Bowl de Avena' || selectedProduct.name === 'Bowl de Yogurt') &&
                     (selectedToppings.length !== 2 || selectedSeeds.length !== 2)) ||
                   (selectedProduct.flavors !== undefined && selectedFlavors.length === 0)
@@ -1096,6 +1204,9 @@ export default function MenuPage() {
                             )}
                             {item.customizations.flavors && item.customizations.flavors.length > 0 && (
                               <div><strong>Sabor:</strong> {item.customizations.flavors.join(', ')}</div>
+                            )}
+                            {item.customizations.extras && item.customizations.extras.length > 0 && (
+                              <div><strong>Opciones:</strong> {item.customizations.extras.join(', ')}</div>
                             )}
                           </div>
                         )}
@@ -1332,7 +1443,7 @@ export default function MenuPage() {
 
       {/* ACTIVE ORDERS FLOATING BUTTON */}
       {activeOrders.length > 0 && !isCartOpen && !selectedProduct && !isAuthOpen && (
-        <div 
+        <div
           onClick={() => router.push(`/orden/${activeOrders[0].id}`)}
           style={{
             position: 'fixed',

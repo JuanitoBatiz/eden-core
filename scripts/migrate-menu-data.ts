@@ -97,10 +97,8 @@ async function run() {
 
         // Lógica de Opciones (Ensaladas)
         if (prod.category === 'ensaladas') {
-          const isGrande = prod.id === 'ensalada-grande';
-          const constraints = isGrande ? 
-            { proteins: 2, toppings: 6, seeds: 4, dressings: 1 } : 
-            { proteins: 1, toppings: 4, seeds: 2, dressings: 1 };
+          // Límite base (Chica) por defecto en base de datos; el backend y frontend ajustan dinámicamente si la variante seleccionada es Grande
+          const constraints = { proteins: 1, toppings: 4, seeds: 2, dressings: 1 };
           
           const groups = [
             { name: 'Proteínas', free: constraints.proteins, extra: 30, items: SALAD_OPTIONS.proteins, req: false },

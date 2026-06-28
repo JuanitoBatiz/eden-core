@@ -35,7 +35,8 @@ export function calculateOrderTotal(cartItems: any[], dbProducts: any[]) {
         ...(item.customizations.toppings || []),
         ...(item.customizations.seedsAndNuts || []),
         ...(item.customizations.dressings || []),
-        ...(item.customizations.flavors || [])
+        ...(item.customizations.flavors || []),
+        ...(item.customizations.extras || [])
       ].filter(Boolean); // Clean any undefined
 
       for (const selectedSlug of allSelectedSlugs) {
@@ -47,7 +48,7 @@ export function calculateOrderTotal(cartItems: any[], dbProducts: any[]) {
              for (const group of dbProduct.modifier_groups) {
                 if (!group.modifiers) continue;
                 // Frontend UI sends either exact name string or the generated slug string
-                const match = group.modifiers.find((m: any) => slugify(m.name) === selectedSlug || m.id === selectedSlug || m.name === selectedSlug);
+                const match = group.modifiers.find((m: any) => slugify(m.name) === slugify(selectedSlug) || m.id === selectedSlug || m.name === selectedSlug);
                 if (match) {
                    foundMod = match;
                    foundGroup = group;
@@ -64,8 +65,23 @@ export function calculateOrderTotal(cartItems: any[], dbProducts: any[]) {
                 if (!groupCounts[foundGroup.id]) groupCounts[foundGroup.id] = 0;
                 groupCounts[foundGroup.id]++;
                 
+                // Calculate dynamic free limit if it's a salad in size Grande
+                let freeLimit = foundGroup.free_limit !== undefined ? foundGroup.free_limit : 0;
+                const isSalad = dbProduct.category_id === '299824bb-ede2-47ed-bf0e-b5fd9548af73' || dbProduct.name?.toLowerCase().includes('ensalada');
+                if (isSalad) {
+                   if (item.size === 'Grande') {
+                     if (foundGroup.name === 'Proteínas') freeLimit = 2;
+                     else if (foundGroup.name === 'Toppings') freeLimit = 6;
+                     else if (foundGroup.name?.includes('Semillas')) freeLimit = 4;
+                   }
+                   if (foundGroup.name === 'Aderezos') {
+                     freeLimit = 1;
+                     if (!foundGroup.extra_price) foundGroup.extra_price = 15;
+                   }
+                }
+
                 // If over the free limit, apply the extra price from the group settings
-                if (groupCounts[foundGroup.id] > (foundGroup.free_limit || 0)) {
+                if (groupCounts[foundGroup.id] > freeLimit) {
                    modifiersExtraPrice += Number(foundGroup.extra_price || 0);
                 }
              }

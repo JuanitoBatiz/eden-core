@@ -152,7 +152,11 @@ export default function MenuManager({ accessToken }: { accessToken: string }) {
                                 {isProdExpanded ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
                                 <span style={{ fontWeight: 500, textDecoration: !prod.available ? 'line-through' : 'none' }}>{prod.name}</span>
                                 {prod.loyverse_item_id && <span title="Sincronizado con Loyverse"><LinkIcon size={14} color="var(--color-ochre)" /></span>}
-                                <span style={{ color: 'var(--color-green-dark)', fontSize: '0.9rem' }}>${prod.base_price}</span>
+                                <span style={{ color: 'var(--color-green-dark)', fontSize: '0.9rem' }}>
+                                  {prod.variants && prod.variants.length > 0
+                                    ? prod.variants.map((v: ProductVariant) => `${v.name} $${v.price}`).join(' | ')
+                                    : `$${prod.base_price}`}
+                                </span>
                              </div>
                              
                              <div style={{ display: 'flex', gap: '10px' }}>

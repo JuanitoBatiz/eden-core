@@ -73,8 +73,11 @@ export async function GET() {
         item.customizable = true;
       }
 
-      if (p.modifier_groups && p.modifier_groups.some((g: any) => g.name !== 'Sabor')) {
-        item.customizable = true;
+      if (p.modifier_groups && p.modifier_groups.length > 0) {
+        (item as any).modifier_groups = p.modifier_groups;
+        if (p.modifier_groups.some((g: any) => g.name !== 'Sabor' && g.name !== 'Sabores')) {
+          item.customizable = true;
+        }
       }
 
       return item;
