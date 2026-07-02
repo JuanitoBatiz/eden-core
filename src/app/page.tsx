@@ -643,7 +643,7 @@ export default function MenuPage() {
           <p className="hero-v1-desc">
             Sabor natural y servicio ágil. Arma tu pedido en línea, acumula puntos con EdenPass y disfruta tu comida en sucursal o recíbela en la puerta de tu casa.
           </p>
-          <button 
+          <button
             className="hero-cta-btn"
             onClick={() => {
               const el = document.querySelector('.menu-section');
@@ -695,7 +695,7 @@ export default function MenuPage() {
                 <div className="editorial-bento-grid">
                   {items.map((product: any, itemIdx: number) => {
                     const isSaladItem = cat.id === 'ensaladas' || cat.id === '299824bb-ede2-47ed-bf0e-b5fd9548af73' || cat.name?.toLowerCase().includes('ensalada') || product.category === 'ensaladas' || product.category === '299824bb-ede2-47ed-bf0e-b5fd9548af73' || product.name?.toLowerCase().includes('ensalada');
-                    
+
                     // Asignación de roles editoriales y jerarquía para el Bento Grid
                     let role = 'standard';
                     let badgeText = '';
@@ -770,7 +770,7 @@ export default function MenuPage() {
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
               <path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z" />
             </svg>
-            <span>WhatsApp Edén Local: 56 3583 0014</span>
+            <span>WhatsApp Edén: 56 3583 0014</span>
           </a>
         </section>
       </main>

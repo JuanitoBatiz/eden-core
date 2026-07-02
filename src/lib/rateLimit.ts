@@ -108,18 +108,25 @@ export function checkRateLimit(
  * @returns IP del cliente como string, o 'unknown' si no se puede determinar
  */
 export function getClientIP(req: Request): string {
-  // x-forwarded-for puede contener múltiples IPs separadas por coma:
-  // "client_ip, proxy1_ip, proxy2_ip" — tomamos solo la primera (el cliente real)
-  const forwarded = req.headers.get('x-forwarded-for');
-  if (forwarded) {
-    const ip = forwarded.split(',')[0].trim();
-    // Sanitización básica: solo caracteres válidos en una IP (IPv4/IPv6)
-    if (/^[\d.:a-fA-F]+$/.test(ip)) return ip;
-  }
-
+  // x-real-ip es inyectado directamente por el proxy inverso (Railway, Vercel, nginx)
+  // y no puede ser manipulado por el cliente si el proxy lo sobrescribe. Tiene prioridad.
   const realIp = req.headers.get('x-real-ip');
   if (realIp && /^[\d.:a-fA-F]+$/.test(realIp.trim())) {
     return realIp.trim();
+  }
+
+  // x-forwarded-for puede ser manipulado por el cliente añadiendo IPs falsas al inicio.
+  // Solo confiamos en él si proviene de un único hop (sin comas), lo que indica
+  // que el proxy inverso lo está gestionando directamente sin reenvío adicional.
+  const forwarded = req.headers.get('x-forwarded-for');
+  if (forwarded) {
+    const parts = forwarded.split(',').map(p => p.trim());
+    // Si solo hay una IP (un único hop desde el proxy confiable), es segura de usar.
+    // Si hay múltiples, tomamos la última (la más cercana al servidor/proxy confiable).
+    const candidateIp = parts.length === 1 ? parts[0] : parts[parts.length - 1];
+    if (/^[\d.:a-fA-F]+$/.test(candidateIp)) {
+      return candidateIp;
+    }
   }
 
   return 'unknown';

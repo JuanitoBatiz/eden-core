@@ -103,10 +103,18 @@ export async function POST(req: Request) {
         );
       }
     } else {
-      // Dev mode
-      if (code !== '123456') { // Fallback 6-digit dev code
+      // Bloquear en producción: Twilio es obligatorio en entornos reales
+      if (process.env.NODE_ENV === 'production') {
+        console.error('[SECURITY] Twilio no configurado en producción. Autenticación bloqueada.');
         return NextResponse.json(
-          { error: 'El código ingresado es incorrecto (Prueba con 123456).' },
+          { error: 'El servicio de autenticación no está configurado correctamente. Contacta al administrador.' },
+          { status: 503 }
+        );
+      }
+      // Dev mode: código estático solo en entornos locales
+      if (code !== '123456') {
+        return NextResponse.json(
+          { error: 'El código ingresado es incorrecto (Prueba con 123456 en modo desarrollo).' },
           { status: 400 }
         );
       }

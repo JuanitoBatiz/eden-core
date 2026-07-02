@@ -7,6 +7,17 @@ import { MinimumRole, ROLE_HIERARCHY } from '@/lib/permissions';
 const JWT_ACCESS_SECRET = process.env.JWT_ACCESS_SECRET || 'dev_access_secret';
 const JWT_REFRESH_SECRET = process.env.JWT_REFRESH_SECRET || 'dev_refresh_secret';
 
+// Protección de arranque: En producción, los secretos hardcodeados son una vulnerabilidad crítica.
+// Si se detectan valores por defecto en producción, el sistema falla inmediatamente de forma explícita.
+if (process.env.NODE_ENV === 'production') {
+  if (!process.env.JWT_ACCESS_SECRET || process.env.JWT_ACCESS_SECRET === 'dev_access_secret') {
+    throw new Error('[CRITICAL SECURITY] JWT_ACCESS_SECRET no está configurado en producción. La aplicación no puede iniciar de forma segura.');
+  }
+  if (!process.env.JWT_REFRESH_SECRET || process.env.JWT_REFRESH_SECRET === 'dev_refresh_secret') {
+    throw new Error('[CRITICAL SECURITY] JWT_REFRESH_SECRET no está configurado en producción. La aplicación no puede iniciar de forma segura.');
+  }
+}
+
 export interface JwtPayload {
   user_id: string;
   phone?: string;

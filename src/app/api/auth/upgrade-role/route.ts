@@ -1,9 +1,20 @@
 import { NextResponse } from 'next/server';
 import { verifyAccessToken, generateAccessToken, generateRefreshToken } from '@/lib/auth';
 import { createAdminClient, isSupabaseConfigured } from '@/lib/supabase';
+import { checkRateLimit, getClientIP } from '@/lib/rateLimit';
 
 export async function POST(req: Request) {
   try {
+    // Rate limiting: máx 3 intentos por IP cada 30 minutos para prevenir fuerza bruta
+    const ip = getClientIP(req);
+    const rlResult = checkRateLimit(`upgrade-role:ip:${ip}`, 3, 1800);
+    if (!rlResult.allowed) {
+      return NextResponse.json(
+        { error: 'Demasiados intentos fallidos. Espera antes de intentarlo de nuevo.' },
+        { status: 429, headers: { 'Retry-After': String(rlResult.retryAfterSeconds) } }
+      );
+    }
+
     const { secretCode } = await req.json();
 
     if (!secretCode) {

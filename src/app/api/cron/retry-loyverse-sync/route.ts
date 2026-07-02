@@ -5,16 +5,12 @@ import { createLoyverseCustomer } from '@/lib/loyverse';
 // GET: Worker para reintentar sincronizaciones pendientes con Loyverse
 export async function GET(req: Request) {
   try {
-    const { searchParams } = new URL(req.url);
     const cronSecretHeader = req.headers.get('Authorization');
-    const cronSecretQuery = searchParams.get('secret');
     const expectedSecret = process.env.CRON_SECRET;
 
-    // Proteger endpoint contra invocaciones públicas
-    const isAuthorized = expectedSecret && (
-      cronSecretQuery === expectedSecret ||
-      cronSecretHeader === `Bearer ${expectedSecret}`
-    );
+    // Proteger endpoint — solo aceptar el secreto vía cabecera Authorization
+    // para evitar que sea registrado en logs de servidores, proxies y navegadores.
+    const isAuthorized = expectedSecret && cronSecretHeader === `Bearer ${expectedSecret}`;
 
     if (!isAuthorized) {
       return NextResponse.json({ error: 'No autorizado' }, { status: 401 });

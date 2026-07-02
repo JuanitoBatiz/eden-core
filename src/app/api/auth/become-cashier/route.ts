@@ -3,6 +3,7 @@ import { createAdminClient, isSupabaseConfigured, serverMockUsers } from '@/lib/
 import { generateAccessToken, generateRefreshToken } from '@/lib/auth';
 import { serialize } from 'cookie';
 import crypto from 'crypto';
+import { checkRateLimit, getClientIP } from '@/lib/rateLimit';
 
 function makeAuthCookie(name: string, value: string, maxAgeSeconds: number, isProduction: boolean): string {
   return serialize(name, value, {
@@ -16,6 +17,16 @@ function makeAuthCookie(name: string, value: string, maxAgeSeconds: number, isPr
 
 export async function POST(req: Request) {
   try {
+    // Rate limiting: máx 3 intentos por IP cada 30 minutos para prevenir fuerza bruta
+    const ip = getClientIP(req);
+    const rlResult = checkRateLimit(`become-cashier:ip:${ip}`, 3, 1800);
+    if (!rlResult.allowed) {
+      return NextResponse.json(
+        { error: 'Demasiados intentos fallidos. Espera antes de intentarlo de nuevo.' },
+        { status: 429, headers: { 'Retry-After': String(rlResult.retryAfterSeconds) } }
+      );
+    }
+
     const { secretCode, name, phone } = await req.json();
 
     const validCode = process.env.CASHIER_SECRET_CODE;

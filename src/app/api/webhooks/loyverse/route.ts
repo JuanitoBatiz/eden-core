@@ -82,18 +82,22 @@ export async function POST(req: Request) {
     const secret = process.env.LOYVERSE_WEBHOOK_SECRET;
 
     // 1. Verify HMAC if configured
-    if (secret && signature) {
+    if (secret) {
+      if (!signature) {
+        // Si el secreto está configurado en el servidor, la firma es OBLIGATORIA.
+        // Rechazar silenciosamente con 401 para no revelar información al atacante.
+        console.warn('[SECURITY] Webhook rechazado: LOYVERSE_WEBHOOK_SECRET configurado pero X-Loyverse-Signature ausente.');
+        return NextResponse.json({ error: 'Firma requerida' }, { status: 401 });
+      }
+
       const hmac = crypto.createHmac('sha1', secret);
       hmac.update(rawBody);
       const computedSignature = hmac.digest('base64');
-      
+
       if (computedSignature !== signature) {
+        console.warn('[SECURITY] Webhook rechazado: firma HMAC inválida.');
         return NextResponse.json({ error: 'Firma inválida' }, { status: 401 });
       }
-    } else if (secret && !signature) {
-      // If we expect a secret but loyverse didn't send signature (e.g. not OAuth)
-      console.warn('Webhook recibido sin firma X-Loyverse-Signature. Configuración manual detectada.');
-      // Opcional: Podrías rechazarlo aquí con 401 si exiges estricta seguridad
     }
 
     let payload;
