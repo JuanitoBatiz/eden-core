@@ -68,6 +68,10 @@ export interface Order {
   notes?: string;
   service_type: 'pickup' | 'delivery';
   delivery_address?: string;
+  /** Tarifa de envío cotizada por caja/cocina. NULL = pendiente de cotizar. */
+  delivery_fee?: number | null;
+  /** true cuando la caja/cocina ha confirmado la tarifa de envío */
+  delivery_fee_confirmed?: boolean;
   status: 'received' | 'in_preparation' | 'ready' | 'in_transit' | 'delivered' | 'cancelled' | 'awaiting_payment';
   payment_status: 'pending_payment' | 'payment_submitted' | 'payment_approved' | 'payment_rejected';
   proof_url?: string;

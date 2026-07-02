@@ -28,6 +28,7 @@ import {
 import { MenuItem, MenuCategory, CATEGORIES as fallbackCategories, MENU_ITEMS as fallbackMenuItems, SALAD_OPTIONS as fallbackSaladOptions } from '@/lib/menuData';
 import { SmsRequest, VerifyOtpRequest, OrderCreateRequest } from '@/types/api-contracts';
 import ProductImage from '@/components/ProductImage';
+import ScrollRevealItem from '@/components/ScrollRevealItem';
 
 // Helper local icon
 function getCategoryIcon(name: string) {
@@ -89,6 +90,7 @@ export default function MenuPage() {
   const [selectedExtras, setSelectedExtras] = useState<string[]>([]);
   const [selectedFlavors, setSelectedFlavors] = useState<string[]>([]);
   const [selectedBread, setSelectedBread] = useState<string>('Pan Blanco');
+  const [selectedProteinOption, setSelectedProteinOption] = useState<string>('Pechuga empanizada');
   const [selectedOmissions, setSelectedOmissions] = useState<string[]>([]);
   const [customNotes, setCustomNotes] = useState('');
 
@@ -256,6 +258,7 @@ export default function MenuPage() {
     setSelectedExtras([]);
     setSelectedFlavors([]);
     setSelectedBread('Pan Blanco');
+    setSelectedProteinOption(product.name?.includes('Jamón') || product.id === 'sandwich-pavo' ? 'Jamón de pavo' : 'Pechuga empanizada');
     setSelectedOmissions([]);
     setCustomNotes('');
 
@@ -313,9 +316,22 @@ export default function MenuPage() {
       extraPrice += (selectedDressings.length - constraints.dressings) * 15;
     }
 
-    const itemPrice = price + extraPrice;
+    const isSandwichOrTorta = selectedProduct.id === 'sandwich' || selectedProduct.id === 'torta' || selectedProduct.id === 'sandwich-pavo' || selectedProduct.id === 'sandwich-pollo' || selectedProduct.name?.includes('Sándwich') || selectedProduct.name?.includes('Torta');
+    const isSandwichOnly = selectedProduct.id === 'sandwich' || selectedProduct.id === 'sandwich-pollo' || selectedProduct.id === 'sandwich-pavo' || (selectedProduct.name?.includes('Sándwich') && !selectedProduct.name?.includes('Torta'));
 
-    const isSandwich = selectedProduct.id === 'sandwich-pavo' || selectedProduct.id === 'sandwich-pollo' || selectedProduct.name?.includes('Sándwich / Torta');
+    if (isSandwichOrTorta) {
+      if (selectedProteinOption === 'Pechuga empanizada' || selectedProteinOption === 'Pechuga asada') {
+        if (price === 65) {
+          extraPrice += 10;
+        }
+      } else if (selectedProteinOption === 'Jamón de pavo') {
+        if (price === 75) {
+          extraPrice -= 10;
+        }
+      }
+    }
+
+    const itemPrice = price + extraPrice;
 
     // Construct customizable labels
     const customizations = {
@@ -325,7 +341,8 @@ export default function MenuPage() {
       dressings: selectedDressings.map((d: any) => SALAD_OPTIONS.dressings.find((item: any) => item.id === d)?.name || d),
       extras: [
         ...selectedExtras,
-        ...(isSandwich && selectedBread ? [selectedBread] : []),
+        ...(isSandwichOrTorta && selectedProteinOption ? [selectedProteinOption] : []),
+        ...(isSandwichOnly && selectedBread ? [selectedBread] : []),
         ...selectedOmissions
       ],
       flavors: selectedFlavors
@@ -617,18 +634,30 @@ export default function MenuPage() {
         </nav>
       </div>
 
-      {/* MAIN CONTAINER */}
-      <main className="container" style={{ paddingTop: '180px' }}>
-        {/* HERO */}
-        <section className="hero">
-          <h1 className="hero-title">Deliciosa barra de ensaladas y jugos naturales</h1>
-          <p className="hero-desc">
+      {/* FULL-BLEED INMERSIVE HERO (100% DE LA PANTALLA, SIN MÁRGENES) */}
+      <section className="hero-fullscreen-v1">
+        <img src="/images/ensalada.png" alt="Santuario Edén" className="hero-v1-bg" />
+        <div className="hero-v1-overlay"></div>
+        <div className="hero-v1-content">
+          <h1 className="hero-v1-title">Deliciosa barra de ensaladas y jugos naturales</h1>
+          <p className="hero-v1-desc">
             Sabor natural y servicio ágil. Arma tu pedido en línea, acumula puntos con EdenPass y disfruta tu comida en sucursal o recíbela en la puerta de tu casa.
           </p>
-          <p style={{ marginTop: '10px', fontSize: '0.8rem', color: 'var(--color-green-dark)', opacity: 0.65, fontStyle: 'italic', fontWeight: 500 }}>
-            * Imágenes con fines ilustrativos y de referencia visual.
-          </p>
-        </section>
+          <button 
+            className="hero-cta-btn"
+            onClick={() => {
+              const el = document.querySelector('.menu-section');
+              if (el) el.scrollIntoView({ behavior: 'smooth' });
+            }}
+          >
+            <span>Explorar el menú</span>
+            <ArrowRight size={18} />
+          </button>
+        </div>
+      </section>
+
+      {/* MAIN CONTAINER FOR MENU SECTIONS */}
+      <main className="container" style={{ paddingTop: '50px' }}>
 
         {/* MENU CATEGORIES SECTIONS */}
         {CATEGORIES.map((cat: any) => {
@@ -644,35 +673,52 @@ export default function MenuPage() {
 
               {cat.id === 'embotellada' || cat.name?.toLowerCase().includes('embotellad') ? (
                 <div className="bottled-grid">
-                  {items.map((product: any) => (
-                    <div key={product.id} className="bottled-card">
-                      <div className="bottled-info">
-                        <h3 className="bottled-name">{product.name}</h3>
-                        {product.description && <p className="bottled-desc">{product.description}</p>}
+                  {items.map((product: any, idx: number) => (
+                    <ScrollRevealItem key={product.id} staggerIndex={idx}>
+                      <div className="bottled-card">
+                        <div className="bottled-info">
+                          <h3 className="bottled-name">{product.name}</h3>
+                          {product.description && <p className="bottled-desc">{product.description}</p>}
+                        </div>
+                        <div className="bottled-action">
+                          <span className="bottled-price">${product.price}</span>
+                          <button className="bottled-add-btn" onClick={() => handleAddToCartClick(product)}>
+                            <Plus size={16} />
+                            <span>Agregar</span>
+                          </button>
+                        </div>
                       </div>
-                      <div className="bottled-action">
-                        <span className="bottled-price">${product.price}</span>
-                        <button className="bottled-add-btn" onClick={() => handleAddToCartClick(product)}>
-                          <Plus size={16} />
-                          <span>Agregar</span>
-                        </button>
-                      </div>
-                    </div>
+                    </ScrollRevealItem>
                   ))}
                 </div>
               ) : (
-                <div className="products-grid">
-                  {items.map((product: any) => {
+                <div className="editorial-bento-grid">
+                  {items.map((product: any, itemIdx: number) => {
                     const isSaladItem = cat.id === 'ensaladas' || cat.id === '299824bb-ede2-47ed-bf0e-b5fd9548af73' || cat.name?.toLowerCase().includes('ensalada') || product.category === 'ensaladas' || product.category === '299824bb-ede2-47ed-bf0e-b5fd9548af73' || product.name?.toLowerCase().includes('ensalada');
+                    
+                    // Asignación de roles editoriales y jerarquía para el Bento Grid
+                    let role = 'standard';
+                    let badgeText = '';
+                    if (itemIdx === 0) {
+                      role = 'hero';
+                      badgeText = 'Destacado Edén';
+                    } else if (items.length >= 4 && (itemIdx === 3 || itemIdx === 6)) {
+                      role = 'wide';
+                      badgeText = 'Selección de Temporada';
+                    }
+
                     return (
-                      <div key={product.id} className="product-card">
-                        <div className="product-img-container">
+                      <ScrollRevealItem key={product.id} staggerIndex={itemIdx} className={`editorial-card role-${role}`}>
+                        <div className={`product-img-container orientation-${product.image_orientation || 'horizontal'}`}>
                           <ProductImage src={product.image} alt={product.name} className="product-img" />
                         </div>
-                        <div className="product-info">
-                          <h3 className="product-name">{product.name}</h3>
-                          {product.description && <p className="product-desc">{product.description}</p>}
-                          <div className="product-footer">
+                        <div className="editorial-info">
+                          <div>
+                            {badgeText && <span className="editorial-badge">{badgeText}</span>}
+                            <h3 className="editorial-name">{product.name}</h3>
+                            {product.description && <p className="editorial-desc">{product.description}</p>}
+                          </div>
+                          <div className="editorial-footer">
                             {product.prices ? (
                               <div className="product-price-multi">
                                 {Object.entries(product.prices).map(([sizeName, priceVal], idx, arr) => (
@@ -683,7 +729,7 @@ export default function MenuPage() {
                                 ))}
                               </div>
                             ) : (
-                              <span className="product-price">${product.price}</span>
+                              <span className="editorial-price">${product.price}</span>
                             )}
                             <button className="add-btn" onClick={() => handleAddToCartClick(product)}>
                               <Plus size={16} />
@@ -691,7 +737,7 @@ export default function MenuPage() {
                             </button>
                           </div>
                         </div>
-                      </div>
+                      </ScrollRevealItem>
                     );
                   })}
                 </div>
@@ -699,12 +745,40 @@ export default function MenuPage() {
             </section>
           );
         })}
+
+        {/* AYUDA / WHATSAPP SUPPORT CARD */}
+        <section style={{ marginTop: '50px', padding: '28px 20px', backgroundColor: '#ffffff', borderRadius: '20px', border: '1px solid rgba(0,0,0,0.06)', boxShadow: '0 8px 30px rgba(0,0,0,0.05)', textAlign: 'center' }}>
+          <div style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: '56px', height: '56px', borderRadius: '50%', backgroundColor: '#25D366', color: '#fff', marginBottom: '14px', boxShadow: '0 4px 14px rgba(37, 211, 102, 0.35)' }}>
+            <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z" />
+            </svg>
+          </div>
+          <h3 style={{ fontFamily: 'var(--font-serif)', fontSize: '1.5rem', color: 'var(--color-green-dark)', margin: '0 0 8px 0' }}>
+            ¿Tienes algún problema o duda con tu pedido?
+          </h3>
+          <p style={{ color: 'var(--color-text-muted)', fontSize: '0.95rem', maxWidth: '520px', margin: '0 auto 20px auto', lineHeight: 1.6 }}>
+            Estamos aquí para apoyarte en todo momento. Escríbenos directamente a WhatsApp y te atenderemos al instante con el mayor gusto.
+          </p>
+          <a
+            href="https://wa.me/525635830014"
+            target="_blank"
+            rel="noopener noreferrer"
+            style={{ display: 'inline-flex', alignItems: 'center', gap: '10px', padding: '14px 28px', backgroundColor: '#25D366', color: '#ffffff', fontWeight: 600, fontSize: '1rem', borderRadius: '35px', textDecoration: 'none', transition: 'all 0.2s ease', boxShadow: '0 6px 18px rgba(37, 211, 102, 0.3)' }}
+            onMouseOver={(e) => { e.currentTarget.style.transform = 'translateY(-2px)'; e.currentTarget.style.boxShadow = '0 8px 22px rgba(37, 211, 102, 0.45)'; }}
+            onMouseOut={(e) => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = '0 6px 18px rgba(37, 211, 102, 0.3)'; }}
+          >
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z" />
+            </svg>
+            <span>WhatsApp Edén Local: 56 3583 0014</span>
+          </a>
+        </section>
       </main>
 
       {/* FOOTER */}
       <footer style={{ backgroundColor: 'var(--color-green-dark)', color: 'var(--color-cream-light)', padding: '40px 0', marginTop: '60px', borderTop: '4px solid var(--color-ochre)' }}>
         <div className="container" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '15px', textAlign: 'center' }}>
-          <img src="/images/logo_eden2.png" alt="Edén Logo" style={{ width: '60px', height: '60px', borderRadius: '50%', backgroundColor: '#fff', padding: '5px' }} />
+          <img src="logo.png" alt="Edén Logo" style={{ width: '60px', height: '60px', borderRadius: '50%', backgroundColor: '#fff', padding: '5px' }} />
           <h2 style={{ fontFamily: 'var(--font-serif)', fontSize: '1.8rem', color: 'var(--color-cream-light)' }}>Edén</h2>
           <p style={{ maxWidth: '400px', fontSize: '0.9rem', opacity: 0.8 }}>
             Higiene, orden y sabor artesanal en Otumba, Estado de México.
@@ -737,6 +811,19 @@ export default function MenuPage() {
             >
               <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                 <path d="M18 2h-3a5 5 0 0 0-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 0 1 1-1h3z" />
+              </svg>
+            </a>
+            <a
+              href="https://wa.me/525635830014"
+              target="_blank"
+              rel="noopener noreferrer"
+              style={{ color: 'var(--color-cream-light)', opacity: 0.85, transition: 'all 0.2s ease', display: 'flex', alignItems: 'center', justifyContent: 'center', width: '44px', height: '44px', borderRadius: '50%', backgroundColor: 'rgba(255,255,255,0.1)', border: '1px solid rgba(255,255,255,0.15)' }}
+              onMouseOver={(e) => { e.currentTarget.style.opacity = '1'; e.currentTarget.style.transform = 'scale(1.08)'; e.currentTarget.style.backgroundColor = '#25D366'; }}
+              onMouseOut={(e) => { e.currentTarget.style.opacity = '0.85'; e.currentTarget.style.transform = 'scale(1)'; e.currentTarget.style.backgroundColor = 'rgba(255,255,255,0.1)'; }}
+              aria-label="WhatsApp de Edén Local"
+            >
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z" />
               </svg>
             </a>
           </div>
@@ -1027,8 +1114,42 @@ export default function MenuPage() {
                 </div>
               )}
 
+              {/* Especialidad / Proteína for Sandwiches & Tortas */}
+              {(selectedProduct.id === 'sandwich' || selectedProduct.id === 'torta' || selectedProduct.id === 'sandwich-pavo' || selectedProduct.id === 'sandwich-pollo' || selectedProduct.name?.includes('Sándwich') || selectedProduct.name?.includes('Torta')) && (
+                <div className="option-group">
+                  <div className="option-group-title">
+                    <span>Especialidad / Proteína (1 obligatorio)</span>
+                  </div>
+                  <div className="option-grid">
+                    {[
+                      { name: 'Pechuga empanizada', extra: selectedProduct.price === 65 ? 10 : 0 },
+                      { name: 'Pechuga asada', extra: selectedProduct.price === 65 ? 10 : 0 },
+                      { name: 'Jamón de pavo', extra: selectedProduct.price === 75 ? -10 : 0 }
+                    ].map((prot) => (
+                      <label key={prot.name} className="option-card-label">
+                        <input
+                          type="radio"
+                          name="proteinOption"
+                          className="option-card-input"
+                          checked={selectedProteinOption === prot.name}
+                          onChange={() => setSelectedProteinOption(prot.name)}
+                        />
+                        <div className="option-card-content" style={{ display: 'flex', justifyContent: 'space-between', width: '100%' }}>
+                          <span>{prot.name}</span>
+                          {prot.extra !== 0 && (
+                            <span style={{ fontWeight: 600, color: prot.extra > 0 ? 'var(--color-primary)' : 'var(--color-text-muted)' }}>
+                              {prot.extra > 0 ? `+ $${prot.extra}` : `- $${Math.abs(prot.extra)}`}
+                            </span>
+                          )}
+                        </div>
+                      </label>
+                    ))}
+                  </div>
+                </div>
+              )}
+
               {/* Bread Selector for Sandwiches */}
-              {(selectedProduct.id === 'sandwich-pavo' || selectedProduct.id === 'sandwich-pollo' || selectedProduct.name?.includes('Sándwich / Torta')) && (
+              {(selectedProduct.id === 'sandwich' || selectedProduct.id === 'sandwich-pollo' || selectedProduct.id === 'sandwich-pavo' || (selectedProduct.name?.includes('Sándwich') && !selectedProduct.name?.includes('Torta'))) && (
                 <div className="option-group">
                   <div className="option-group-title">
                     <span>Tipo de Pan (1 obligatorio)</span>
@@ -1059,8 +1180,10 @@ export default function MenuPage() {
                   omissions = ['Sin aderezo', 'Sin zanahoria', 'Sin pepino', 'Sin frijoles', 'Sin chile', 'Sin aguacate'];
                 } else if (selectedProduct.id === 'ciabatta' || selectedProduct.name?.includes('Ciabatta')) {
                   omissions = ['Sin espinaca', 'Sin guacamole', 'Sin queso', 'Sin mayonesa', 'Sin huevo', 'Sin jamón', 'Sin pepino'];
-                } else if (selectedProduct.id === 'sandwich-pavo' || selectedProduct.id === 'sandwich-pollo' || selectedProduct.name?.includes('Sándwich / Torta')) {
+                } else if (selectedProduct.id === 'sandwich' || selectedProduct.id === 'torta' || selectedProduct.id === 'sandwich-pavo' || selectedProduct.id === 'sandwich-pollo' || selectedProduct.name?.includes('Sándwich') || selectedProduct.name?.includes('Torta')) {
                   omissions = ['Sin cebolla', 'Sin aguacate', 'Sin mayonesa', 'Sin frijoles', 'Sin jitomate', 'Sin col', 'Sin chile'];
+                } else if (selectedProduct.id?.includes('rollito') || selectedProduct.name?.includes('Rollito') || selectedProduct.name?.includes('Rollo')) {
+                  omissions = ['Sin aguacate', 'Sin espinaca', 'Sin pepino', 'Sin zanahoria'];
                 }
                 if (omissions.length === 0) return null;
                 return (
@@ -1243,7 +1366,7 @@ export default function MenuPage() {
                       type="button"
                     >
                       <ShoppingBag size={18} />
-                      <span>Llevar</span>
+                      <span>Recoger</span>
                     </button>
 
                     <button
@@ -1276,6 +1399,18 @@ export default function MenuPage() {
                         autoFocus
                       />
                       <span className="delivery-hint"> Te lo llevamos caliente y fresco hasta tu puerta</span>
+                      {/* Delivery fee notice */}
+                      <div style={{
+                        marginTop: '10px', padding: '10px 12px',
+                        backgroundColor: '#fffbeb', border: '1px solid #f59e0b',
+                        borderRadius: '8px', fontSize: '0.8rem', color: '#78350f',
+                        display: 'flex', gap: '8px', alignItems: 'flex-start', lineHeight: '1.4'
+                      }}>
+                        <Bike size={14} style={{ flexShrink: 0, marginTop: '1px', color: '#f59e0b' }} />
+                        <span>
+                          <strong>Costo de envío por confirmar:</strong> Revisaremos tu dirección y te confirmaremos la tarifa antes de empezar a preparar tu pedido.
+                        </span>
+                      </div>
                     </div>
                   )}
                 </div>

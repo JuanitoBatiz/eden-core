@@ -215,6 +215,7 @@ a {
   background-color: var(--color-cream-dark);
   border: 1px solid var(--color-ochre-light);
   padding: 6px 18px 6px 8px;
+  min-height: 44px;
   border-radius: 30px;
   font-weight: 700;
   cursor: pointer;
@@ -287,32 +288,104 @@ a {
   font-size: 0.9rem;
 }
 
-/* Hero Section */
-.hero {
-  padding: 40px 0 20px 0;
-  text-align: center;
+/* ========================================================
+   FASE 4: HERO FULLSCREEN INMERSIVO (OPCIÓN 1 SELECCIONADA)
+   ======================================================== */
+
+.hero-fullscreen-v1 {
   position: relative;
+  width: 100%;
+  min-height: 100svh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: 190px 24px 80px 24px;
+  overflow: hidden;
+  margin: 0;
 }
 
-.hero-subtitle {
-  font-family: var(--font-script);
-  font-size: 2.2rem;
-  color: var(--color-terracotta);
-  margin-bottom: 8px;
+.hero-v1-bg {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  z-index: 1;
 }
 
-.hero-title {
-  font-size: 2.5rem;
-  font-weight: 800;
-  color: var(--color-green-dark);
-  margin-bottom: 12px;
+.hero-v1-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(135deg, rgba(28, 43, 30, 0.88) 0%, rgba(44, 62, 45, 0.74) 60%, rgba(212, 163, 95, 0.45) 100%);
+  z-index: 2;
 }
 
-.hero-desc {
-  font-size: 1.1rem;
-  color: var(--color-text-muted);
-  max-width: 600px;
+.hero-v1-content {
+  position: relative;
+  z-index: 3;
+  max-width: 760px;
   margin: 0 auto;
+}
+
+.hero-v1-title {
+  font-family: var(--font-serif);
+  font-size: 2.5rem;
+  font-weight: 700;
+  color: #FAF6F0;
+  line-height: 1.2;
+  margin-bottom: 20px;
+  text-shadow: 0 4px 16px rgba(0, 0, 0, 0.35);
+}
+
+@media (min-width: 768px) {
+  .hero-fullscreen-v1 {
+    padding: 210px 48px 90px 48px;
+  }
+  .hero-v1-title {
+    font-size: 3.5rem;
+  }
+}
+
+.hero-v1-desc {
+  font-size: 1.15rem;
+  color: rgba(250, 246, 240, 0.9);
+  line-height: 1.65;
+  margin-bottom: 34px;
+  max-width: 660px;
+  margin-left: auto;
+  margin-right: auto;
+  text-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+}
+
+/* CTA Premium Button */
+.hero-cta-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  background: var(--color-ochre);
+  color: #ffffff;
+  padding: 14px 32px;
+  border-radius: 30px;
+  font-family: var(--font-sans);
+  font-size: 1.05rem;
+  font-weight: 700;
+  cursor: pointer;
+  border: none;
+  box-shadow: 0 8px 24px rgba(212, 163, 95, 0.38);
+  transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  text-decoration: none;
+}
+
+.hero-cta-btn:hover {
+  background: var(--color-green-dark);
+  color: var(--color-cream);
+  transform: translateY(-3px);
+  box-shadow: 0 14px 30px rgba(44, 62, 45, 0.3);
 }
 
 /* Menu Grid and Cards */
@@ -339,6 +412,196 @@ a {
   font-weight: 700;
 }
 
+/* ========================================================
+   FASE 2: SISTEMA EDITORIAL GOURMET / BENTO ADAPTATIVO
+   ======================================================== */
+
+.editorial-bento-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 36px;
+  margin-top: 24px;
+}
+
+@media (min-width: 768px) {
+  .editorial-bento-grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 36px;
+  }
+}
+
+@media (min-width: 1024px) {
+  .editorial-bento-grid {
+    grid-template-columns: repeat(3, 1fr);
+    gap: 42px;
+  }
+}
+
+/* Tarjeta Editorial Base */
+.editorial-card {
+  background-color: var(--color-cream-light);
+  border-radius: 24px;
+  border: 1px solid rgba(212, 163, 95, 0.22);
+  overflow: hidden;
+  box-shadow: 0 6px 20px rgba(44, 62, 45, 0.04);
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  transition: all 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+  position: relative;
+}
+
+.editorial-card:hover {
+  transform: translateY(-6px);
+  box-shadow: 0 16px 36px rgba(212, 163, 95, 0.18);
+  border-color: var(--color-ochre);
+}
+
+/* Variante: Hero Editorial Card (Destacado Principal) */
+.editorial-card.role-hero {
+  background: linear-gradient(145deg, #ffffff 0%, var(--color-cream-light) 100%);
+  border: 1.5px solid var(--color-ochre);
+  box-shadow: 0 10px 30px rgba(44, 62, 45, 0.06);
+}
+
+@media (min-width: 768px) {
+  .editorial-card.role-hero {
+    grid-column: span 2;
+    display: grid;
+    grid-template-columns: 1.1fr 1fr;
+    align-items: stretch;
+  }
+  
+  .editorial-card.role-hero .product-img-container {
+    height: 100%;
+    min-height: 320px;
+  }
+}
+
+@media (min-width: 1024px) {
+  .editorial-card.role-hero {
+    grid-column: span 2;
+  }
+}
+
+/* Variante: Wide Editorial Card (Composición apaisada / alterna) */
+.editorial-card.role-wide {
+  background-color: #ffffff;
+}
+
+@media (min-width: 768px) {
+  .editorial-card.role-wide {
+    grid-column: span 2;
+    display: grid;
+    grid-template-columns: 1fr 1.15fr;
+    align-items: center;
+  }
+}
+
+/* Badges y Elementos Editoriales */
+.editorial-badge {
+  display: inline-block;
+  align-self: flex-start;
+  font-size: 0.7rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 2px;
+  color: var(--color-ochre);
+  background-color: rgba(212, 163, 95, 0.14);
+  padding: 5px 14px;
+  border-radius: 20px;
+  margin-bottom: 14px;
+}
+
+.editorial-info {
+  padding: 26px 24px;
+  display: flex;
+  flex-direction: column;
+  flex-grow: 1;
+  justify-content: space-between;
+}
+
+.editorial-card.role-hero .editorial-info {
+  padding: 32px 30px;
+}
+
+.editorial-name {
+  font-family: var(--font-serif);
+  font-size: 1.45rem;
+  font-weight: 700;
+  color: var(--color-green-dark);
+  margin-bottom: 10px;
+  line-height: 1.25;
+}
+
+.editorial-card.role-hero .editorial-name {
+  font-size: 1.85rem;
+}
+
+.editorial-desc {
+  font-size: 0.95rem;
+  color: var(--color-text-muted);
+  margin-bottom: 24px;
+  line-height: 1.65;
+}
+
+.editorial-card.role-hero .editorial-desc {
+  font-size: 1.05rem;
+}
+
+.editorial-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: auto;
+  padding-top: 18px;
+  border-top: 1px solid rgba(0,0,0,0.06);
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.editorial-price {
+  font-family: var(--font-serif);
+  font-size: 1.35rem;
+  font-weight: 700;
+  color: var(--color-green-dark);
+}
+
+.editorial-card.role-hero .editorial-price {
+  font-size: 1.55rem;
+}
+
+/* ========================================================
+   FASE 3: MICRO-INTERACCIONES Y SCROLL REVEAL PREMIUM
+   ======================================================== */
+
+.scroll-reveal-item {
+  opacity: 0;
+  transform: translateY(24px);
+  transition: opacity 520ms cubic-bezier(0.16, 1, 0.3, 1), 
+              transform 520ms cubic-bezier(0.16, 1, 0.3, 1);
+  will-change: opacity, transform;
+}
+
+.scroll-reveal-item.is-revealed {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.product-img-reveal {
+  opacity: 0;
+  transform: scale(1.03);
+  transition: opacity 480ms cubic-bezier(0.16, 1, 0.3, 1),
+              transform 580ms cubic-bezier(0.16, 1, 0.3, 1);
+  will-change: opacity, transform;
+}
+
+.product-img-reveal.is-img-loaded {
+  opacity: 1;
+  transform: scale(1);
+}
+
+/* Compatibilidad anterior por seguridad */
 .products-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
@@ -365,17 +628,38 @@ a {
 }
 
 .product-img-container {
-  height: 200px;
   width: 100%;
   overflow: hidden;
   position: relative;
   background-color: var(--color-ochre-light);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Contenedores con aspect-ratio dinámico según orientación de la fotografía */
+.product-img-container.orientation-vertical {
+  aspect-ratio: 4 / 5;
+}
+
+.product-img-container.orientation-horizontal {
+  aspect-ratio: 4 / 3;
+}
+
+.product-img-container.orientation-square {
+  aspect-ratio: 1 / 1;
+}
+
+/* Fallback si no tiene clase de orientación */
+.product-img-container:not(.orientation-vertical):not(.orientation-horizontal):not(.orientation-square) {
+  aspect-ratio: 4 / 3;
 }
 
 .product-img {
   width: 100%;
   height: 100%;
   object-fit: cover;
+  object-position: center center;
   transition: var(--transition-smooth);
 }
 
@@ -453,13 +737,15 @@ a {
   background-color: var(--color-cream-dark);
   border: 1px solid var(--color-terracotta);
   color: var(--color-terracotta);
-  padding: 8px 16px;
-  border-radius: 20px;
+  padding: 8px 18px;
+  min-height: 44px;
+  border-radius: 24px;
   font-weight: 700;
   cursor: pointer;
   transition: var(--transition-smooth);
   display: flex;
   align-items: center;
+  justify-content: center;
   gap: 6px;
 }
 
@@ -529,13 +815,15 @@ a {
   background-color: var(--color-cream-light);
   color: var(--color-green-dark);
   border: 1px solid var(--color-ochre);
-  padding: 8px 16px;
+  padding: 8px 18px;
+  min-height: 44px;
   border-radius: 24px;
   font-weight: 700;
   font-size: 0.9rem;
   cursor: pointer;
   display: flex;
   align-items: center;
+  justify-content: center;
   gap: 6px;
   transition: var(--transition-smooth);
 }

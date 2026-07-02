@@ -394,6 +394,33 @@ export default function AdminPage() {
     }
   };
 
+  // Confirm delivery fee (cashier/admin quotes shipping cost manually)
+  const handleSetDeliveryFee = async (orderId: string, fee: number): Promise<void> => {
+    try {
+      const res = await fetch(`/api/orders/${orderId}/delivery-fee`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ delivery_fee: fee })
+      });
+
+      if (res.ok) {
+        // Optimistic update: mark fee as confirmed in local state
+        setOrders(prev => prev.map((o: any) =>
+          o.id === orderId
+            ? { ...o, delivery_fee: fee, delivery_fee_confirmed: true }
+            : o
+        ));
+      } else {
+        const errorData = await res.json();
+        alert(errorData.error || 'Error al confirmar la tarifa de envío.');
+      }
+    } catch (error) {
+      console.error('Error setting delivery fee:', error);
+      alert('Error de red al confirmar la tarifa.');
+    }
+  };
+
   // Generate WhatsApp Message Link for cancellation
   const getWhatsAppCancelLink = (order: Order) => {
     const formattedPhone = order.customer_phone.startsWith('52') ? order.customer_phone : `52${order.customer_phone}`;
@@ -570,6 +597,7 @@ export default function AdminPage() {
                 readyOrders={readyOrders}
                 inTransitOrders={inTransitOrders}
                 updateStatus={updateStatus}
+                setDeliveryFee={handleSetDeliveryFee}
                 getWhatsAppCancelLink={getWhatsAppCancelLink}
               />
             )}

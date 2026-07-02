@@ -80,6 +80,9 @@ export function calculateOrderTotal(cartItems: any[], dbProducts: any[]) {
                    }
                 }
 
+                // Include individual modifier price if configured
+                modifiersExtraPrice += Number(foundMod.price_modifier || foundMod.price || 0);
+
                 // If over the free limit, apply the extra price from the group settings
                 if (groupCounts[foundGroup.id] > freeLimit) {
                    modifiersExtraPrice += Number(foundGroup.extra_price || 0);

@@ -30,7 +30,7 @@ export async function GET() {
         variants(id, name, price, display_order),
         modifier_groups(
           id, name, max_selection,
-          modifiers(id, name, display_order)
+          modifiers(id, name, display_order, price_modifier)
         )
       `)
       .eq('available', true)
@@ -46,12 +46,22 @@ export async function GET() {
 
     // Map Products
     const mappedProducts = products.map(p => {
+      const staticMatch = staticMenuItems.find((item: any) => item.name?.toLowerCase() === p.name?.toLowerCase() || item.id === p.id);
+      const inferredOrientation = staticMatch?.image_orientation || (
+        (p.category_id === 'jugos' || p.category_id === 'smoothies' || p.category_id === 'infusiones' || p.category_id === 'embotellada' || p.name?.toLowerCase().includes('jugo') || p.name?.toLowerCase().includes('smoothie') || p.name?.toLowerCase().includes('infusion'))
+          ? 'vertical'
+          : (p.category_id === 'ensaladas' || p.category_id === 'bowls' || p.name?.toLowerCase().includes('ensalada') || p.name?.toLowerCase().includes('bowl') || p.name?.toLowerCase().includes('coctel') || p.name?.toLowerCase().includes('hotcakes'))
+          ? 'square'
+          : 'horizontal'
+      );
+
       const item: any = {
         id: p.id,
         name: p.name,
         description: p.description,
         price: Number(p.base_price),
         image: p.image_url,
+        image_orientation: (p as any).image_orientation || inferredOrientation,
         category: p.category_id,
         customizable: false
       };

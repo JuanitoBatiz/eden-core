@@ -34,6 +34,11 @@ interface Order {
   notes?: string;
   status: string;
   service_type?: string;
+  delivery_address?: string;
+  /** Tarifa de envío cotizada por caja. NULL = pendiente. */
+  delivery_fee?: number | null;
+  /** true cuando la caja ha confirmado la tarifa */
+  delivery_fee_confirmed?: boolean;
   loyverse_receipt_number?: string;
   payment_status?: string;
   rejection_reason?: string;
@@ -102,7 +107,9 @@ export default function OrderStatusPage() {
   // Rotación dinámica UX para dar sensación de actividad en vivo (tipo DiDi / Uber)
   useEffect(() => {
     if (!order) return;
-    if (order.status === 'received' || order.status === 'in_preparation') {
+    // Also animate while waiting for delivery fee confirmation
+    if (order.status === 'received' || order.status === 'in_preparation' ||
+        (order.service_type === 'delivery' && !order.delivery_fee_confirmed)) {
       const interval = setInterval(() => {
         setDynamicStep(prev => (prev + 1) % 4);
       }, 6500);
@@ -110,7 +117,7 @@ export default function OrderStatusPage() {
     } else {
       setDynamicStep(0);
     }
-  }, [order?.status]);
+  }, [order?.status, order?.delivery_fee_confirmed]);
 
   // Obtiene los detalles de la orden. credentials:'include' envía la cookie httpOnly automáticamente.
   const fetchOrder = async () => {
@@ -309,6 +316,18 @@ export default function OrderStatusPage() {
 
   // Visual layout configurations based on current status
   const getStatusConfig = () => {
+    // Special case: delivery order waiting for fee quote
+    if (order.service_type === 'delivery' && !order.delivery_fee_confirmed &&
+        order.status !== 'cancelled' && order.status !== 'delivered') {
+      return {
+        titleText: 'Calculando costo de envío',
+        description: 'Estamos revisando tu dirección y calculando el costo de envío a tu zona. Te notificaremos en cuanto esté confirmado.',
+        colorClass: 'en_revision',
+        icon: <Bike key="delivery-pending" size={48} color="#f59e0b" />,
+        animationClass: 'active'
+      };
+    }
+
     switch (order.status) {
       case 'received': {
         const receivedTitles = [
@@ -746,9 +765,30 @@ export default function OrderStatusPage() {
               </div>
             )}
 
-            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '1.1rem', fontWeight: 700, marginTop: '20px', color: 'var(--color-green-dark)' }}>
-              <span>Total pagado en caja</span>
+            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '1rem', fontWeight: 700, marginTop: '12px', paddingTop: '10px', borderTop: '1px dashed var(--color-ochre-light)', color: 'var(--color-green-dark)' }}>
+              <span>Subtotal</span>
               <span>${order.total}</span>
+            </div>
+
+            {order.service_type === 'delivery' && (
+              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.95rem', fontWeight: 600, marginTop: '6px', color: order.delivery_fee_confirmed ? '#059669' : '#92400e' }}>
+                <span>Costo de envío</span>
+                <span>
+                  {order.delivery_fee_confirmed
+                    ? `$${order.delivery_fee ?? 0}`
+                    : '⏳ Por definir'}
+                </span>
+              </div>
+            )}
+
+            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '1.15rem', fontWeight: 800, marginTop: '10px', paddingTop: '10px', borderTop: '2px solid var(--color-ochre-light)', color: 'var(--color-green-dark)' }}>
+              <span>Total</span>
+              <span>
+                {order.service_type === 'delivery' && !order.delivery_fee_confirmed
+                  ? <span style={{ fontSize: '0.9rem', color: '#92400e', fontStyle: 'italic' }}>Pendiente de cotización</span>
+                  : `$${order.total + (order.service_type === 'delivery' ? (order.delivery_fee ?? 0) : 0)}`
+                }
+              </span>
             </div>
           </div>
         </div>
