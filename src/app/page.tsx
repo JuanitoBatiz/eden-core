@@ -177,9 +177,6 @@ export default function MenuPage() {
       })
       .then(data => {
         setMenuData(data);
-        if (data.CATEGORIES?.length > 0) {
-          setActiveCategory(data.CATEGORIES[0].id);
-        }
       })
       .catch(err => {
         console.error('Menu fetch failed or timed out, loading fallback:', err);
@@ -189,15 +186,12 @@ export default function MenuPage() {
           SALAD_OPTIONS: fallbackSaladOptions
         };
         setMenuData(fallback);
-        if (fallback.CATEGORIES?.length > 0) {
-          setActiveCategory(fallback.CATEGORIES[0].id);
-        }
       });
 
     return () => clearTimeout(timeoutId);
   }, []);
 
-  // Scroll direction listener to show/hide header unificado (instant response)
+  // Scroll direction listener to show/hide header unificado & update active category
   useEffect(() => {
     if (typeof window === 'undefined') return;
 
@@ -213,6 +207,20 @@ export default function MenuPage() {
         setIsNavVisible(false);
       } else if (scrollY < lastScrollY) {
         setIsNavVisible(true);
+      }
+
+      // Active category detection on scroll
+      if (scrollY < 350) {
+        setActiveCategory('');
+      } else {
+        const sections = document.querySelectorAll('.menu-section');
+        sections.forEach((sec) => {
+          const rect = sec.getBoundingClientRect();
+          if (rect.top <= 250 && rect.bottom >= 200) {
+            const id = sec.id.replace('section-', '');
+            if (id) setActiveCategory(id);
+          }
+        });
       }
 
       lastScrollY = scrollY;
@@ -636,7 +644,10 @@ export default function MenuPage() {
 
       {/* FULL-BLEED INMERSIVE HERO (100% DE LA PANTALLA, SIN MÁRGENES) */}
       <section className="hero-fullscreen-v1">
-        <img src="/images/ensalada.png" alt="Santuario Edén" className="hero-v1-bg" />
+        <picture className="hero-v1-bg">
+          <source media="(max-width: 768px)" srcSet="/images/hero_celular.png" />
+          <img src="/images/hero_desktop.png" alt="Santuario Edén" />
+        </picture>
         <div className="hero-v1-overlay"></div>
         <div className="hero-v1-content">
           <h1 className="hero-v1-title">Deliciosa barra de ensaladas y jugos naturales</h1>

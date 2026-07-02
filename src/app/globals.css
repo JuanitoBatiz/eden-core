@@ -91,7 +91,7 @@ a {
 
 /* Header Component */
 .header {
-  background-color: rgba(253, 251, 247, 0.9);
+  background-color: rgba(253, 251, 247, 0.95);
   backdrop-filter: blur(8px);
   border-bottom: 1px solid var(--color-ochre-light);
   padding: 15px 0;
@@ -189,13 +189,13 @@ a {
 
 /* Category Navigation */
 .category-nav {
-  background-color: rgba(253, 251, 247, 0.95);
-  backdrop-filter: blur(8px);
-  border-bottom: 1px solid var(--color-ochre-light);
+  background-color: rgba(20, 38, 26, 0.45);
+  backdrop-filter: blur(14px);
+  border-bottom: 1px solid rgba(212, 163, 95, 0.3);
   overflow-x: auto;
   white-space: nowrap;
   scrollbar-width: none; /* Firefox */
-  padding: 10px 0;
+  padding: 12px 0;
 }
 
 .category-nav::-webkit-scrollbar {
@@ -212,8 +212,8 @@ a {
 }
 
 .category-btn {
-  background-color: var(--color-cream-dark);
-  border: 1px solid var(--color-ochre-light);
+  background-color: rgba(253, 251, 247, 0.94);
+  border: 1px solid rgba(212, 163, 95, 0.6);
   padding: 6px 18px 6px 8px;
   min-height: 44px;
   border-radius: 30px;
@@ -223,20 +223,23 @@ a {
   align-items: center;
   gap: 10px;
   transition: var(--transition-smooth);
-  color: var(--color-text-muted);
+  color: var(--color-green-dark);
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
 }
 
 .category-btn:hover {
-  background-color: var(--color-ochre-light);
+  background-color: #ffffff;
   color: var(--color-green-dark);
   border-color: var(--color-ochre);
+  transform: translateY(-2px);
+  box-shadow: 0 6px 15px rgba(0, 0, 0, 0.3);
 }
 
 .category-btn.active {
-  background-color: var(--color-white);
-  color: var(--color-green-dark);
-  border-color: var(--color-ochre);
-  box-shadow: 0 4px 12px rgba(212, 163, 95, 0.2);
+  background: linear-gradient(135deg, var(--color-ochre), #e6b360);
+  color: #112217;
+  border-color: #ffffff;
+  box-shadow: 0 4px 16px rgba(212, 163, 95, 0.55);
   transform: translateY(-1px);
 }
 
@@ -314,6 +317,13 @@ a {
   object-fit: cover;
   z-index: 1;
 }
+
+picture.hero-v1-bg img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
 
 .hero-v1-overlay {
   position: absolute;
