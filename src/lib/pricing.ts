@@ -80,6 +80,12 @@ export function calculateOrderTotal(cartItems: any[], dbProducts: any[]) {
                    }
                 }
 
+                const isSandwichOrTorta = dbProduct.id === 'sandwich' || dbProduct.id === 'torta' || dbProduct.id === 'sandwich-pavo' || dbProduct.id === 'sandwich-pollo' || dbProduct.name?.includes('Sándwich') || dbProduct.name?.includes('Torta');
+                if (isSandwichOrTorta && (foundGroup.name === 'Especialidad' || foundGroup.name?.includes('Especialidad'))) {
+                   freeLimit = 1;
+                   if (!foundGroup.extra_price) foundGroup.extra_price = 30;
+                }
+
                 // Include individual modifier price if configured
                 modifiersExtraPrice += Number(foundMod.price_modifier || foundMod.price || 0);
 

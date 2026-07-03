@@ -36,13 +36,14 @@ function getCategoryIcon(name: string) {
     case 'Ensaladas': return <Salad size={20} />;
     case 'Jugos':
     case 'Jugos y Smoothies': return <CupSoda size={20} />;
-    case 'Smoothies': return <CupSoda size={20} />;
+    case 'Smoothies':
+    case 'Smoothies e Infusiones': return <CupSoda size={20} />;
     case 'Infusiones': return <Coffee size={20} />;
     case 'Wraps y Sándwiches': return <Sandwich size={20} />;
     case 'Bowls y Postres':
     case 'Bowls y Cocteles': return <Soup size={20} />;
     case 'Embotellados': return <GlassWater size={20} />;
-    default: return null;
+    default: return <Utensils size={20} />;
   }
 }
 interface CartItem {
@@ -90,7 +91,7 @@ export default function MenuPage() {
   const [selectedExtras, setSelectedExtras] = useState<string[]>([]);
   const [selectedFlavors, setSelectedFlavors] = useState<string[]>([]);
   const [selectedBread, setSelectedBread] = useState<string>('Pan Blanco');
-  const [selectedProteinOption, setSelectedProteinOption] = useState<string>('Pechuga empanizada');
+  const [selectedProteinOptions, setSelectedProteinOptions] = useState<string[]>(['Pechuga empanizada']);
   const [selectedOmissions, setSelectedOmissions] = useState<string[]>([]);
   const [customNotes, setCustomNotes] = useState('');
 
@@ -266,7 +267,7 @@ export default function MenuPage() {
     setSelectedExtras([]);
     setSelectedFlavors([]);
     setSelectedBread('Pan Blanco');
-    setSelectedProteinOption(product.name?.includes('Jamón') || product.id === 'sandwich-pavo' ? 'Jamón de pavo' : 'Pechuga empanizada');
+    setSelectedProteinOptions([product.name?.includes('Jamón') || product.id === 'sandwich-pavo' ? 'Jamón de pavo' : 'Pechuga empanizada']);
     setSelectedOmissions([]);
     setCustomNotes('');
 
@@ -328,14 +329,8 @@ export default function MenuPage() {
     const isSandwichOnly = selectedProduct.id === 'sandwich' || selectedProduct.id === 'sandwich-pollo' || selectedProduct.id === 'sandwich-pavo' || (selectedProduct.name?.includes('Sándwich') && !selectedProduct.name?.includes('Torta'));
 
     if (isSandwichOrTorta) {
-      if (selectedProteinOption === 'Pechuga empanizada' || selectedProteinOption === 'Pechuga asada') {
-        if (price === 65) {
-          extraPrice += 10;
-        }
-      } else if (selectedProteinOption === 'Jamón de pavo') {
-        if (price === 75) {
-          extraPrice -= 10;
-        }
+      if (selectedProteinOptions.length > 1) {
+        extraPrice += (selectedProteinOptions.length - 1) * 30;
       }
     }
 
@@ -349,7 +344,7 @@ export default function MenuPage() {
       dressings: selectedDressings.map((d: any) => SALAD_OPTIONS.dressings.find((item: any) => item.id === d)?.name || d),
       extras: [
         ...selectedExtras,
-        ...(isSandwichOrTorta && selectedProteinOption ? [selectedProteinOption] : []),
+        ...(isSandwichOrTorta ? selectedProteinOptions : []),
         ...(isSandwichOnly && selectedBread ? [selectedBread] : []),
         ...selectedOmissions
       ],
@@ -669,6 +664,26 @@ export default function MenuPage() {
 
       {/* MAIN CONTAINER FOR MENU SECTIONS */}
       <main className="container" style={{ paddingTop: '50px' }}>
+        {/* DISCREET REFERENCE IMAGES NOTICE */}
+        <div style={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          gap: '8px',
+          padding: '10px 16px',
+          backgroundColor: 'rgba(212, 163, 115, 0.12)',
+          border: '1px solid rgba(212, 163, 115, 0.3)',
+          borderRadius: '12px',
+          color: 'var(--color-text-muted)',
+          fontSize: '0.85rem',
+          marginBottom: '35px',
+          textAlign: 'center',
+          maxWidth: '550px',
+          margin: '0 auto 35px auto'
+        }}>
+          <Info size={18} style={{ flexShrink: 0, color: 'var(--color-ochre)' }} />
+          <span><strong>Nota:</strong> Las fotografías e imágenes del menú son de referencia y con fines ilustrativos.</span>
+        </div>
 
         {/* MENU CATEGORIES SECTIONS */}
         {CATEGORIES.map((cat: any) => {
@@ -781,7 +796,7 @@ export default function MenuPage() {
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
               <path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z" />
             </svg>
-            <span>WhatsApp Edén: 56 3583 0014</span>
+            <span>WhatsApp</span>
           </a>
         </section>
       </main>
@@ -1130,31 +1145,42 @@ export default function MenuPage() {
                 <div className="option-group">
                   <div className="option-group-title">
                     <span>Especialidad / Proteína (1 obligatorio)</span>
+                    <span className="option-group-limit">Límite base: 1</span>
                   </div>
+                  <p style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)', marginBottom: '8px' }}>
+                    (Adicionales tienen costo extra de +$30 c/u)
+                  </p>
                   <div className="option-grid">
                     {[
-                      { name: 'Pechuga empanizada', extra: selectedProduct.price === 65 ? 10 : 0 },
-                      { name: 'Pechuga asada', extra: selectedProduct.price === 65 ? 10 : 0 },
-                      { name: 'Jamón de pavo', extra: selectedProduct.price === 75 ? -10 : 0 }
-                    ].map((prot) => (
-                      <label key={prot.name} className="option-card-label">
-                        <input
-                          type="radio"
-                          name="proteinOption"
-                          className="option-card-input"
-                          checked={selectedProteinOption === prot.name}
-                          onChange={() => setSelectedProteinOption(prot.name)}
-                        />
-                        <div className="option-card-content" style={{ display: 'flex', justifyContent: 'space-between', width: '100%' }}>
-                          <span>{prot.name}</span>
-                          {prot.extra !== 0 && (
-                            <span style={{ fontWeight: 600, color: prot.extra > 0 ? 'var(--color-primary)' : 'var(--color-text-muted)' }}>
-                              {prot.extra > 0 ? `+ $${prot.extra}` : `- $${Math.abs(prot.extra)}`}
-                            </span>
-                          )}
-                        </div>
-                      </label>
-                    ))}
+                      { name: 'Pechuga empanizada' },
+                      { name: 'Pechuga asada' },
+                      { name: 'Jamón de pavo' }
+                    ].map((prot) => {
+                      const isChecked = selectedProteinOptions.includes(prot.name);
+                      return (
+                        <label key={prot.name} className="option-card-label">
+                          <input
+                            type="checkbox"
+                            name="proteinOption"
+                            className="option-card-input"
+                            checked={isChecked}
+                            onChange={() => {
+                              if (isChecked) {
+                                setSelectedProteinOptions(selectedProteinOptions.filter(item => item !== prot.name));
+                              } else {
+                                setSelectedProteinOptions([...selectedProteinOptions, prot.name]);
+                              }
+                            }}
+                          />
+                          <div className="option-card-content" style={{ display: 'flex', justifyContent: 'space-between', width: '100%' }}>
+                            <span>{prot.name}</span>
+                            {selectedProteinOptions.length >= 1 && !isChecked && (
+                              <span className="option-card-extra-price">+$30</span>
+                            )}
+                          </div>
+                        </label>
+                      );
+                    })}
                   </div>
                 </div>
               )}
@@ -1258,6 +1284,7 @@ export default function MenuPage() {
                     const price = selectedProduct.prices ? selectedProduct.prices[customSize] : selectedProduct.price;
                     let extra = 0;
                     const isEnsalada = selectedProduct.category === 'ensaladas' || selectedProduct.category === '299824bb-ede2-47ed-bf0e-b5fd9548af73' || menuData?.CATEGORIES?.find((c: any) => c.id === selectedProduct.category)?.name === 'Ensaladas' || selectedProduct.name?.toLowerCase().includes('ensalada');
+                    const isSandwichOrTorta = selectedProduct.id === 'sandwich' || selectedProduct.id === 'torta' || selectedProduct.id === 'sandwich-pavo' || selectedProduct.id === 'sandwich-pollo' || selectedProduct.name?.includes('Sándwich') || selectedProduct.name?.includes('Torta');
                     if (isEnsalada) {
                       if (selectedProteins.length > constraints.proteins) {
                         extra += (selectedProteins.length - constraints.proteins) * 30;
@@ -1270,6 +1297,10 @@ export default function MenuPage() {
                       }
                       if (selectedDressings.length > constraints.dressings) {
                         extra += (selectedDressings.length - constraints.dressings) * 15;
+                      }
+                    } else if (isSandwichOrTorta) {
+                      if (selectedProteinOptions.length > 1) {
+                        extra += (selectedProteinOptions.length - 1) * 30;
                       }
                     }
                     return price + extra;
@@ -1284,6 +1315,7 @@ export default function MenuPage() {
                   ((selectedProduct.category === 'ensaladas' || selectedProduct.category === '299824bb-ede2-47ed-bf0e-b5fd9548af73' || menuData?.CATEGORIES?.find((c: any) => c.id === selectedProduct.category)?.name === 'Ensaladas' || selectedProduct.name?.toLowerCase().includes('ensalada')) && (selectedDressings.length === 0 || selectedProteins.length === 0 || selectedToppings.length === 0)) ||
                   ((selectedProduct.name === 'Bowl de Avena' || selectedProduct.name === 'Bowl de Yogurt') &&
                     (selectedToppings.length !== 2 || selectedSeeds.length !== 2)) ||
+                  ((selectedProduct.id === 'sandwich' || selectedProduct.id === 'torta' || selectedProduct.id === 'sandwich-pavo' || selectedProduct.id === 'sandwich-pollo' || selectedProduct.name?.includes('Sándwich') || selectedProduct.name?.includes('Torta')) && selectedProteinOptions.length === 0) ||
                   (selectedProduct.flavors !== undefined && selectedFlavors.length === 0)
                 }
               >

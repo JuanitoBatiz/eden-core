@@ -25,8 +25,7 @@ export const CATEGORIES: MenuCategory[] = [
   { id: 'ensaladas', name: 'Ensaladas', icon: '🥗' },
   { id: 'burritos-sandwiches', name: 'Wraps y Sándwiches', icon: '🌯' },
   { id: 'jugos', name: 'Jugos', icon: '🍹' },
-  { id: 'smoothies', name: 'Smoothies', icon: '🥤' },
-  { id: 'infusiones', name: 'Infusiones', icon: '🍵' },
+  { id: 'smoothies', name: 'Smoothies e Infusiones', icon: '🥤' },
   { id: 'bowls', name: 'Bowls y Postres', icon: '🥣' },
   { id: 'embotellada', name: 'Embotellados', icon: '🥤' }
 ];
@@ -153,7 +152,7 @@ export const MENU_ITEMS: MenuItem[] = [
     prices: { 'Chico': 55, 'Grande': 65 },
     image: '/images/infusion.png',
     image_orientation: 'vertical',
-    category: 'infusiones',
+    category: 'smoothies',
     customizable: true,
     flavors: ['Negro-Durazno', 'Frutos rojos', 'Matcha-Sencha', 'Hierbabuena-Menta', 'Manzana-Canela', 'Manzanilla-Aloe Vera']
   },
