@@ -676,7 +676,7 @@ export default function MenuPage() {
           margin: '0 auto 35px auto'
         }}>
           <Info size={18} style={{ flexShrink: 0, color: 'var(--color-ochre)' }} />
-          <span><strong>Nota:</strong> Las fotografías e imágenes del menú son de referencia y con fines ilustrativos.</span>
+          <span><strong>Nota:</strong> Fotografías e imágenes de referencia y con fines ilustrativos.</span>
         </div>
 
         {/* MENU CATEGORIES SECTIONS */}
