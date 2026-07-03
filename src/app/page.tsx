@@ -267,7 +267,7 @@ export default function MenuPage() {
     setSelectedExtras([]);
     setSelectedFlavors([]);
     setSelectedBread('Pan Blanco');
-    setSelectedProteinOptions([product.name?.includes('Jamón') || product.id === 'sandwich-pavo' ? 'Jamón de pavo' : 'Pechuga empanizada']);
+    setSelectedProteinOptions([]);
     setSelectedOmissions([]);
     setCustomNotes('');
 
@@ -327,12 +327,6 @@ export default function MenuPage() {
 
     const isSandwichOrTorta = selectedProduct.id === 'sandwich' || selectedProduct.id === 'torta' || selectedProduct.id === 'sandwich-pavo' || selectedProduct.id === 'sandwich-pollo' || selectedProduct.name?.includes('Sándwich') || selectedProduct.name?.includes('Torta');
     const isSandwichOnly = selectedProduct.id === 'sandwich' || selectedProduct.id === 'sandwich-pollo' || selectedProduct.id === 'sandwich-pavo' || (selectedProduct.name?.includes('Sándwich') && !selectedProduct.name?.includes('Torta'));
-
-    if (isSandwichOrTorta) {
-      if (selectedProteinOptions.length > 1) {
-        extraPrice += (selectedProteinOptions.length - 1) * 30;
-      }
-    }
 
     const itemPrice = price + extraPrice;
 
@@ -1145,10 +1139,10 @@ export default function MenuPage() {
                 <div className="option-group">
                   <div className="option-group-title">
                     <span>Especialidad / Proteína (1 obligatorio)</span>
-                    <span className="option-group-limit">Límite base: 1</span>
+                    <span className="option-group-limit">Obligatorio</span>
                   </div>
                   <p style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)', marginBottom: '8px' }}>
-                    (Adicionales tienen costo extra de +$30 c/u)
+                    (Selecciona 1 opción. Desmarca tu selección actual para cambiar de opción)
                   </p>
                   <div className="option-grid">
                     {[
@@ -1157,26 +1151,25 @@ export default function MenuPage() {
                       { name: 'Jamón de pavo' }
                     ].map((prot) => {
                       const isChecked = selectedProteinOptions.includes(prot.name);
+                      const isDisabled = selectedProteinOptions.length >= 1 && !isChecked;
                       return (
-                        <label key={prot.name} className="option-card-label">
+                        <label key={prot.name} className="option-card-label" style={{ opacity: isDisabled ? 0.45 : 1, cursor: isDisabled ? 'not-allowed' : 'pointer' }}>
                           <input
                             type="checkbox"
                             name="proteinOption"
                             className="option-card-input"
                             checked={isChecked}
+                            disabled={isDisabled}
                             onChange={() => {
                               if (isChecked) {
-                                setSelectedProteinOptions(selectedProteinOptions.filter(item => item !== prot.name));
+                                setSelectedProteinOptions([]);
                               } else {
-                                setSelectedProteinOptions([...selectedProteinOptions, prot.name]);
+                                setSelectedProteinOptions([prot.name]);
                               }
                             }}
                           />
                           <div className="option-card-content" style={{ display: 'flex', justifyContent: 'space-between', width: '100%' }}>
                             <span>{prot.name}</span>
-                            {selectedProteinOptions.length >= 1 && !isChecked && (
-                              <span className="option-card-extra-price">+$30</span>
-                            )}
                           </div>
                         </label>
                       );
@@ -1297,10 +1290,6 @@ export default function MenuPage() {
                       }
                       if (selectedDressings.length > constraints.dressings) {
                         extra += (selectedDressings.length - constraints.dressings) * 15;
-                      }
-                    } else if (isSandwichOrTorta) {
-                      if (selectedProteinOptions.length > 1) {
-                        extra += (selectedProteinOptions.length - 1) * 30;
                       }
                     }
                     return price + extra;
