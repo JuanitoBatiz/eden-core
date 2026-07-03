@@ -261,7 +261,7 @@ export const MENU_ITEMS: MenuItem[] = [
   },
   {
     id: 'bowl-rafaella',
-    name: 'Bowl Rafaella',
+    name: 'Bowl Rafaello',
     description: 'Especialidad de la casa con un sabor exquisito y reconfortante. Preparado con ingredientes selectos y toque artesanal.',
     price: 95,
     image: '/images/rafaello.png',
