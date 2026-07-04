@@ -76,6 +76,10 @@ export async function createLoyverseReceipt(order: {
   items: any[];
   total: number;
   notes?: string;
+  service_type?: string;
+  delivery_address?: string;
+  payment_method?: string;
+  payment_status?: string;
 }) {
   const lineItems = order.items.map(item => {
     return {
@@ -104,10 +108,27 @@ export async function createLoyverseReceipt(order: {
     return details;
   }).join('\n');
 
+  // Formatear el Tipo de Servicio para el Ticket de Cocina / POS de Loyverse
+  let serviceTypeText = '[PARA RECOGER EN SUCURSAL]';
+  if (order.service_type === 'delivery') {
+    serviceTypeText = `[ENVÍO A DOMICILIO]\n   DIRECCIÓN: ${order.delivery_address || 'No especificada'}`;
+  } else if (order.service_type === 'dine_in' || order.service_type === 'local' || order.service_type === 'comer_local') {
+    serviceTypeText = '[PARA COMER EN LOCAL (MESA)]';
+  }
+
+  // Formatear el Método de Pago para el Ticket de Cocina / POS de Loyverse
+  let paymentText = '[PAGO EN EFECTIVO / TARJETA AL RECIBIR (COBRAR EN CAJA)]';
+  if (order.payment_method === 'transferencia' || order.payment_status === 'payment_approved') {
+    paymentText = '[TRANSFERENCIA BANCARIA / SPEI - YA PAGADO EN WEB]';
+  }
+
+  const headerNote = `========================================\nTIPO DE SERVICIO:\n${serviceTypeText}\n\n${paymentText}\n========================================\n\n`;
+  const fullNoteText = `${headerNote}Pedido Web #${order.id.slice(-4).toUpperCase()}\nCliente: ${order.customer_name} (${order.customer_phone})\n\nDETALLE:\n${itemsText}\n\nNotas Generales: ${order.notes || 'Ninguna'}`;
+
   if (!isLoyverseConfigured) {
     const mockPayload: any = {
       store_id: LOYVERSE_STORE_ID,
-      note: `Pedido Web #${order.id.slice(-4).toUpperCase()}\nCliente: ${order.customer_name} (${order.customer_phone})\n\nDETALLE:\n${itemsText}\n\nNotas Generales: ${order.notes || 'Ninguna'}`,
+      note: fullNoteText,
       line_items: lineItems,
       payments: [
         {
@@ -135,7 +156,7 @@ export async function createLoyverseReceipt(order: {
 
     const payload: LoyverseReceiptPayload = {
       store_id: LOYVERSE_STORE_ID,
-      note: `Pedido Web #${order.id.slice(-4).toUpperCase()}\nCliente: ${order.customer_name} (${order.customer_phone})\n\nDETALLE:\n${itemsText}\n\nNotas Generales: ${order.notes || 'Ninguna'}`,
+      note: fullNoteText,
       line_items: lineItems,
       payments: payments
     };

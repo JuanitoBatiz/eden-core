@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { verifyAccessToken } from '@/lib/auth';
 import { createAdminClient } from '@/lib/supabase';
+import { createLoyverseReceipt } from '@/lib/loyverse';
 
 // PATCH: Pagar en físico
 export async function PATCH(req: Request, { params }: { params: Promise<{ id: string }> }) {
@@ -22,7 +23,7 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
     // Validar que la orden pertenezca al usuario y esté esperando pago
     const { data: order, error: orderErr } = await adminSupabase
       .from('orders')
-      .select('status, user_id')
+      .select('*')
       .eq('id', orderId)
       .single();
 
@@ -43,12 +44,46 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
       .from('orders')
       .update({
         status: 'in_preparation',
-        // Podemos añadir una nota para la caja, o simplemente dejar payment_status='pending_payment'
       })
       .eq('id', orderId);
 
     if (updateErr) {
       throw new Error(`DB Error: ${updateErr.message}`);
+    }
+
+    // Enviar orden a Loyverse POS inmediatamente para pagos en físico / efectivo / caja
+    try {
+      const { data: dbUser } = await adminSupabase
+        .from('users')
+        .select('loyverse_customer_id')
+        .eq('id', order.user_id)
+        .single();
+
+      const loyverseResult = await createLoyverseReceipt({
+        id: order.id,
+        customer_id: dbUser?.loyverse_customer_id || undefined,
+        customer_name: order.customer_name,
+        customer_phone: order.customer_phone,
+        items: order.items,
+        total: order.total,
+        notes: order.notes || '',
+        service_type: order.service_type,
+        delivery_address: order.delivery_address,
+        payment_method: 'efectivo',
+        payment_status: 'pending_payment'
+      });
+
+      if (loyverseResult?.receipt_id) {
+        await adminSupabase
+          .from('orders')
+          .update({
+            loyverse_receipt_id: loyverseResult.receipt_id,
+            loyverse_receipt_number: loyverseResult.receipt_number
+          })
+          .eq('id', orderId);
+      }
+    } catch (err) {
+      console.error('Error synchronizing physical payment order with Loyverse POS:', err);
     }
 
     return NextResponse.json({ success: true, status: 'in_preparation' });

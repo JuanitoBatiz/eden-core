@@ -22,12 +22,12 @@ export interface MenuCategory {
 }
 
 export const CATEGORIES: MenuCategory[] = [
-  { id: 'ensaladas', name: 'Ensaladas', icon: '🥗' },
-  { id: 'burritos-sandwiches', name: 'Wraps y Sándwiches', icon: '🌯' },
-  { id: 'jugos', name: 'Jugos', icon: '🍹' },
-  { id: 'smoothies', name: 'Smoothies e Infusiones', icon: '🥤' },
-  { id: 'bowls', name: 'Bowls y Postres', icon: '🥣' },
-  { id: 'embotellada', name: 'Embotellados', icon: '🥤' }
+  { id: 'ensaladas', name: 'Ensaladas', icon: 'salad' },
+  { id: 'burritos-sandwiches', name: 'Wraps y Sándwiches', icon: 'sandwich' },
+  { id: 'jugos', name: 'Jugos', icon: 'juice' },
+  { id: 'smoothies', name: 'Smoothies e Infusiones', icon: 'smoothie' },
+  { id: 'bowls', name: 'Bowls y Postres', icon: 'bowl' },
+  { id: 'embotellada', name: 'Embotellados', icon: 'bottle' }
 ];
 
 export const SALAD_OPTIONS = {

@@ -8,12 +8,14 @@ export interface LoyaltyInfo {
 }
 
 /**
- * Consulta la API de Loyverse para obtener los puntos de lealtad en tiempo real.
- * Si las variables de Loyverse están comentadas en .env.local (modo dev/pruebas),
- * calcula matemáticamente los puntos simulados basados en las compras locales del usuario.
+ * Consulta los puntos de lealtad combinando la API de Loyverse y las compras locales en Edén.
+ * De esta forma, si el cliente compró en el menú digital (o si Loyverse aún reporta 0),
+ * siempre verá reflejados sus puntos reales ganados y canjeados tanto en perfil como al escanear el QR.
  */
 export async function getLoyaltyInfoFromLoyverse(loyverseCustomerId: string, supabaseUserId?: string): Promise<LoyaltyInfo> {
   const loyverseToken = process.env.LOYVERSE_ACCESS_TOKEN || '';
+  let loyversePoints = 0;
+  let loyverseRaw = null;
   
   if (loyverseToken && loyverseCustomerId && !loyverseCustomerId.startsWith('loyverse_cust_')) {
     try {
@@ -23,24 +25,16 @@ export async function getLoyaltyInfoFromLoyverse(loyverseCustomerId: string, sup
 
       if (res.ok) {
         const data = await res.json();
-        const pts = data.total_points || 0;
-        let tier = 'Estándar';
-        if (pts >= 1800) tier = 'Diamante';
-        else if (pts >= 600) tier = 'Oro';
-        else if (pts >= 150) tier = 'Plata';
-
-        return {
-          loyalty_points: pts,
-          loyalty_tier: tier,
-          _loyverse_raw: data
-        };
+        loyversePoints = data.total_points || 0;
+        loyverseRaw = data;
       }
     } catch (e) {
       console.error('Error fetching Loyverse loyalty data:', e);
     }
   }
 
-  // FALLBACK DE SIMULACIÓN LOCAL (Cuando .env.local tiene #LOYVERSE o es un usuario de prueba)
+  // CÁLCULO LOCAL DE EDÉN (Suma 10% de compras en Edén menos canjes realizados)
+  let localPoints = 0;
   if (supabaseUserId) {
     try {
       const adminSupabase = createAdminClient();
@@ -57,7 +51,7 @@ export async function getLoyaltyInfoFromLoyverse(loyverseCustomerId: string, sup
         earnedSimulated = userOrders.reduce((acc, curr) => acc + Math.floor((curr.total || 0) * 0.1), 0);
       }
 
-      // Restar puntos canjeados en pruebas
+      // Restar puntos canjeados
       const { data: redemptions } = await adminSupabase
         .from('loyalty_redemptions')
         .select('points_used')
@@ -68,20 +62,22 @@ export async function getLoyaltyInfoFromLoyverse(loyverseCustomerId: string, sup
         spentSimulated = redemptions.reduce((acc, curr) => acc + (curr.points_used || 0), 0);
       }
 
-      const simPoints = Math.max(0, earnedSimulated - spentSimulated);
-      let simTier = 'Estándar';
-      if (simPoints >= 1800) simTier = 'Diamante';
-      else if (simPoints >= 600) simTier = 'Oro';
-      else if (simPoints >= 150) simTier = 'Plata';
-
-      return {
-        loyalty_points: simPoints,
-        loyalty_tier: simTier
-      };
+      localPoints = Math.max(0, earnedSimulated - spentSimulated);
     } catch (err) {
-      console.error('Error calculating simulated loyalty points:', err);
+      console.error('Error calculating local loyalty points:', err);
     }
   }
 
-  return { loyalty_points: 0, loyalty_tier: 'Estándar' };
+  // Tomamos el mayor valor entre lo reportado por Loyverse y lo acumulado localmente en Edén
+  const finalPoints = Math.max(loyversePoints, localPoints);
+  let tier = 'Estándar';
+  if (finalPoints >= 1800) tier = 'Diamante';
+  else if (finalPoints >= 600) tier = 'Oro';
+  else if (finalPoints >= 150) tier = 'Plata';
+
+  return {
+    loyalty_points: finalPoints,
+    loyalty_tier: tier,
+    _loyverse_raw: loyverseRaw
+  };
 }

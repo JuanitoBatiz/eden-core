@@ -94,11 +94,6 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
         .eq('id', order.user_id)
         .single();
 
-      let finalNotes = order.notes || '';
-      if (order.service_type === 'delivery') {
-        finalNotes = `[A DOMICILIO] Dirección: ${order.delivery_address || 'No especificada'}\n${finalNotes}`;
-      }
-
       const loyverseResult = await createLoyverseReceipt({
         id: order.id,
         customer_id: dbUser?.loyverse_customer_id || undefined,
@@ -106,7 +101,11 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
         customer_phone: order.customer_phone,
         items: order.items,
         total: order.total,
-        notes: finalNotes
+        notes: order.notes || '',
+        service_type: order.service_type,
+        delivery_address: order.delivery_address,
+        payment_method: 'transferencia',
+        payment_status: 'payment_approved'
       });
 
       if (loyverseResult?.receipt_id) {

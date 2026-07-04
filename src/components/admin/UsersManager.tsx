@@ -71,7 +71,7 @@ export default function UsersManager({ accessToken }: { accessToken: string }) {
     
     let msg = `¿Seguro que deseas ${actionText} a ${user.name}?`;
     if (user.active) {
-      msg += `\n\n⚠️ Este usuario no podrá iniciar sesión ni usar sesiones activas inmediatamente. Sus tokens actuales se invalidarán.`;
+      msg += `\n\nATENCIÓN: Este usuario no podrá iniciar sesión ni usar sesiones activas inmediatamente. Sus tokens actuales se invalidarán.`;
     }
 
     if (!confirm(msg)) return;
@@ -148,11 +148,11 @@ export default function UsersManager({ accessToken }: { accessToken: string }) {
                     <select 
                       value={user.role} 
                       onChange={(e) => handleChangeRole(user.id, e.target.value, user.role)}
-                      style={{ padding: '6px', borderRadius: '4px', border: '1px solid var(--color-cream-dark)', outline: 'none', color: 'var(--color-text-dark)' }}
+                      style={{ padding: '6px', borderRadius: '4px', border: '1px solid var(--color-cream-dark)', outline: 'none', color: 'var(--color-text-dark)', fontWeight: 500 }}
                     >
-                      <option value="customer">Customer</option>
-                      <option value="cashier">Cashier</option>
-                      <option value="owner">Owner</option>
+                      <option value="customer">Cliente</option>
+                      <option value="cashier">Cajero / POS</option>
+                      <option value="owner">Dueño (Admin)</option>
                     </select>
                   </td>
                   <td style={{ padding: '12px' }}>
@@ -168,7 +168,13 @@ export default function UsersManager({ accessToken }: { accessToken: string }) {
                     </span>
                   </td>
                   <td style={{ padding: '12px', fontSize: '0.85rem', color: 'var(--color-text-muted)' }}>
-                    {new Date(user.created_at).toLocaleDateString()}
+                    {user.created_at ? new Date(user.created_at).toLocaleDateString('es-MX', {
+                      year: 'numeric',
+                      month: 'short',
+                      day: 'numeric',
+                      hour: '2-digit',
+                      minute: '2-digit'
+                    }) : 'N/A'}
                   </td>
                   <td style={{ padding: '12px' }}>
                     <button 

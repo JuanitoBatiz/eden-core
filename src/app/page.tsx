@@ -506,7 +506,7 @@ export default function MenuPage() {
       }
 
       if (res.status === 409) {
-        let errorText = "⚠️ Cambios en disponibilidad:\n";
+        let errorText = "ATENCIÓN - Cambios en disponibilidad:\n";
         data.conflicts.forEach((c: any) => {
           errorText += `- ${c.product_name}: ${c.reason}\n`;
         });
@@ -1332,7 +1332,7 @@ export default function MenuPage() {
             <div className="cart-body">
               {cart.length === 0 ? (
                 <div className="cart-empty">
-                  <div className="cart-empty-icon">🥗</div>
+                  <div className="cart-empty-icon" style={{ display: 'flex', justifyContent: 'center', marginBottom: '15px' }}><ShoppingBag size={48} color="var(--color-ochre)" /></div>
                   <h3>Tu carrito está vacío</h3>
                   <p>Navega en el menú y agrega tus ensaladas o jugos favoritos.</p>
                 </div>
@@ -1579,7 +1579,7 @@ export default function MenuPage() {
 
                   {sentCode && (
                     <div className="sms-code-preview-banner">
-                      <strong>📱 Modo de Desarrollo:</strong> Ingresa el código generado: <strong>{sentCode}</strong> o <strong>123456</strong>
+                      <strong>Modo de Desarrollo:</strong> Ingresa el código generado: <strong>{sentCode}</strong> o <strong>123456</strong>
                     </div>
                   )}
 

@@ -69,7 +69,7 @@ export default function MenuManager({ accessToken }: { accessToken: string }) {
     const isLinked = !!(prod as any).loyverse_item_id;
     let msg = `¿Seguro que deseas eliminar el producto "${prod.name}"?\nEl producto dejará de mostrarse en la tienda, pero no se borrará del historial de órdenes pasadas.`;
     if (isLinked) {
-      msg += `\n\n⚠️ ESTE PRODUCTO ESTÁ VINCULADO A LOYVERSE.\nLa eliminación local no lo borrará de tu inventario en Loyverse.`;
+      msg += `\n\nATENCIÓN: ESTE PRODUCTO ESTÁ VINCULADO A LOYVERSE.\nLa eliminación local no lo borrará de tu inventario en Loyverse.`;
     }
     if (!confirm(msg)) return;
 
@@ -99,6 +99,21 @@ export default function MenuManager({ accessToken }: { accessToken: string }) {
     }
   };
 
+  const handleDeleteCategory = async (cat: any, e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (!confirm(`¿Seguro que deseas eliminar la categoría "${cat.name}"?`)) return;
+    try {
+      const res = await fetch(`/api/admin/categories/${cat.id}`, {
+        method: 'DELETE',
+        headers: { Authorization: `Bearer ${accessToken}` }
+      });
+      if (res.ok) fetchMenu();
+      else alert((await res.json()).error || 'Error al eliminar categoría');
+    } catch (err) {
+      alert('Error de red');
+    }
+  };
+
   if (loading) return <div style={{ color: 'var(--color-text-muted)' }}>Cargando menú completo...</div>;
   if (error) return <div style={{ color: 'var(--color-terracotta)' }}>{error}</div>;
 
@@ -119,24 +134,39 @@ export default function MenuManager({ accessToken }: { accessToken: string }) {
       </div>
 
       <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-        {categories.map(cat => {
-          const catProducts = products.filter(p => p.category_id === cat.id);
-          const isCatExpanded = expandedCats[cat.id];
+        {categories
+          .filter(cat => {
+            const catProducts = products.filter(p => p.category_id === cat.id);
+            if (!cat.active && catProducts.length === 0) return false;
+            return true;
+          })
+          .map(cat => {
+            const catProducts = products.filter(p => p.category_id === cat.id);
+            const isCatExpanded = expandedCats[cat.id];
 
-          return (
-            <div key={cat.id} style={{ border: '1px solid var(--color-cream-dark)', borderRadius: '8px', overflow: 'hidden' }}>
-              <div 
-                onClick={() => toggleCat(cat.id)}
-                style={{ backgroundColor: 'var(--color-cream-light)', padding: '15px', display: 'flex', justifyContent: 'space-between', cursor: 'pointer', fontWeight: 600, color: 'var(--color-text-dark)' }}
-              >
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  {isCatExpanded ? <ChevronDown size={20} /> : <ChevronRight size={20} />}
-                  {cat.name} {!cat.active && <span style={{ color: 'var(--color-terracotta)', fontSize: '0.8rem' }}>(Inactiva)</span>}
+            return (
+              <div key={cat.id} style={{ border: '1px solid var(--color-cream-dark)', borderRadius: '8px', overflow: 'hidden' }}>
+                <div 
+                  onClick={() => toggleCat(cat.id)}
+                  style={{ backgroundColor: 'var(--color-cream-light)', padding: '15px', display: 'flex', justifyContent: 'space-between', cursor: 'pointer', fontWeight: 600, color: 'var(--color-text-dark)' }}
+                >
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    {isCatExpanded ? <ChevronDown size={20} /> : <ChevronRight size={20} />}
+                    {cat.name} {!cat.active && <span style={{ color: 'var(--color-terracotta)', fontSize: '0.8rem' }}>(Inactiva)</span>}
+                  </div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
+                    <div style={{ fontSize: '0.85rem', color: 'var(--color-text-muted)' }}>
+                      {catProducts.length} productos
+                    </div>
+                    <button
+                      onClick={(e) => handleDeleteCategory(cat, e)}
+                      style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--color-terracotta)', padding: '4px', display: 'flex', alignItems: 'center' }}
+                      title="Eliminar categoría"
+                    >
+                      <Trash2 size={16} />
+                    </button>
+                  </div>
                 </div>
-                <div style={{ fontSize: '0.85rem', color: 'var(--color-text-muted)' }}>
-                  {catProducts.length} productos
-                </div>
-              </div>
               
               {isCatExpanded && (
                 <div style={{ padding: '10px', display: 'flex', flexDirection: 'column', gap: '8px' }}>

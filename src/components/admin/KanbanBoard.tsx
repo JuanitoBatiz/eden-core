@@ -103,11 +103,11 @@ export default function KanbanBoard({ pendingOrders, preparingOrders, readyOrder
             }}>
               {feeConfirmed
                 ? `Envío: $${order.delivery_fee ?? 0}`
-                : '⏳ Tarifa Pendiente'}
+                : <span style={{ display: 'inline-flex', alignItems: 'center', gap: '3px' }}><Clock size={12} /> Tarifa Pendiente</span>}
             </span>
           )}
-          <span style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--color-ochre-dark)', backgroundColor: 'var(--color-ochre-light)', padding: '3px 8px', borderRadius: '12px' }}>
-            Ticket POS: {order.loyverse_receipt_number || '⏳ Pendiente'}
+          <span style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--color-ochre-dark)', backgroundColor: 'var(--color-ochre-light)', padding: '3px 8px', borderRadius: '12px', display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+            Ticket POS: {order.loyverse_receipt_number || <span style={{ display: 'inline-flex', alignItems: 'center', gap: '3px' }}><Clock size={12} /> Pendiente</span>}
           </span>
         </div>
 

@@ -168,10 +168,13 @@ export default function OrderStatusPage() {
     fetchOrder();
     fetchBankConfig();
 
-    // 1. Intentar suscripción WebSocket de Supabase con respaldo de polling HTTP
-    let channel: any = null;
-    let fallbackInterval: any = null;
+    // SIEMPRE activamos un intervalo de polling cada 3.5 segundos en segundo plano.
+    // Esto garantiza 100% que cualquier cambio de estado o asignación de tarifa en cocina se actualice
+    // instantáneamente en la pantalla del cliente sin tener que refrescar la página manualmente,
+    // independientemente de si Realtime o WebSocket están habilitados en Supabase.
+    const pollingInterval = setInterval(fetchOrder, 3500);
 
+    let channel: any = null;
     if (isSupabaseConfigured && supabase) {
       try {
         channel = supabase
@@ -189,25 +192,17 @@ export default function OrderStatusPage() {
               setOrder(payload.new as Order);
             }
           )
-          .subscribe((status) => {
-            if (status === 'CHANNEL_ERROR' && !fallbackInterval) {
-              console.warn('Realtime channel error, switching to HTTP polling.');
-              fallbackInterval = setInterval(fetchOrder, 5000);
-            }
-          });
+          .subscribe();
       } catch (wsErr) {
-        console.warn('WebSocket insecure operation on mobile HTTP, switching to polling:', wsErr);
-        fallbackInterval = setInterval(fetchOrder, 5000);
+        console.warn('WebSocket error:', wsErr);
       }
-    } else {
-      fallbackInterval = setInterval(fetchOrder, 5000);
     }
 
     return () => {
       if (channel && supabase) {
         try { supabase.removeChannel(channel); } catch(e) {}
       }
-      if (fallbackInterval) clearInterval(fallbackInterval);
+      clearInterval(pollingInterval);
     };
   }, [id]);
 
@@ -454,11 +449,14 @@ export default function OrderStatusPage() {
         <div className="status-container">
           <div className="status-header">
             <span className={`status-badge-tracking ${statusConfig.colorClass}`}>
-              {order.status === 'received' && 'En Revisión'}
-              {order.status === 'awaiting_payment' && 'Esperando Pago'}
-              {order.status === 'in_preparation' && 'Preparando'}
-              {order.status === 'delivered' && 'Listo para Entregar'}
-              {order.status === 'cancelled' && 'Cancelado'}
+              {order.service_type === 'delivery' && !order.delivery_fee_confirmed
+                ? <span style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}><Bike size={16} /> Cotizando Envío a Domicilio</span>
+                : order.status === 'received' ? 'En Revisión'
+                : order.status === 'awaiting_payment' ? 'Esperando Pago'
+                : order.status === 'in_preparation' ? 'Preparando'
+                : order.status === 'delivered' ? 'Listo para Entregar'
+                : order.status === 'cancelled' ? 'Cancelado'
+                : 'En Proceso'}
             </span>
             
             <div key={statusConfig.titleText} style={{ animation: 'fadeIn 0.6s cubic-bezier(0.16, 1, 0.3, 1)' }}>
@@ -469,6 +467,48 @@ export default function OrderStatusPage() {
                 {statusConfig.description}
               </p>
             </div>
+
+            {/* Recordatorio / Anuncio de Envío a Domicilio ("Otro Estado") */}
+            {order.service_type === 'delivery' && (
+              <div style={{
+                marginTop: '16px',
+                padding: '16px 20px',
+                backgroundColor: !order.delivery_fee_confirmed ? '#fffbeb' : '#ecfdf5',
+                border: `2px solid ${!order.delivery_fee_confirmed ? '#f59e0b' : '#10b981'}`,
+                borderRadius: '18px',
+                display: 'flex',
+                alignItems: 'flex-start',
+                gap: '14px',
+                textAlign: 'left',
+                boxShadow: '0 8px 24px rgba(0,0,0,0.06)',
+                animation: 'fadeIn 0.5s ease'
+              }}>
+                <div style={{
+                  width: '42px',
+                  height: '42px',
+                  borderRadius: '12px',
+                  backgroundColor: !order.delivery_fee_confirmed ? '#fef3c7' : '#d1fae5',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  flexShrink: 0
+                }}>
+                  <Bike size={24} color={!order.delivery_fee_confirmed ? '#d97706' : '#059669'} />
+                </div>
+                <div>
+                  <h4 style={{ margin: '0 0 6px 0', fontSize: '1.05rem', color: !order.delivery_fee_confirmed ? '#92400e' : '#065f46', fontFamily: 'var(--font-serif)', fontWeight: 700 }}>
+                    {!order.delivery_fee_confirmed 
+                      ? 'Estado de Envío: Asignando Tarifa por Cocina' 
+                      : 'Tarifa de Envío Confirmada por Cocina'}
+                  </h4>
+                  <p style={{ margin: 0, fontSize: '0.92rem', color: !order.delivery_fee_confirmed ? '#b45309' : '#047857', lineHeight: 1.5 }}>
+                    {!order.delivery_fee_confirmed
+                      ? 'Has seleccionado envío a domicilio. En cocina están revisando tu dirección para asignarte el precio exacto de envío. En cuanto la confirmen, tu total y estado se actualizarán automáticamente aquí.'
+                      : `El costo de envío asignado para tu zona es de $${order.delivery_fee || 0} pesos. Tu repartidor saldrá en cuanto el pedido esté empaquetado.`}
+                  </p>
+                </div>
+              </div>
+            )}
           </div>
 
           <div className="status-visual">
@@ -776,7 +816,7 @@ export default function OrderStatusPage() {
                 <span>
                   {order.delivery_fee_confirmed
                     ? `$${order.delivery_fee ?? 0}`
-                    : '⏳ Por definir'}
+                    : <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}><Clock size={14} /> Por definir</span>}
                 </span>
               </div>
             )}
