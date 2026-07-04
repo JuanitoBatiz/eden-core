@@ -51,39 +51,41 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
       throw new Error(`DB Error: ${updateErr.message}`);
     }
 
-    // Enviar orden a Loyverse POS inmediatamente para pagos en físico / efectivo / caja
-    try {
-      const { data: dbUser } = await adminSupabase
-        .from('users')
-        .select('loyverse_customer_id')
-        .eq('id', order.user_id)
-        .single();
+    // Enviar orden a Loyverse POS inmediatamente para pagos en físico / efectivo / caja si no ha sido enviada previamente
+    if (!order.loyverse_receipt_id) {
+      try {
+        const { data: dbUser } = await adminSupabase
+          .from('users')
+          .select('loyverse_customer_id')
+          .eq('id', order.user_id)
+          .single();
 
-      const loyverseResult = await createLoyverseReceipt({
-        id: order.id,
-        customer_id: dbUser?.loyverse_customer_id || undefined,
-        customer_name: order.customer_name,
-        customer_phone: order.customer_phone,
-        items: order.items,
-        total: order.total,
-        notes: order.notes || '',
-        service_type: order.service_type,
-        delivery_address: order.delivery_address,
-        payment_method: 'efectivo',
-        payment_status: 'pending_payment'
-      });
+        const loyverseResult = await createLoyverseReceipt({
+          id: order.id,
+          customer_id: dbUser?.loyverse_customer_id || undefined,
+          customer_name: order.customer_name,
+          customer_phone: order.customer_phone,
+          items: order.items,
+          total: order.total,
+          notes: order.notes || '',
+          service_type: order.service_type,
+          delivery_address: order.delivery_address,
+          payment_method: 'efectivo',
+          payment_status: 'pending_payment'
+        });
 
-      if (loyverseResult?.receipt_id) {
-        await adminSupabase
-          .from('orders')
-          .update({
-            loyverse_receipt_id: loyverseResult.receipt_id,
-            loyverse_receipt_number: loyverseResult.receipt_number
-          })
-          .eq('id', orderId);
+        if (loyverseResult?.receipt_id) {
+          await adminSupabase
+            .from('orders')
+            .update({
+              loyverse_receipt_id: loyverseResult.receipt_id,
+              loyverse_receipt_number: loyverseResult.receipt_number
+            })
+            .eq('id', orderId);
+        }
+      } catch (err) {
+        console.error('Error synchronizing physical payment order with Loyverse POS:', err);
       }
-    } catch (err) {
-      console.error('Error synchronizing physical payment order with Loyverse POS:', err);
     }
 
     return NextResponse.json({ success: true, status: 'in_preparation' });

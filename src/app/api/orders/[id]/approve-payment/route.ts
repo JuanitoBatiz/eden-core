@@ -86,44 +86,46 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
     }
     */
 
-    // 5. Send to Loyverse POS
-    try {
-      const { data: dbUser } = await adminSupabase
-        .from('users')
-        .select('loyverse_customer_id')
-        .eq('id', order.user_id)
-        .single();
+    // 5. Send to Loyverse POS si no ha sido enviada previamente
+    if (!order.loyverse_receipt_id) {
+      try {
+        const { data: dbUser } = await adminSupabase
+          .from('users')
+          .select('loyverse_customer_id')
+          .eq('id', order.user_id)
+          .single();
 
-      const loyverseResult = await createLoyverseReceipt({
-        id: order.id,
-        customer_id: dbUser?.loyverse_customer_id || undefined,
-        customer_name: order.customer_name,
-        customer_phone: order.customer_phone,
-        items: order.items,
-        total: order.total,
-        notes: order.notes || '',
-        service_type: order.service_type,
-        delivery_address: order.delivery_address,
-        payment_method: 'transferencia',
-        payment_status: 'payment_approved'
-      });
+        const loyverseResult = await createLoyverseReceipt({
+          id: order.id,
+          customer_id: dbUser?.loyverse_customer_id || undefined,
+          customer_name: order.customer_name,
+          customer_phone: order.customer_phone,
+          items: order.items,
+          total: order.total,
+          notes: order.notes || '',
+          service_type: order.service_type,
+          delivery_address: order.delivery_address,
+          payment_method: 'transferencia',
+          payment_status: 'payment_approved'
+        });
 
-      if (loyverseResult?.receipt_id) {
-        updates.loyverse_receipt_id = loyverseResult.receipt_id;
-        updates.loyverse_receipt_number = loyverseResult.receipt_number;
+        if (loyverseResult?.receipt_id) {
+          updates.loyverse_receipt_id = loyverseResult.receipt_id;
+          updates.loyverse_receipt_number = loyverseResult.receipt_number;
 
-        // Also update db with receipt info
-        await adminSupabase
-          .from('orders')
-          .update({
-            loyverse_receipt_id: loyverseResult.receipt_id,
-            loyverse_receipt_number: loyverseResult.receipt_number
-          })
-          .eq('id', orderId);
+          // Also update db with receipt info
+          await adminSupabase
+            .from('orders')
+            .update({
+              loyverse_receipt_id: loyverseResult.receipt_id,
+              loyverse_receipt_number: loyverseResult.receipt_number
+            })
+            .eq('id', orderId);
+        }
+      } catch (err) {
+        console.error('Error synchronizing with Loyverse POS on approval:', err);
+        // We don't fail the approval if Loyverse fails, we just log it.
       }
-    } catch (err) {
-      console.error('Error synchronizing with Loyverse POS on approval:', err);
-      // We don't fail the approval if Loyverse fails, we just log it.
     }
 
     return NextResponse.json({ success: true, ...updates });
