@@ -38,6 +38,50 @@ async function processWebhookAsync(payload: any, logId: string) {
           }
         }
       }
+    } else if (eventType.startsWith('receipts.')) {
+      const receipts = payload.receipts || (payload.receipt ? [payload.receipt] : []);
+      for (const receipt of receipts) {
+        // Verificar si el recibo fue anulado en Loyverse POS o es una devolución/nota de crédito
+        const isCancelled = !!receipt.cancelled_at || receipt.receipt_type === 'CANCELLED' || receipt.receipt_type === 'REFUND';
+        
+        if (isCancelled) {
+          // Buscar qué ID de recibo de Loyverse estamos anulando
+          const targetReceiptId = receipt.refund_for || receipt.id;
+          const targetReceiptNum = receipt.receipt_number;
+
+          // Buscar la orden correspondiente en nuestra base de datos por ID o por número de recibo (robusto ante cambios de formato)
+          let query = adminSupabase.from('orders').select('*');
+          const conditions = [];
+          if (targetReceiptId) {
+            conditions.push(`loyverse_receipt_id.eq.${targetReceiptId}`);
+          }
+          if (targetReceiptNum) {
+            conditions.push(`loyverse_receipt_id.eq.${targetReceiptNum}`);
+            conditions.push(`loyverse_receipt_number.eq.${targetReceiptNum}`);
+          }
+
+          if (conditions.length > 0) {
+            query = query.or(conditions.join(','));
+          }
+
+          const { data: matchingOrders } = await query;
+          if (matchingOrders && matchingOrders.length > 0) {
+            for (const order of matchingOrders) {
+              if (order.status !== 'cancelled') {
+                const updatePayload: any = {
+                  status: 'cancelled',
+                  cancel_reason: 'Anulado directamente desde caja (Loyverse POS)'
+                };
+                if (order.payment_status === 'payment_approved') {
+                  updatePayload.refund_status = 'pending';
+                }
+                await adminSupabase.from('orders').update(updatePayload).eq('id', order.id);
+                console.log(`[LOYVERSE WEBHOOK] Orden ${order.id} cancelada automáticamente por anulación en POS.`);
+              }
+            }
+          }
+        }
+      }
     }
 
     if (affectedVariantIds.length > 0) {

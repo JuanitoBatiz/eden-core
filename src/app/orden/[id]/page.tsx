@@ -786,11 +786,31 @@ export default function OrderStatusPage() {
                     <span style={{ fontWeight: 700 }}>{item.quantity}x</span> {item.name} {item.size && `(${item.size})`}
                     {item.customizations && (
                       <div style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)', marginTop: '4px' }}>
-                        {item.customizations.proteins.length > 0 && <div>• Prot: {item.customizations.proteins.join(', ')}</div>}
-                        {item.customizations.toppings.length > 0 && <div>• Toppings: {item.customizations.toppings.join(', ')}</div>}
-                        {item.customizations.seedsAndNuts.length > 0 && <div>• Semillas/Frutos: {item.customizations.seedsAndNuts.join(', ')}</div>}
-                        {item.customizations.dressings.length > 0 && <div>• Aderezo: {item.customizations.dressings.join(', ')}</div>}
-                        {item.customizations.flavors && item.customizations.flavors.length > 0 && <div>• Sabor: {item.customizations.flavors.join(', ')}</div>}
+                        {item.customizations.proteins?.length > 0 && <div>• Prot: {item.customizations.proteins.join(', ')}</div>}
+                        {item.customizations.toppings?.length > 0 && <div>• Toppings: {item.customizations.toppings.join(', ')}</div>}
+                        {item.customizations.seedsAndNuts?.length > 0 && <div>• Semillas/Frutos: {item.customizations.seedsAndNuts.join(', ')}</div>}
+                        {item.customizations.dressings?.length > 0 && <div>• Aderezo: {item.customizations.dressings.join(', ')}</div>}
+                        {item.customizations.flavors?.length > 0 && <div>• Sabor: {item.customizations.flavors.join(', ')}</div>}
+                        {item.customizations.extras?.length > 0 && (() => {
+                          const omissions = item.customizations.extras.filter((x: any) => typeof x === 'string' && x.toLowerCase().startsWith('sin '));
+                          const otherExtras = item.customizations.extras.filter((x: any) => !(typeof x === 'string' && x.toLowerCase().startsWith('sin ')));
+                          return (
+                            <>
+                              {omissions.length > 0 && <div style={{ color: 'var(--color-terracotta)', fontWeight: 700 }}>• EXCLUSIONES: {omissions.join(', ')}</div>}
+                              {otherExtras.length > 0 && <div>• Opciones/Extras: {otherExtras.join(', ')}</div>}
+                            </>
+                          );
+                        })()}
+                        {Object.entries(item.customizations).map(([key, val]: [string, any]) => {
+                          if (['proteins', 'toppings', 'seedsAndNuts', 'dressings', 'flavors', 'extras'].includes(key)) return null;
+                          if (Array.isArray(val) && val.length > 0) {
+                            return <div key={key}>• {key.charAt(0).toUpperCase() + key.slice(1)}: {val.join(', ')}</div>;
+                          }
+                          if (typeof val === 'string' && val.trim() !== '') {
+                            return <div key={key}>• {key.charAt(0).toUpperCase() + key.slice(1)}: {val}</div>;
+                          }
+                          return null;
+                        })}
                       </div>
                     )}
                   </div>

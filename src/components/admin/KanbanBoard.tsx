@@ -185,7 +185,26 @@ export default function KanbanBoard({ pendingOrders, preparingOrders, readyOrder
                   {item.customizations.seedsAndNuts?.length > 0 && <div>• Semillas: {item.customizations.seedsAndNuts.join(', ')}</div>}
                   {item.customizations.dressings?.length > 0 && <div>• Aderezo: {item.customizations.dressings.join(', ')}</div>}
                   {item.customizations.flavors?.length > 0 && <div>• Sabor: {item.customizations.flavors.join(', ')}</div>}
-                  {item.customizations.extras?.length > 0 && <div>• Extras: {item.customizations.extras.join(', ')}</div>}
+                  {item.customizations.extras?.length > 0 && (() => {
+                    const omissions = item.customizations.extras.filter((x: any) => typeof x === 'string' && x.toLowerCase().startsWith('sin '));
+                    const otherExtras = item.customizations.extras.filter((x: any) => !(typeof x === 'string' && x.toLowerCase().startsWith('sin ')));
+                    return (
+                      <>
+                        {omissions.length > 0 && <div style={{ color: 'var(--color-terracotta)', fontWeight: 700 }}>• EXCLUSIONES: {omissions.join(', ')}</div>}
+                        {otherExtras.length > 0 && <div>• Opciones/Extras: {otherExtras.join(', ')}</div>}
+                      </>
+                    );
+                  })()}
+                  {Object.entries(item.customizations).map(([key, val]: [string, any]) => {
+                    if (['proteins', 'toppings', 'seedsAndNuts', 'dressings', 'flavors', 'extras'].includes(key)) return null;
+                    if (Array.isArray(val) && val.length > 0) {
+                      return <div key={key}>• {key.charAt(0).toUpperCase() + key.slice(1)}: {val.join(', ')}</div>;
+                    }
+                    if (typeof val === 'string' && val.trim() !== '') {
+                      return <div key={key}>• {key.charAt(0).toUpperCase() + key.slice(1)}: {val}</div>;
+                    }
+                    return null;
+                  })}
                 </div>
               )}
             </div>

@@ -1345,24 +1345,41 @@ export default function MenuPage() {
 
                         {item.customizations && (
                           <div className="cart-item-customizations">
-                            {item.customizations.proteins.length > 0 && (
+                            {item.customizations.proteins?.length > 0 && (
                               <div><strong>Proteínas:</strong> {item.customizations.proteins.join(', ')}</div>
                             )}
-                            {item.customizations.toppings.length > 0 && (
+                            {item.customizations.toppings?.length > 0 && (
                               <div><strong>Toppings:</strong> {item.customizations.toppings.join(', ')}</div>
                             )}
-                            {item.customizations.seedsAndNuts.length > 0 && (
+                            {item.customizations.seedsAndNuts?.length > 0 && (
                               <div><strong>Semillas/Frutos:</strong> {item.customizations.seedsAndNuts.join(', ')}</div>
                             )}
-                            {item.customizations.dressings.length > 0 && (
+                            {item.customizations.dressings?.length > 0 && (
                               <div><strong>Aderezo:</strong> {item.customizations.dressings.join(', ')}</div>
                             )}
-                            {item.customizations.flavors && item.customizations.flavors.length > 0 && (
+                            {item.customizations.flavors?.length > 0 && (
                               <div><strong>Sabor:</strong> {item.customizations.flavors.join(', ')}</div>
                             )}
-                            {item.customizations.extras && item.customizations.extras.length > 0 && (
-                              <div><strong>Opciones:</strong> {item.customizations.extras.join(', ')}</div>
-                            )}
+                            {item.customizations.extras?.length > 0 && (() => {
+                              const omissions = item.customizations.extras.filter((x: any) => typeof x === 'string' && x.toLowerCase().startsWith('sin '));
+                              const otherExtras = item.customizations.extras.filter((x: any) => !(typeof x === 'string' && x.toLowerCase().startsWith('sin ')));
+                              return (
+                                <>
+                                  {omissions.length > 0 && <div style={{ color: 'var(--color-terracotta)', fontWeight: 700 }}><strong>Exclusiones:</strong> {omissions.join(', ')}</div>}
+                                  {otherExtras.length > 0 && <div><strong>Opciones/Extras:</strong> {otherExtras.join(', ')}</div>}
+                                </>
+                              );
+                            })()}
+                            {Object.entries(item.customizations).map(([key, val]: [string, any]) => {
+                              if (['proteins', 'toppings', 'seedsAndNuts', 'dressings', 'flavors', 'extras'].includes(key)) return null;
+                              if (Array.isArray(val) && val.length > 0) {
+                                return <div key={key}><strong>{key.charAt(0).toUpperCase() + key.slice(1)}:</strong> {val.join(', ')}</div>;
+                              }
+                              if (typeof val === 'string' && val.trim() !== '') {
+                                return <div key={key}><strong>{key.charAt(0).toUpperCase() + key.slice(1)}:</strong> {val}</div>;
+                              }
+                              return null;
+                            })}
                           </div>
                         )}
                         {item.notes && (

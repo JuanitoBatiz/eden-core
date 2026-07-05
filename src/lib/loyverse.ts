@@ -81,29 +81,64 @@ export async function createLoyverseReceipt(order: {
   payment_method?: string;
   payment_status?: string;
 }) {
+  const formatItemCustomizations = (item: any): string[] => {
+    const parts: string[] = [];
+    if (item.variant || item.size) parts.push(`Opción: ${item.variant || item.size}`);
+    
+    if (item.customizations && typeof item.customizations === 'object') {
+      const cust = item.customizations;
+      if (cust.proteins?.length > 0) parts.push(`Prot: ${cust.proteins.join(', ')}`);
+      if (cust.toppings?.length > 0) parts.push(`Top: ${cust.toppings.join(', ')}`);
+      if (cust.seedsAndNuts?.length > 0) parts.push(`Semillas: ${cust.seedsAndNuts.join(', ')}`);
+      if (cust.dressings?.length > 0) parts.push(`Aderezo: ${cust.dressings.join(', ')}`);
+      if (cust.flavors?.length > 0) parts.push(`Sabor: ${cust.flavors.join(', ')}`);
+      
+      // Separar exclusiones ("Sin ...") de otros extras u opciones
+      if (cust.extras?.length > 0) {
+        const omissions = cust.extras.filter((x: any) => typeof x === 'string' && x.toLowerCase().startsWith('sin '));
+        const otherExtras = cust.extras.filter((x: any) => !(typeof x === 'string' && x.toLowerCase().startsWith('sin ')));
+        if (omissions.length > 0) parts.push(`EXCLUSIONES: ${omissions.join(', ')}`);
+        if (otherExtras.length > 0) parts.push(`Opciones/Extras: ${otherExtras.join(', ')}`);
+      }
+
+      // Incluir cualquier otro grupo de modificadores dinámico de Supabase
+      const standardKeys = ['proteins', 'toppings', 'seedsAndNuts', 'dressings', 'flavors', 'extras'];
+      Object.entries(cust).forEach(([key, val]) => {
+        if (!standardKeys.includes(key)) {
+          if (Array.isArray(val) && val.length > 0) {
+            const label = key.charAt(0).toUpperCase() + key.slice(1);
+            parts.push(`${label}: ${val.join(', ')}`);
+          } else if (typeof val === 'string' && val.trim() !== '') {
+            const label = key.charAt(0).toUpperCase() + key.slice(1);
+            parts.push(`${label}: ${val}`);
+          }
+        }
+      });
+    }
+    
+    if (item.notes) {
+      parts.push(`Nota: ${item.notes}`);
+    }
+    return parts;
+  };
+
   const lineItems = order.items.map(item => {
+    const parts = formatItemCustomizations(item);
+    const itemNote = parts.length > 0 ? parts.join(' | ') : undefined;
+
     return {
-      variant_id: item.variantId || LOYVERSE_GENERIC_VARIANT_ID,
+      variant_id: item.variantId || item.variant || LOYVERSE_GENERIC_VARIANT_ID,
       quantity: item.quantity,
-      price: item.price
+      price: item.price,
+      note: itemNote
     };
   });
 
   const itemsText = order.items.map(item => {
     let details = `${item.quantity}x ${item.name}${item.size ? ` (${item.size})` : ''}`;
-    if (item.customizations) {
-      const parts = [];
-      if (item.customizations.proteins?.length > 0) parts.push(`Prot: ${item.customizations.proteins.join(', ')}`);
-      if (item.customizations.toppings?.length > 0) parts.push(`Top: ${item.customizations.toppings.join(', ')}`);
-      if (item.customizations.seedsAndNuts?.length > 0) parts.push(`Semillas: ${item.customizations.seedsAndNuts.join(', ')}`);
-      if (item.customizations.dressings?.length > 0) parts.push(`Aderezo: ${item.customizations.dressings.join(', ')}`);
-      if (item.customizations.flavors?.length > 0) parts.push(`Sabor: ${item.customizations.flavors.join(', ')}`);
-      if (parts.length > 0) {
-        details += `\n   [${parts.join(' | ')}]`;
-      }
-    }
-    if (item.notes) {
-      details += `\n   (Nota: ${item.notes})`;
+    const parts = formatItemCustomizations(item);
+    if (parts.length > 0) {
+      details += `\n   [${parts.join(' | ')}]`;
     }
     return details;
   }).join('\n');
@@ -149,10 +184,18 @@ export async function createLoyverseReceipt(order: {
   }
 
   try {
-    const paymentTypeId = await getCashPaymentTypeId();
-    const payments = paymentTypeId
-      ? [{ payment_type_id: paymentTypeId, amount: order.total }]
-      : [{ type: 'CASH' as const, amount: order.total }];
+    let payments: any[] = [];
+    if (order.payment_method === 'transferencia' || order.payment_method === 'spei' || order.payment_status === 'payment_approved') {
+      // Para transferencias / SPEI ya pagados, registramos como OTHER para no descuadrar el corte de caja física de efectivo en Loyverse
+      payments = [{ type: 'OTHER' as const, amount: order.total }];
+    } else if (order.payment_method === 'tarjeta') {
+      payments = [{ type: 'CARD' as const, amount: order.total }];
+    } else {
+      const paymentTypeId = await getCashPaymentTypeId();
+      payments = paymentTypeId
+        ? [{ payment_type_id: paymentTypeId, amount: order.total }]
+        : [{ type: 'CASH' as const, amount: order.total }];
+    }
 
     const payload: LoyverseReceiptPayload = {
       store_id: LOYVERSE_STORE_ID,
@@ -180,7 +223,7 @@ export async function createLoyverseReceipt(order: {
 
     const data = await res.json();
     return {
-      receipt_id: data.receipt_number,
+      receipt_id: data.id || data.receipt_id || data.receipt_number,
       receipt_number: data.receipt_number
     };
   } catch (error) {

@@ -105,7 +105,7 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
           notes: order.notes || '',
           service_type: order.service_type,
           delivery_address: order.delivery_address,
-          payment_method: 'transferencia',
+          payment_method: order.payment_method || 'transferencia',
           payment_status: 'payment_approved'
         });
 
