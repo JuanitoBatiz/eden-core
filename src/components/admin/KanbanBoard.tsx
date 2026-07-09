@@ -91,9 +91,23 @@ export default function KanbanBoard({ pendingOrders, preparingOrders, readyOrder
 
         {/* BADGES & POS TICKET */}
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', alignItems: 'center' }}>
-          <span style={{ fontSize: '0.75rem', fontWeight: 600, color: order.service_type === 'delivery' ? '#0284c7' : '#059669', backgroundColor: order.service_type === 'delivery' ? '#e0f2fe' : '#d1fae5', padding: '3px 8px', borderRadius: '12px' }}>
-            {order.service_type === 'delivery' ? 'A Domicilio' : 'Para Recoger'}
-          </span>
+          {(() => {
+            let label = order.service_type === 'delivery' ? 'A Domicilio' : 'Para Recoger';
+            let color = order.service_type === 'delivery' ? '#0284c7' : '#059669';
+            let bg = order.service_type === 'delivery' ? '#e0f2fe' : '#d1fae5';
+            
+            if (order.service_type === 'pickup' && order.notes?.includes('[COMER EN LOCAL]')) {
+              label = 'Comer en Local';
+              color = '#6d28d9';
+              bg = '#ede9fe';
+            }
+            
+            return (
+              <span style={{ fontSize: '0.75rem', fontWeight: 600, color, backgroundColor: bg, padding: '3px 8px', borderRadius: '12px' }}>
+                {label}
+              </span>
+            );
+          })()}
           {/* Delivery fee badge */}
           {order.service_type === 'delivery' && (
             <span style={{ 

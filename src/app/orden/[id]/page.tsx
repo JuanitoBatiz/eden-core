@@ -21,7 +21,8 @@ import {
   Bike,
   ShieldCheck,
   Award,
-  QrCode
+  QrCode,
+  Camera
 } from 'lucide-react';
 import { supabase, isSupabaseConfigured } from '@/lib/supabase';
 
@@ -570,6 +571,43 @@ export default function OrderStatusPage() {
                 {statusConfig.description}
               </p>
             </div>
+
+            {/* Screenshot Notice */}
+            {order.status !== 'cancelled' && (
+              <div style={{
+                marginTop: '24px',
+                padding: '16px 20px',
+                backgroundColor: '#f8fafc',
+                border: '1px solid #e2e8f0',
+                borderRadius: '16px',
+                display: 'flex',
+                alignItems: 'flex-start',
+                gap: '14px',
+                textAlign: 'left',
+                boxShadow: '0 4px 12px rgba(0,0,0,0.02)'
+              }}>
+                <div style={{ 
+                  width: '42px', height: '42px', borderRadius: '12px', 
+                  backgroundColor: '#e2e8f0', display: 'flex', 
+                  alignItems: 'center', justifyContent: 'center', flexShrink: 0 
+                }}>
+                  <Camera size={20} color="#475569" />
+                </div>
+                <div>
+                  <h4 style={{ margin: '0 0 4px 0', fontSize: '0.95rem', color: 'var(--color-green-dark)', fontWeight: 700 }}>
+                    ¡Hola {order.customer_name.split(' ')[0]}!
+                  </h4>
+                  <p style={{ margin: 0, fontSize: '0.85rem', color: 'var(--color-text-main)', lineHeight: '1.4' }}>
+                    {order.service_type === 'delivery' 
+                      ? 'Te sugerimos tomar screenshot de esta pantalla para tener a la mano tu número de orden cuando llegue nuestro repartidor.'
+                      : order.notes?.includes('[COMER EN LOCAL]')
+                        ? 'Por favor toma screenshot de esta pantalla y muéstrala en caja o a nuestro equipo para llevarte tu comida a la mesa.'
+                        : 'Por favor toma screenshot de esta pantalla y muéstrala al llegar a caja para entregarte tu pedido de inmediato.'
+                    }
+                  </p>
+                </div>
+              </div>
+            )}
 
             {/* Recordatorio / Anuncio de Envío a Domicilio ("Otro Estado") */}
             {order.service_type === 'delivery' && (
