@@ -91,15 +91,36 @@ export async function POST(req: Request) {
 
         if (verificationCheck.status !== 'approved') {
           return NextResponse.json(
-            { error: 'El código ingresado es incorrecto o ha expirado.' },
+            { error: 'El código ingresado es incorrecto o ha expirado. Solicita un nuevo código.' },
             { status: 400 }
           );
         }
       } catch (verifyError: any) {
         console.error('Twilio Verify check error:', verifyError);
+        // Twilio error codes:
+        // 20404 = VerificationCheck not found (code already used or never sent)
+        // 60200 = Invalid parameter (malformed code)
+        // 60202 = Max check attempts reached
+        const twilioStatus = verifyError?.status || verifyError?.code;
+        const isExpiredOrUsed = twilioStatus === 20404 || verifyError?.message?.toLowerCase().includes('not found');
+        const isMaxAttempts = twilioStatus === 60202 || verifyError?.message?.toLowerCase().includes('max');
+
+        if (isExpiredOrUsed) {
+          return NextResponse.json(
+            { error: 'El código ya fue usado o ha expirado. Por favor, solicita un nuevo código.' },
+            { status: 400 }
+          );
+        }
+        if (isMaxAttempts) {
+          return NextResponse.json(
+            { error: 'Demasiados intentos fallidos. Solicita un nuevo código.' },
+            { status: 429 }
+          );
+        }
+        // Error interno de Twilio (red, configuración, etc.)
         return NextResponse.json(
-          { error: 'Error al verificar el código. Intenta de nuevo.' },
-          { status: 400 }
+          { error: 'No se pudo verificar el código en este momento. Intenta solicitar un nuevo código.' },
+          { status: 503 }
         );
       }
     } else {
@@ -172,7 +193,7 @@ export async function POST(req: Request) {
     const accessToken = generateAccessToken({ user_id: user.id, phone: user.phone, role: user.role });
     const refreshToken = generateRefreshToken({ user_id: user.id });
 
-    const ACCESS_MAX_AGE  = 15 * 60;          // 15 minutos
+    const ACCESS_MAX_AGE  = 2 * 60 * 60;         // 2 horas
     const REFRESH_MAX_AGE = 30 * 24 * 60 * 60; // 30 días
 
     const response = NextResponse.json({

@@ -179,21 +179,35 @@ export default function MenuPage() {
 
   // Silent Auth Check on Mount
   useEffect(() => {
-    fetch('/api/auth/refresh', { method: 'POST', credentials: 'include' })
-      .then(res => {
-        if (res.ok) return res.json();
-        throw new Error('No valid session');
-      })
-      .then(data => {
-        if (data.success && data.user) {
-          setIsAuthenticated(true);
-          if (data.user.name) setCustomerName(data.user.name);
-          if (data.user.phone) setCustomerPhone(data.user.phone);
-        }
-      })
-      .catch(() => {
-        // Not authenticated, do nothing
-      });
+    const doRefresh = () => {
+      fetch('/api/auth/refresh', { method: 'POST', credentials: 'include' })
+        .then(res => {
+          if (res.ok) return res.json();
+          // Refresh token caducado (>30 días) — limpiar estado
+          if (res.status === 401) {
+            setIsAuthenticated(false);
+          }
+          throw new Error('No valid session');
+        })
+        .then(data => {
+          if (data.success && data.user) {
+            setIsAuthenticated(true);
+            if (data.user.name) setCustomerName(data.user.name);
+            if (data.user.phone) setCustomerPhone(data.user.phone);
+          }
+        })
+        .catch(() => {
+          // Not authenticated or network error, do nothing extra
+        });
+    };
+
+    // Renovar al montar
+    doRefresh();
+
+    // Renovar cada 12 minutos para que el access_token (15 min) nunca caduque mientras
+    // el usuario esté en la página. Si el usuario cierra la pestaña, el intervalo se limpia.
+    const refreshInterval = setInterval(doRefresh, 12 * 60 * 1000); // 12 minutos
+    return () => clearInterval(refreshInterval);
   }, []);
 
   // Fetch Menu from API (con temporizador de 8s y respaldo automático)

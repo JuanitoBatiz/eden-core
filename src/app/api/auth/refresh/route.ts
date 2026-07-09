@@ -60,8 +60,8 @@ export async function POST(req: Request) {
     const newRefreshToken = generateRefreshToken({ user_id: user.id });
 
     const isProduction = process.env.NODE_ENV === 'production';
-    const ACCESS_MAX_AGE = 15 * 60; // 15 minutos
-    const REFRESH_MAX_AGE = 30 * 24 * 60 * 60; // 30 días
+    const ACCESS_MAX_AGE = 2 * 60 * 60;         // 2 horas
+    const REFRESH_MAX_AGE = 30 * 24 * 60 * 60;  // 30 días
 
     // Setear el nuevo access_token como cookie httpOnly — no retornar en body
     const response = NextResponse.json({

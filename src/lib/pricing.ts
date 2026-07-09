@@ -95,8 +95,16 @@ export function calculateOrderTotal(cartItems: any[], dbProducts: any[]) {
                 }
              }
           } else {
-            // Unrecognized modifier, maybe deprecated or menu changed
-             conflicts.push({ product_id: item.id, product_name: item.name, reason: `La opción "${selectedSlug}" ya no es válida.` });
+            // Modificador no encontrado en los modifier_groups de Supabase.
+            // Esto ocurre cuando un topping existe en el menú estático (menuData.ts)
+            // pero aún no ha sido añadido a la tabla modifier_groups en la base de datos
+            // (ej: Aguacate, Granos de Elote recién agregados).
+            // Decisión: NO tratar como conflicto bloqueante — lo aceptamos como
+            // anotación de precio $0. El cajero puede gestionar manualmente si aplica cargo extra.
+            // Una vez que el ítem esté en Supabase, el precio se calculará automáticamente.
+            console.warn(`[PRICING] Modificador no encontrado en DB para producto "${item.name}": "${selectedSlug}" — aceptado como opción sin cargo adicional.`);
+            // No sumamos precio ni añadimos al conflicto — el modificador ya está en item.customizations
+            // y viajará en el snapshot del pedido para que cocina lo vea.
           }
       }
     }

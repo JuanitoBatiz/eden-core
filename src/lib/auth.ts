@@ -25,7 +25,7 @@ export interface JwtPayload {
 }
 
 export function generateAccessToken(payload: JwtPayload): string {
-  return jwt.sign(payload, JWT_ACCESS_SECRET, { expiresIn: '15m' });
+  return jwt.sign(payload, JWT_ACCESS_SECRET, { expiresIn: '2h' });
 }
 
 export function generateRefreshToken(payload: { user_id: string }): string {
