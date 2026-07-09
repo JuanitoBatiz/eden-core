@@ -643,7 +643,7 @@ export default function OrderStatusPage() {
 
           {order.status === 'cancelled' && (
             <a 
-              href={`https://wa.me/526237591105?text=Hola,%20tuve%20un%20inconveniente%20con%20mi%20pedido%20Ed%C3%A9n%20#${order.id.slice(-4).toUpperCase()}`}
+              href={`https://wa.me/525635830014?text=Hola,%20tuve%20un%20inconveniente%20con%20mi%20pedido%20Ed%C3%A9n%20#${order.id.slice(-4).toUpperCase()}`}
               target="_blank"
               rel="noopener noreferrer"
               className="whatsapp-btn"

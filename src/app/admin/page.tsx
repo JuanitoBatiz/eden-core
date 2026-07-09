@@ -459,7 +459,7 @@ export default function AdminPage() {
       <header className="header">
         <div className="container header-content">
           <div className="logo-container">
-            <img src="/images/logo_eden2.png" alt="Edén Logo" className="logo-img" />
+            <img src="/logo.png" alt="Edén Logo" className="logo-img" />
             <div className="logo-text">
               EDÉN PANEL
               <span className="logo-sub">caja y cocina</span>

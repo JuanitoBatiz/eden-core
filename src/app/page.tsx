@@ -1578,38 +1578,37 @@ export default function MenuPage() {
       {/* AUTH & MINI REGISTRATION MODAL */}
       {isAuthOpen && (
         <div className="modal-overlay" onClick={() => setIsAuthOpen(false)}>
-          <div className="modal-content" onClick={e => e.stopPropagation()} style={{ maxWidth: '460px', padding: '32px 28px', borderRadius: '28px', border: '2px solid rgba(212, 163, 115, 0.3)', boxShadow: '0 24px 48px rgba(34, 60, 43, 0.12)' }}>
-            <div className="modal-header" style={{ borderBottom: 'none', paddingBottom: '12px' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                <div style={{ width: '42px', height: '42px', borderRadius: '14px', background: 'linear-gradient(135deg, var(--color-green-dark) 0%, #15261b 100%)', color: 'var(--color-ochre)', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 6px 16px rgba(34, 60, 43, 0.2)' }}>
-                  <Sparkles size={22} />
+          <div className="modal-content" onClick={e => e.stopPropagation()} style={{ maxWidth: '420px', padding: '40px 32px', borderRadius: '24px', border: '1px solid rgba(212, 163, 115, 0.2)', boxShadow: '0 24px 48px rgba(0, 0, 0, 0.1)' }}>
+            <div className="modal-header" style={{ borderBottom: 'none', paddingBottom: '24px', justifyContent: 'center', position: 'relative' }}>
+              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '16px', textAlign: 'center' }}>
+                <div style={{ width: '56px', height: '56px', borderRadius: '50%', background: 'var(--color-cream-light)', color: 'var(--color-green-dark)', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 4px 12px rgba(34, 60, 43, 0.05)' }}>
+                  <Sparkles size={28} />
                 </div>
                 <div>
-                  <span style={{ fontSize: '0.72rem', fontWeight: 800, letterSpacing: '2.5px', color: 'var(--color-terracotta)', textTransform: 'uppercase', display: 'block' }}>EDENPASS INSTITUCIONAL</span>
-                  <h2 style={{ fontFamily: 'var(--font-serif)', fontSize: '1.65rem', color: 'var(--color-green-dark)', margin: 0, fontWeight: 700 }}>Tu Orden en Cocina</h2>
+                  <h2 style={{ fontFamily: 'var(--font-serif)', fontSize: '1.75rem', color: 'var(--color-green-dark)', margin: '0 0 8px 0', fontWeight: 600 }}>Casi listo</h2>
+                  <span style={{ fontSize: '0.9rem', color: 'var(--color-text-muted)', lineHeight: '1.4', display: 'block', padding: '0 10px' }}>
+                    Verifica tu número para enlazar tu pedido con cocina y acumular recompensas.
+                  </span>
                 </div>
               </div>
-              <button className="close-btn" onClick={() => setIsAuthOpen(false)} style={{ backgroundColor: 'rgba(0,0,0,0.04)', borderRadius: '50%', width: '36px', height: '36px' }}>
+              <button className="close-btn" onClick={() => setIsAuthOpen(false)} style={{ position: 'absolute', top: '-10px', right: '-10px', backgroundColor: 'transparent', color: 'var(--color-text-muted)', width: '32px', height: '32px' }}>
                 <X size={20} />
               </button>
             </div>
 
-            <div className="modal-body" style={{ paddingTop: '8px' }}>
-              <p style={{ fontSize: '0.94rem', color: 'var(--color-text-main)', opacity: 0.85, lineHeight: 1.55, marginBottom: '22px' }}>
-                Verifica tu número para enlazar tu pedido con la comanda de cocina y acumular recompensas reales.
-              </p>
-
+            <div className="modal-body" style={{ paddingTop: '0' }}>
               {errorMsg && (
-                <div style={{ backgroundColor: '#ffebee', color: '#c62828', padding: '12px', borderRadius: '10px', fontSize: '0.85rem', marginBottom: '15px', fontWeight: 600, whiteSpace: 'pre-wrap' }}>
+                <div style={{ backgroundColor: '#fff1f2', color: '#be123c', padding: '12px 16px', borderRadius: '12px', fontSize: '0.85rem', marginBottom: '20px', fontWeight: 500, whiteSpace: 'pre-wrap', border: '1px solid #fecdd3' }}>
                   {errorMsg}
                 </div>
               )}
 
-              <div className="form-group">
-                <label className="form-label">Nombre Completo</label>
+              <div className="form-group" style={{ marginBottom: '20px' }}>
+                <label className="form-label" style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--color-green-dark)', marginBottom: '8px' }}>Nombre Completo</label>
                 <input
                   type="text"
                   className="form-input"
+                  style={{ borderRadius: '12px', padding: '14px 16px', border: '1px solid #e2e8f0', backgroundColor: '#f8fafc', transition: 'all 0.2s', fontSize: '0.95rem' }}
                   placeholder="Ej. Brandon Chavez"
                   value={customerName}
                   onChange={e => setCustomerName(e.target.value)}
@@ -1618,12 +1617,13 @@ export default function MenuPage() {
               </div>
 
               {!smsSent ? (
-                <div className="form-group" style={{ marginTop: '15px' }}>
-                  <label className="form-label">Número de Celular (EdenPass)</label>
+                <div className="form-group" style={{ marginBottom: '10px' }}>
+                  <label className="form-label" style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--color-green-dark)', marginBottom: '8px' }}>Número de Celular</label>
                   <input
                     type="tel"
                     maxLength={10}
                     className="form-input"
+                    style={{ borderRadius: '12px', padding: '14px 16px', border: '1px solid #e2e8f0', backgroundColor: '#f8fafc', transition: 'all 0.2s', fontSize: '0.95rem', letterSpacing: '1px' }}
                     placeholder="10 dígitos (ej. 6237591105)"
                     value={customerPhone}
                     onChange={e => setCustomerPhone(e.target.value.replace(/\D/g, ''))}
@@ -1631,10 +1631,10 @@ export default function MenuPage() {
 
                   <button
                     className="checkout-btn"
-                    style={{ marginTop: '20px' }}
+                    style={{ marginTop: '32px', width: '100%', borderRadius: '14px', padding: '16px', fontSize: '1rem', fontWeight: 600, boxShadow: '0 8px 20px rgba(34, 60, 43, 0.15)' }}
                     onClick={handleSendSmsCode}
                   >
-                    Enviar Código de Verificación
+                    Enviar Código SMS
                   </button>
                 </div>
               ) : (
