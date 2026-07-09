@@ -6,6 +6,7 @@ import {
   Clock, 
   ChefHat, 
   CheckCircle, 
+  Check,
   XCircle, 
   ArrowLeft, 
   MessageCircle, 
@@ -41,8 +42,86 @@ interface Order {
   delivery_fee_confirmed?: boolean;
   loyverse_receipt_number?: string;
   payment_status?: string;
+  payment_method?: string;
   rejection_reason?: string;
 }
+
+interface ProgressStep {
+  id: string;
+  label: string;
+  state: 'completed' | 'active' | 'pending';
+}
+
+const getOrderProgressSteps = (order: Order): ProgressStep[] => {
+  if (order.status === 'cancelled') {
+    return [{ id: 'cancelled', label: 'Pedido Cancelado', state: 'active' }];
+  }
+
+  const isDelivery = order.service_type === 'delivery';
+  const requiresOnlinePayment = order.status === 'awaiting_payment' || order.payment_status === 'pending_payment' || order.payment_status === 'payment_submitted' || order.payment_status === 'payment_approved' || (order as any).payment_method === 'transferencia' || (order as any).payment_method === 'spei' || (order as any).payment_method === 'tarjeta';
+
+  // Base stages
+  const steps: ProgressStep[] = [];
+
+  // Step 1: Recibido / Revisión
+  const isReceived = order.status === 'received';
+  steps.push({
+    id: 'received',
+    label: 'Recibido',
+    state: isReceived ? 'active' : 'completed'
+  });
+
+  // Step 2 (conditional): Confirmación de Pago si es online / transferencia
+  if (requiresOnlinePayment) {
+    const isPaymentActive = order.status === 'awaiting_payment' || order.payment_status === 'pending_payment' || order.payment_status === 'payment_submitted';
+    steps.push({
+      id: 'payment',
+      label: 'Validar Pago',
+      state: isReceived ? 'pending' : isPaymentActive ? 'active' : 'completed'
+    });
+  }
+
+  // Step 3: Preparación
+  const isPrep = order.status === 'in_preparation';
+  const isAfterPrep = order.status === 'ready' || order.status === 'in_transit' || order.status === 'delivered';
+  steps.push({
+    id: 'prep',
+    label: 'Preparando',
+    state: isPrep ? 'active' : isAfterPrep ? 'completed' : 'pending'
+  });
+
+  // Step 4: Listo / En camino
+  if (isDelivery) {
+    const isTransit = order.status === 'in_transit' || order.status === 'ready';
+    const isDelivered = order.status === 'delivered';
+    steps.push({
+      id: 'transit',
+      label: 'En Camino',
+      state: isTransit ? 'active' : isDelivered ? 'completed' : 'pending'
+    });
+    steps.push({
+      id: 'delivered',
+      label: 'Entregado',
+      state: isDelivered ? 'active' : 'pending'
+    });
+  } else {
+    const isReady = order.status === 'ready';
+    const isDelivered = order.status === 'delivered';
+    const readyLabel = order.service_type === 'dine_in' ? 'Listo en Mesa' : 'Listo para Recoger';
+    steps.push({
+      id: 'ready',
+      label: readyLabel,
+      state: isReady ? 'active' : isDelivered ? 'completed' : 'pending'
+    });
+    steps.push({
+      id: 'delivered',
+      label: order.service_type === 'dine_in' ? 'Servido' : 'Entregado',
+      state: isDelivered ? 'active' : 'pending'
+    });
+  }
+
+  return steps;
+};
 
 export default function OrderStatusPage() {
   const params = useParams();
@@ -459,6 +538,30 @@ export default function OrderStatusPage() {
                 : 'En Proceso'}
             </span>
             
+            {order.status !== 'cancelled' && (
+              <div className="order-progress-container">
+                {getOrderProgressSteps(order).map((step, idx, arr) => (
+                  <React.Fragment key={step.id}>
+                    <div className={`order-progress-step ${step.state}`}>
+                      <div className="order-progress-icon">
+                        {step.state === 'completed' ? (
+                          <Check size={15} strokeWidth={3} />
+                        ) : step.state === 'active' ? (
+                          <div className="order-progress-dot" />
+                        ) : (
+                          <span>{idx + 1}</span>
+                        )}
+                      </div>
+                      <span className="order-progress-label">{step.label}</span>
+                    </div>
+                    {idx < arr.length - 1 && (
+                      <div className={`order-progress-connector ${step.state === 'completed' ? 'completed' : ''}`} />
+                    )}
+                  </React.Fragment>
+                ))}
+              </div>
+            )}
+
             <div key={statusConfig.titleText} style={{ animation: 'fadeIn 0.6s cubic-bezier(0.16, 1, 0.3, 1)' }}>
               <h1 style={{ fontFamily: 'var(--font-serif)', fontSize: '2.2rem', marginTop: '15px', color: 'var(--color-green-dark)', textAlign: 'center' }}>
                 {statusConfig.titleText}

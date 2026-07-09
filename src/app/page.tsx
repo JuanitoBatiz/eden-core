@@ -66,6 +66,27 @@ interface CartItem {
 
 
 
+const getProductNotesPlaceholder = (product: MenuItem | null, categories: MenuCategory[] = []) => {
+  if (!product) return "Ej: indicaciones especiales para preparación o empaque...";
+  const cat = categories.find(c => c.id === product.category);
+  const catName = cat?.name?.toLowerCase() || product.category?.toLowerCase() || '';
+  const prodName = product.name?.toLowerCase() || '';
+
+  if (catName.includes('smoothie') || catName.includes('jugo') || catName.includes('infusi') || catName.includes('bebida') || catName.includes('embotellada') || prodName.includes('smoothie') || prodName.includes('jugo') || prodName.includes('té') || prodName.includes('agua') || prodName.includes('licuado')) {
+    return "Ej: sin hielo, con popote, menos dulce, sin azúcar, leche bien fría, etc...";
+  }
+  if (catName.includes('ensalada') || prodName.includes('ensalada')) {
+    return "Ej: sin aderezo, aderezo aparte, sin cebolla, extra crujiente, etc...";
+  }
+  if (catName.includes('wrap') || catName.includes('sándwich') || catName.includes('sandwich') || catName.includes('burrito') || prodName.includes('sándwich') || prodName.includes('sandwich') || prodName.includes('torta') || prodName.includes('burrito') || prodName.includes('rollito') || prodName.includes('ciabatta')) {
+    return "Ej: sin mayonesa, sin chile, pan bien tostado, sin cebolla, partido a la mitad, etc...";
+  }
+  if (catName.includes('bowl') || catName.includes('postre') || prodName.includes('bowl') || prodName.includes('avena') || prodName.includes('yogurt')) {
+    return "Ej: miel aparte, sin plátano, extra canela, etc...";
+  }
+  return "Ej: indicaciones especiales para preparación o empaque...";
+};
+
 export default function MenuPage() {
   const router = useRouter();
 
@@ -107,6 +128,16 @@ export default function MenuPage() {
   const [isVerifying, setIsVerifying] = useState(false);
   const [isSubmittingOrder, setIsSubmittingOrder] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
+  const [resendCooldown, setResendCooldown] = useState(0);
+  const [codeResentNotice, setCodeResentNotice] = useState(false);
+
+  useEffect(() => {
+    let timer: any = null;
+    if (resendCooldown > 0) {
+      timer = setTimeout(() => setResendCooldown(resendCooldown - 1), 1000);
+    }
+    return () => clearTimeout(timer);
+  }, [resendCooldown]);
 
   // Service Type State
   const [serviceType, setServiceType] = useState<'pickup' | 'delivery' | 'dine_in'>('pickup');
@@ -419,6 +450,37 @@ export default function MenuPage() {
     }
   };
 
+  const handleResendSmsCode = async () => {
+    if (resendCooldown > 0) return;
+    setErrorMsg('');
+    setCodeResentNotice(false);
+
+    try {
+      const payload: SmsRequest = { phone: customerPhone, name: customerName };
+      const res = await fetch('/api/sms', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+      const data = await res.json();
+
+      if (!res.ok) {
+        setErrorMsg(data.error || 'Error al reenviar código SMS.');
+        return;
+      }
+
+      setResendCooldown(30);
+      setCodeResentNotice(true);
+      if (data.code) {
+        setSentCode(data.code);
+      }
+      setTimeout(() => setCodeResentNotice(false), 6000);
+    } catch (e) {
+      console.error(e);
+      setErrorMsg('Ocurrió un error de red al reenviar el código.');
+    }
+  };
+
   const handleVerifySmsCode = async () => {
     setErrorMsg('');
     const fullCode = smsCode.join('');
@@ -573,6 +635,15 @@ export default function MenuPage() {
   }
 
   const { CATEGORIES, MENU_ITEMS, SALAD_OPTIONS } = menuData;
+
+  if (SALAD_OPTIONS && SALAD_OPTIONS.toppings) {
+    if (!SALAD_OPTIONS.toppings.some((t: any) => t.id === 'aguacate' || t.name?.toLowerCase() === 'aguacate')) {
+      SALAD_OPTIONS.toppings.unshift({ id: 'aguacate', name: 'Aguacate' });
+    }
+    if (!SALAD_OPTIONS.toppings.some((t: any) => t.id === 'granos-de-elote' || t.name?.toLowerCase().includes('elote'))) {
+      SALAD_OPTIONS.toppings.splice(1, 0, { id: 'granos-de-elote', name: 'Granos de Elote' });
+    }
+  }
 
   return (
     <>
@@ -947,7 +1018,9 @@ export default function MenuPage() {
                       (Adicionales tienen costo extra de +$15 c/u)
                     </p>
                     <div className="option-grid">
-                      {SALAD_OPTIONS.toppings.map((topping: any) => (
+                      {SALAD_OPTIONS.toppings
+                        .filter((t: any) => t.id !== 'platano' && t.name?.toLowerCase() !== 'plátano' && t.name?.toLowerCase() !== 'platano')
+                        .map((topping: any) => (
                         <label key={topping.id} className="option-card-label">
                           <input
                             type="checkbox"
@@ -1254,14 +1327,7 @@ export default function MenuPage() {
                 <div className="option-group-title">Notas especiales para tu pedido</div>
                 <textarea
                   className="notes-textarea"
-                  placeholder={
-                    selectedProduct.category === 'jugos' ||
-                      selectedProduct.category === 'smoothies' ||
-                      selectedProduct.category === 'infusiones' ||
-                      selectedProduct.category === 'embotellada'
-                      ? "Ej: sin hielo, con popote, sin azúcar, etc..."
-                      : "Ej: sin aderezo, aderezo aparte, sin cebolla, etc..."
-                  }
+                  placeholder={getProductNotesPlaceholder(selectedProduct, menuData?.CATEGORIES || [])}
                   value={customNotes}
                   onChange={e => setCustomNotes(e.target.value)}
                 />
@@ -1599,6 +1665,33 @@ export default function MenuPage() {
                       <strong>Modo de Desarrollo:</strong> Ingresa el código generado: <strong>{sentCode}</strong> o <strong>123456</strong>
                     </div>
                   )}
+
+                  {codeResentNotice && (
+                    <div style={{ backgroundColor: '#ecfdf5', color: '#047857', padding: '10px 14px', borderRadius: '10px', fontSize: '0.82rem', marginTop: '12px', fontWeight: 600, textAlign: 'center', border: '1px solid #10b981' }}>
+                      ✓ ¡Hemos reenviado el código de verificación por SMS!
+                    </div>
+                  )}
+
+                  <div style={{ display: 'flex', justifyContent: 'center', marginTop: '14px' }}>
+                    <button
+                      type="button"
+                      disabled={resendCooldown > 0}
+                      onClick={handleResendSmsCode}
+                      style={{
+                        background: 'none',
+                        border: 'none',
+                        color: resendCooldown > 0 ? 'var(--color-text-muted)' : 'var(--color-green-dark)',
+                        fontWeight: '600',
+                        fontSize: '0.85rem',
+                        cursor: resendCooldown > 0 ? 'not-allowed' : 'pointer',
+                        textDecoration: resendCooldown > 0 ? 'none' : 'underline'
+                      }}
+                    >
+                      {resendCooldown > 0
+                        ? `¿No recibiste el código? Reenviar en ${resendCooldown}s`
+                        : '¿No recibiste el código? Volver a enviar'}
+                    </button>
+                  </div>
 
                   <button
                     className="checkout-btn"

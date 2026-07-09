@@ -19,6 +19,7 @@ export async function getLoyaltyInfoFromLoyverse(loyverseCustomerId: string, sup
   
   if (loyverseToken && loyverseCustomerId && !loyverseCustomerId.startsWith('loyverse_cust_')) {
     try {
+      console.log(`📡 [LOYALTY DIAGNOSTIC] Consultando puntos de lealtad en Loyverse para cliente ${loyverseCustomerId}...`);
       const res = await fetch(`https://api.loyverse.com/v1.0/customers/${loyverseCustomerId}`, {
         headers: { Authorization: `Bearer ${loyverseToken}` }
       });
@@ -27,10 +28,16 @@ export async function getLoyaltyInfoFromLoyverse(loyverseCustomerId: string, sup
         const data = await res.json();
         loyversePoints = data.total_points || 0;
         loyverseRaw = data;
+        console.log(`✅ [LOYALTY DIAGNOSTIC SUCCESS] Puntos reportados por Loyverse: ${loyversePoints}`);
+      } else {
+        const errText = await res.text();
+        console.error(`❌ [LOYALTY DIAGNOSTIC ERROR] Loyverse rechazó consultar cliente ${loyverseCustomerId} [HTTP ${res.status}]:`, errText);
       }
-    } catch (e) {
-      console.error('Error fetching Loyverse loyalty data:', e);
+    } catch (e: any) {
+      console.error('❌ [LOYALTY DIAGNOSTIC EXCEPTION] Error de red/excepción al consultar lealtad en Loyverse:', e?.message || e);
     }
+  } else if (!loyverseToken) {
+    console.warn('⚠️ [LOYALTY DIAGNOSTIC] LOYVERSE_ACCESS_TOKEN no está configurado. Usando sólo puntos locales.');
   }
 
   // CÁLCULO LOCAL DE EDÉN (Suma 10% de compras en Edén menos canjes realizados)
@@ -40,11 +47,15 @@ export async function getLoyaltyInfoFromLoyverse(loyverseCustomerId: string, sup
       const adminSupabase = createAdminClient();
       
       // Sumar el 10% de todas las órdenes válidas (no canceladas) de este usuario
-      const { data: userOrders } = await adminSupabase
+      const { data: userOrders, error: ordersErr } = await adminSupabase
         .from('orders')
         .select('total')
         .eq('user_id', supabaseUserId)
         .neq('status', 'cancelled');
+
+      if (ordersErr) {
+        console.error('❌ [LOYALTY DIAGNOSTIC DB ERROR] Error consultando órdenes locales del usuario:', ordersErr.message);
+      }
 
       let earnedSimulated = 0;
       if (userOrders && userOrders.length > 0) {
@@ -52,10 +63,14 @@ export async function getLoyaltyInfoFromLoyverse(loyverseCustomerId: string, sup
       }
 
       // Restar puntos canjeados
-      const { data: redemptions } = await adminSupabase
+      const { data: redemptions, error: redemptionsErr } = await adminSupabase
         .from('loyalty_redemptions')
         .select('points_used')
         .eq('user_id', supabaseUserId);
+
+      if (redemptionsErr) {
+        console.error('❌ [LOYALTY DIAGNOSTIC DB ERROR] Error consultando canjes locales:', redemptionsErr.message);
+      }
 
       let spentSimulated = 0;
       if (redemptions && redemptions.length > 0) {
@@ -63,8 +78,9 @@ export async function getLoyaltyInfoFromLoyverse(loyverseCustomerId: string, sup
       }
 
       localPoints = Math.max(0, earnedSimulated - spentSimulated);
-    } catch (err) {
-      console.error('Error calculating local loyalty points:', err);
+      console.log(`📊 [LOYALTY DIAGNOSTIC] Puntos locales calculados: ${localPoints} (Ganados: ${earnedSimulated}, Canjeados: ${spentSimulated})`);
+    } catch (err: any) {
+      console.error('❌ [LOYALTY DIAGNOSTIC EXCEPTION] Excepción calculando puntos locales en DB:', err?.message || err);
     }
   }
 

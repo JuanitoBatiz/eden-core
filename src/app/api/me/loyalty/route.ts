@@ -37,6 +37,7 @@ export async function GET(req: Request) {
       .single();
 
     if (userErr || !user) {
+      console.error('❌ [LOYALTY DIAGNOSTIC ERROR] Usuario no encontrado o error al buscar loyverse_customer_id en DB:', userErr?.message);
       return NextResponse.json({ error: 'Usuario no encontrado' }, { status: 404 });
     }
 
@@ -48,18 +49,26 @@ export async function GET(req: Request) {
     // 4. Fetch local redemptions history (Last 10)
     // Nota: La API de Loyverse v1.0 no expone historial de puntos ganados,
     // así que solo podemos mostrar lo que el cliente ha canjeado en nuestra plataforma local.
-    const { data: history } = await adminSupabase
+    const { data: history, error: historyErr } = await adminSupabase
       .from('loyalty_redemptions')
       .select('id, benefit_description, points_used, created_at')
       .eq('user_id', userId)
       .order('created_at', { ascending: false })
       .limit(10);
 
+    if (historyErr) {
+      console.error('❌ [LOYALTY DIAGNOSTIC ERROR] Error al consultar historial de canjes:', historyErr.message);
+    }
+
     // 5. Fetch Loyalty Tiers to calculate "Points to next tier"
-    const { data: tiers } = await adminSupabase
+    const { data: tiers, error: tiersErr } = await adminSupabase
       .from('loyalty_tiers')
       .select('tier_name, min_points')
       .order('min_points', { ascending: true });
+
+    if (tiersErr) {
+      console.error('❌ [LOYALTY DIAGNOSTIC ERROR] Error al consultar niveles de lealtad (tiers):', tiersErr.message);
+    }
 
     let nextTier = null;
     let pointsNeeded = 0;
@@ -83,7 +92,7 @@ export async function GET(req: Request) {
     });
 
   } catch (error: any) {
-    console.error('GET Loyalty error:', error);
+    console.error('❌ [LOYALTY DIAGNOSTIC EXCEPTION in GET /api/me/loyalty]:', error?.message || error);
     return NextResponse.json({ error: 'Error interno del servidor.' }, { status: 500 });
   }
 }

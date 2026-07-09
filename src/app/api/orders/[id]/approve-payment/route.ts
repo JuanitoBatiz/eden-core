@@ -86,6 +86,8 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
     }
     */
 
+    let loyverseDiagnostic = { success: false, receipt_number: null as string | null, error: null as string | null };
+
     // 5. Send to Loyverse POS si no ha sido enviada previamente
     if (!order.loyverse_receipt_id) {
       try {
@@ -121,14 +123,19 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
               loyverse_receipt_number: loyverseResult.receipt_number
             })
             .eq('id', orderId);
+          
+          loyverseDiagnostic = { success: true, receipt_number: loyverseResult.receipt_number, error: null };
         }
-      } catch (err) {
-        console.error('Error synchronizing with Loyverse POS on approval:', err);
+      } catch (err: any) {
+        console.error('❌ [LOYVERSE DIAGNOSTIC in approve-payment]: Error synchronizing with Loyverse POS:', err);
+        loyverseDiagnostic = { success: false, receipt_number: null, error: err?.message || String(err) };
         // We don't fail the approval if Loyverse fails, we just log it.
       }
+    } else {
+      loyverseDiagnostic = { success: true, receipt_number: order.loyverse_receipt_number, error: 'Orden ya sincronizada previamente con Loyverse' };
     }
 
-    return NextResponse.json({ success: true, ...updates });
+    return NextResponse.json({ success: true, ...updates, loyverse_diagnostic: loyverseDiagnostic });
 
   } catch (error: any) {
     console.error('Approve payment error:', error);

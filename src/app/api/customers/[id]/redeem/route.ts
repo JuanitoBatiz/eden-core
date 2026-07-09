@@ -45,6 +45,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
       .single();
 
     if (customerErr || !customer) {
+      console.error('❌ [LOYALTY REDEEM ERROR] Cliente no encontrado en DB:', customerErr?.message);
       return NextResponse.json({ error: 'El cliente especificado no existe.' }, { status: 404 });
     }
 
@@ -56,10 +57,12 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
       .single();
 
     if (benefitErr || !benefit) {
+      console.error('❌ [LOYALTY REDEEM ERROR] Beneficio no encontrado en DB:', benefitErr?.message);
       return NextResponse.json({ error: 'El beneficio especificado no existe o no está activo.' }, { status: 404 });
     }
 
     if (benefit.active === false || benefit.is_active === false) {
+      console.warn('⚠️ [LOYALTY REDEEM WARNING] Intento de canje de beneficio inactivo:', benefit.name);
       return NextResponse.json({ error: 'Este beneficio se encuentra inactivo.' }, { status: 400 });
     }
 
@@ -79,9 +82,11 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
       }]);
 
     if (insertErr) {
+      console.error('❌ [LOYALTY REDEEM DB ERROR] Fallo al insertar canje en loyalty_redemptions:', insertErr.message);
       throw new Error(`DB Error insertando canje: ${insertErr.message}`);
     }
 
+    console.log(`✅ [LOYALTY REDEEM SUCCESS] Canje registrado para cliente ${customerId}: ${benefit.name}`);
     return NextResponse.json({ 
       success: true, 
       message: `Canje aplicado exitosamente: ${benefit.name}`,
@@ -89,7 +94,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     }, { status: 201 });
 
   } catch (error: any) {
-    console.error('Customer redemption error:', error);
+    console.error('❌ [LOYALTY REDEEM EXCEPTION]:', error?.message || error);
     return NextResponse.json({ error: 'Error interno del servidor.' }, { status: 500 });
   }
 }

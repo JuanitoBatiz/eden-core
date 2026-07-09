@@ -51,6 +51,8 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
       throw new Error(`DB Error: ${updateErr.message}`);
     }
 
+    let loyverseDiagnostic = { success: false, receipt_number: null as string | null, error: null as string | null };
+
     // Enviar orden a Loyverse POS inmediatamente para pagos en físico / efectivo / caja si no ha sido enviada previamente
     if (!order.loyverse_receipt_id) {
       try {
@@ -82,13 +84,18 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
               loyverse_receipt_number: loyverseResult.receipt_number
             })
             .eq('id', orderId);
+          
+          loyverseDiagnostic = { success: true, receipt_number: loyverseResult.receipt_number, error: null };
         }
-      } catch (err) {
-        console.error('Error synchronizing physical payment order with Loyverse POS:', err);
+      } catch (err: any) {
+        console.error('❌ [LOYVERSE DIAGNOSTIC in pay-physical]: Error synchronizing with Loyverse POS:', err);
+        loyverseDiagnostic = { success: false, receipt_number: null, error: err?.message || String(err) };
       }
+    } else {
+      loyverseDiagnostic = { success: true, receipt_number: order.loyverse_receipt_number, error: 'Orden ya sincronizada previamente con Loyverse' };
     }
 
-    return NextResponse.json({ success: true, status: 'in_preparation' });
+    return NextResponse.json({ success: true, status: 'in_preparation', loyverse_diagnostic: loyverseDiagnostic });
 
   } catch (error: any) {
     console.error('Pay physical error:', error);

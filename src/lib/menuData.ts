@@ -38,6 +38,8 @@ export const SALAD_OPTIONS = {
     { id: 'huevo-duro', name: 'Huevo Duro' }
   ],
   toppings: [
+    { id: 'aguacate', name: 'Aguacate' },
+    { id: 'granos-de-elote', name: 'Granos de Elote' },
     { id: 'mango', name: 'Mango' },
     { id: 'uva', name: 'Uva' },
     { id: 'crutones', name: 'Crutones' },

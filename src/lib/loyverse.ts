@@ -84,7 +84,7 @@ export async function createLoyverseReceipt(order: {
   const formatItemCustomizations = (item: any): string[] => {
     const parts: string[] = [];
     if (item.variant || item.size) parts.push(`Opción: ${item.variant || item.size}`);
-    
+
     if (item.customizations && typeof item.customizations === 'object') {
       const cust = item.customizations;
       if (cust.proteins?.length > 0) parts.push(`Prot: ${cust.proteins.join(', ')}`);
@@ -92,7 +92,7 @@ export async function createLoyverseReceipt(order: {
       if (cust.seedsAndNuts?.length > 0) parts.push(`Semillas: ${cust.seedsAndNuts.join(', ')}`);
       if (cust.dressings?.length > 0) parts.push(`Aderezo: ${cust.dressings.join(', ')}`);
       if (cust.flavors?.length > 0) parts.push(`Sabor: ${cust.flavors.join(', ')}`);
-      
+
       // Separar exclusiones ("Sin ...") de otros extras u opciones
       if (cust.extras?.length > 0) {
         const omissions = cust.extras.filter((x: any) => typeof x === 'string' && x.toLowerCase().startsWith('sin '));
@@ -115,7 +115,7 @@ export async function createLoyverseReceipt(order: {
         }
       });
     }
-    
+
     if (item.notes) {
       parts.push(`Nota: ${item.notes}`);
     }
@@ -125,42 +125,49 @@ export async function createLoyverseReceipt(order: {
   const lineItems = order.items.map(item => {
     const parts = formatItemCustomizations(item);
     const itemNote = parts.length > 0 ? parts.join(' | ') : undefined;
+    let cleanItemNote = itemNote;
+    if (cleanItemNote && cleanItemNote.length > 255) {
+      cleanItemNote = cleanItemNote.slice(0, 252) + '...';
+    }
 
     return {
       variant_id: item.variantId || item.variant || LOYVERSE_GENERIC_VARIANT_ID,
       quantity: item.quantity,
       price: item.price,
-      note: itemNote
+      line_note: cleanItemNote,
+      note: cleanItemNote
     };
   });
-
-  const itemsText = order.items.map(item => {
-    let details = `${item.quantity}x ${item.name}${item.size ? ` (${item.size})` : ''}`;
-    const parts = formatItemCustomizations(item);
-    if (parts.length > 0) {
-      details += `\n   [${parts.join(' | ')}]`;
-    }
-    return details;
-  }).join('\n');
 
   // Formatear el Tipo de Servicio para el Ticket de Cocina / POS de Loyverse
   let serviceTypeText = '[PARA RECOGER EN SUCURSAL]';
   if (order.service_type === 'delivery') {
-    serviceTypeText = `[ENVÍO A DOMICILIO]\n   DIRECCIÓN: ${order.delivery_address || 'No especificada'}`;
+    serviceTypeText = `[ENVÍO] Dir: ${order.delivery_address || 'No especificada'}`;
   } else if (order.service_type === 'dine_in' || order.service_type === 'local' || order.service_type === 'comer_local') {
-    serviceTypeText = '[PARA COMER EN LOCAL (MESA)]';
+    serviceTypeText = '[COMER EN LOCAL (MESA)]';
   }
 
   // Formatear el Método de Pago para el Ticket de Cocina / POS de Loyverse
-  let paymentText = '[PAGO EN EFECTIVO / TARJETA AL RECIBIR (COBRAR EN CAJA)]';
+  let paymentText = '[COBRAR EN CAJA / EFECTIVO]';
   if (order.payment_method === 'transferencia' || order.payment_status === 'payment_approved') {
-    paymentText = '[TRANSFERENCIA BANCARIA / SPEI - YA PAGADO EN WEB]';
+    paymentText = '[YA PAGADO WEB / SPEI]';
   }
 
-  const headerNote = `========================================\nTIPO DE SERVICIO:\n${serviceTypeText}\n\n${paymentText}\n========================================\n\n`;
-  const fullNoteText = `${headerNote}Pedido Web #${order.id.slice(-4).toUpperCase()}\nCliente: ${order.customer_name} (${order.customer_phone})\n\nDETALLE:\n${itemsText}\n\nNotas Generales: ${order.notes || 'Ninguna'}`;
+  let fullNoteText = `${serviceTypeText} | ${paymentText}\nPedido Web #${order.id.slice(-4).toUpperCase()} | Cliente: ${order.customer_name} (${order.customer_phone})\nNotas: ${order.notes || 'Ninguna'}`;
+
+  // Seguridad por límite de API Loyverse (máximo 255 caracteres en la nota general del recibo)
+  if (fullNoteText.length > 255) {
+    fullNoteText = fullNoteText.slice(0, 252) + '...';
+  }
 
   if (!isLoyverseConfigured) {
+    console.warn('⚠️ [LOYVERSE DIAGNOSTIC] Falta configuración para conectar con Loyverse real. Estado de variables:', {
+      has_token: !!LOYVERSE_ACCESS_TOKEN,
+      has_store_id: !!LOYVERSE_STORE_ID,
+      has_generic_variant: !!LOYVERSE_GENERIC_VARIANT_ID
+    });
+    console.warn('⚠️ [LOYVERSE DIAGNOSTIC] Entrando en MOCK MODE. Se generará un ticket simulado y NO se enviará nada a la App de Loyverse.');
+
     const mockPayload: any = {
       store_id: LOYVERSE_STORE_ID,
       note: fullNoteText,
@@ -207,6 +214,10 @@ export async function createLoyverseReceipt(order: {
       payload.customer_id = order.customer_id;
     }
 
+    console.log('📡 [LOYVERSE DIAGNOSTIC] Enviando petición POST a Loyverse (/receipts)...');
+    console.log('📦 [LOYVERSE DIAGNOSTIC] URL:', `${LOYVERSE_API_URL}/receipts`);
+    console.log('📦 [LOYVERSE DIAGNOSTIC] Payload:', JSON.stringify(payload, null, 2));
+
     const res = await fetch(`${LOYVERSE_API_URL}/receipts`, {
       method: 'POST',
       headers: {
@@ -218,16 +229,19 @@ export async function createLoyverseReceipt(order: {
 
     if (!res.ok) {
       const errText = await res.text();
-      throw new Error(`Loyverse API error: ${res.status} - ${errText}`);
+      const errorMsg = `Loyverse API error [HTTP ${res.status} ${res.statusText}]: ${errText}`;
+      console.error('❌ [LOYVERSE DIAGNOSTIC ERROR] El servidor de Loyverse rechazó el recibo:', errorMsg);
+      throw new Error(errorMsg);
     }
 
     const data = await res.json();
+    console.log('✅ [LOYVERSE DIAGNOSTIC SUCCESS] Recibo creado exitosamente en Loyverse:', data);
     return {
       receipt_id: data.id || data.receipt_id || data.receipt_number,
       receipt_number: data.receipt_number
     };
-  } catch (error) {
-    console.error('Error creating Loyverse receipt:', error);
+  } catch (error: any) {
+    console.error('❌ [LOYVERSE DIAGNOSTIC EXCEPTION] Excepción capturada en createLoyverseReceipt:', error?.message || error);
     // If the API call fails in production, log it but return mock or let the system proceed
     throw error;
   }
@@ -244,6 +258,7 @@ export async function refundLoyverseReceipt(receiptId: string) {
   }
 
   try {
+    console.log(`📡 [LOYVERSE DIAGNOSTIC] Reembolsando recibo ${receiptId} en Loyverse...`);
     // First, fetch the receipt to get its details for the refund
     const fetchRes = await fetch(`${LOYVERSE_API_URL}/receipts/${receiptId}`, {
       headers: {
@@ -252,7 +267,10 @@ export async function refundLoyverseReceipt(receiptId: string) {
     });
 
     if (!fetchRes.ok) {
-      throw new Error(`Failed to fetch Loyverse receipt for refund: ${fetchRes.status}`);
+      const errText = await fetchRes.text();
+      const errorMsg = `Loyverse API error consultando recibo para reembolso [HTTP ${fetchRes.status}]: ${errText}`;
+      console.error('❌ [LOYVERSE DIAGNOSTIC ERROR]', errorMsg);
+      throw new Error(errorMsg);
     }
 
     const receipt = await fetchRes.json();
@@ -276,12 +294,15 @@ export async function refundLoyverseReceipt(receiptId: string) {
 
     if (!res.ok) {
       const errText = await res.text();
-      throw new Error(`Loyverse API refund error: ${res.status} - ${errText}`);
+      const errorMsg = `Loyverse API refund error [HTTP ${res.status}]: ${errText}`;
+      console.error('❌ [LOYVERSE DIAGNOSTIC ERROR] Fallo al reembolsar en Loyverse:', errorMsg);
+      throw new Error(errorMsg);
     }
 
+    console.log(`✅ [LOYVERSE DIAGNOSTIC SUCCESS] Recibo ${receiptId} reembolsado exitosamente.`);
     return true;
-  } catch (error) {
-    console.error('Error refunding Loyverse receipt:', error);
+  } catch (error: any) {
+    console.error('❌ [LOYVERSE DIAGNOSTIC EXCEPTION] Excepción al reembolsar recibo:', error?.message || error);
     throw error;
   }
 }
@@ -307,6 +328,7 @@ export async function createLoyverseCustomer(name: string, phone: string): Promi
       phone_number: phone
     };
 
+    console.log(`📡 [LOYVERSE DIAGNOSTIC] Creando cliente en Loyverse: ${name} (${phone})`);
     const res = await fetch(`${LOYVERSE_API_URL}/customers`, {
       method: 'POST',
       headers: {
@@ -321,17 +343,23 @@ export async function createLoyverseCustomer(name: string, phone: string): Promi
 
     if (!res.ok) {
       const errText = await res.text();
-      throw new Error(`Loyverse API error creating customer: ${res.status} - ${errText}`);
+      const errorMsg = `Loyverse API error creating customer [HTTP ${res.status}]: ${errText}`;
+      console.error('❌ [LOYVERSE DIAGNOSTIC ERROR] Fallo al crear cliente en Loyverse:', errorMsg);
+      throw new Error(errorMsg);
     }
 
     const data = await res.json();
-    return data.id || data.customer_id; // Return whichever the API provides as ID
+    const customerId = data.id || data.customer_id;
+    console.log(`✅ [LOYVERSE DIAGNOSTIC SUCCESS] Cliente creado exitosamente en Loyverse con ID: ${customerId}`);
+    return customerId;
   } catch (error: any) {
     clearTimeout(timeoutId);
     if (error.name === 'AbortError') {
-      throw new Error('Loyverse API request timed out after 10 seconds.');
+      const timeoutMsg = 'Loyverse API request timed out after 10 seconds.';
+      console.error('❌ [LOYVERSE DIAGNOSTIC TIMEOUT]', timeoutMsg);
+      throw new Error(timeoutMsg);
     }
-    console.error('Error creating Loyverse customer:', error);
+    console.error('❌ [LOYVERSE DIAGNOSTIC EXCEPTION] Error creando cliente en Loyverse:', error?.message || error);
     throw error;
   }
 }

@@ -372,30 +372,47 @@ picture.hero-v1-bg img {
   text-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
 }
 
-/* CTA Premium Button */
+/* CTA Premium Button - Menos denso, integrado y elegante (Glassmorphism + Smooth Glow) */
 .hero-cta-btn {
   display: inline-flex;
   align-items: center;
-  gap: 10px;
-  background: var(--color-ochre);
+  justify-content: center;
+  gap: 12px;
+  background: rgba(253, 251, 247, 0.16);
   color: #ffffff;
-  padding: 14px 32px;
-  border-radius: 30px;
+  padding: 15px 36px;
+  border-radius: 100px;
   font-family: var(--font-sans);
-  font-size: 1.05rem;
-  font-weight: 700;
+  font-size: 0.98rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
   cursor: pointer;
-  border: none;
-  box-shadow: 0 8px 24px rgba(212, 163, 95, 0.38);
-  transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  border: 1.5px solid rgba(253, 251, 247, 0.45);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  box-shadow: 0 8px 28px rgba(0, 0, 0, 0.18), inset 0 1px 1px rgba(255, 255, 255, 0.3);
+  transition: all 0.35s cubic-bezier(0.16, 1, 0.3, 1);
   text-decoration: none;
 }
 
+.hero-cta-btn svg {
+  transition: transform 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
 .hero-cta-btn:hover {
-  background: var(--color-green-dark);
-  color: var(--color-cream);
-  transform: translateY(-3px);
-  box-shadow: 0 14px 30px rgba(44, 62, 45, 0.3);
+  background: rgba(253, 251, 247, 0.96);
+  color: var(--color-green-dark);
+  border-color: #ffffff;
+  transform: translateY(-3px) scale(1.02);
+  box-shadow: 0 14px 36px rgba(0, 0, 0, 0.25), 0 0 26px rgba(255, 255, 255, 0.22);
+}
+
+.hero-cta-btn:hover svg {
+  transform: translateX(4px);
+}
+
+.hero-cta-btn:active {
+  transform: translateY(-1px) scale(0.99);
 }
 
 /* Menu Grid and Cards */
@@ -862,27 +879,28 @@ picture.hero-v1-bg img {
 
 .modal-content {
   background-color: var(--color-cream-light);
-  width: 90%;
-  max-width: 600px;
-  max-height: 85vh;
-  border-radius: 25px;
-  border: 1px solid var(--color-ochre);
-  box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+  width: 92%;
+  max-width: 640px;
+  max-height: 86vh;
+  border-radius: 30px;
+  border: 1.5px solid rgba(212, 163, 115, 0.35);
+  box-shadow: 0 28px 70px rgba(28, 43, 33, 0.22);
   overflow: hidden;
   display: flex;
   flex-direction: column;
   position: relative;
-  animation: slideUp 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+  animation: slideUp 0.35s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 .modal-header {
-  padding: 20px;
-  border-bottom: 1px solid var(--color-ochre-light);
+  padding: 26px 30px 20px;
+  border-bottom: 1px solid rgba(212, 163, 115, 0.2);
   display: flex;
   justify-content: space-between;
   align-items: flex-start;
   flex-shrink: 0;
-  background-color: var(--color-cream-light);
+  background-color: rgba(253, 251, 247, 0.95);
+  backdrop-filter: blur(8px);
   z-index: 10;
 }
 
@@ -892,32 +910,36 @@ picture.hero-v1-bg img {
 }
 
 .modal-subtitle {
-  font-size: 0.9rem;
+  font-size: 0.85rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
   color: var(--color-terracotta);
-  font-weight: 600;
+  font-weight: 700;
+  margin-bottom: 4px;
 }
 
 .close-btn {
-  background: none;
+  background: rgba(212, 163, 115, 0.15);
   border: none;
   cursor: pointer;
-  color: var(--color-text-muted);
+  color: var(--color-green-dark);
   font-size: 1.5rem;
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 4px;
+  padding: 8px;
   border-radius: 50%;
   transition: var(--transition-fast);
 }
 
 .close-btn:hover {
-  background-color: var(--color-ochre-light);
-  color: var(--color-text-dark);
+  background-color: var(--color-terracotta);
+  color: var(--color-white);
+  transform: rotate(90deg);
 }
 
 .modal-body {
-  padding: 20px;
+  padding: 26px 30px;
   flex: 1 1 auto;
   overflow-y: auto;
   min-height: 0;
@@ -925,39 +947,42 @@ picture.hero-v1-bg img {
 }
 
 .option-group {
-  margin-bottom: 25px;
-  border-bottom: 1px solid var(--color-ochre-light);
-  padding-bottom: 20px;
+  margin-bottom: 30px;
+  border-bottom: 1px solid rgba(212, 163, 115, 0.18);
+  padding-bottom: 24px;
 }
 
 .option-group-title {
-  font-size: 1.1rem;
+  font-size: 1.08rem;
+  font-weight: 700;
   color: var(--color-green-dark);
-  margin-bottom: 8px;
+  margin-bottom: 10px;
   display: flex;
   justify-content: space-between;
   align-items: center;
 }
 
 .option-group-limit {
-  font-size: 0.8rem;
-  background-color: var(--color-ochre-light);
-  color: var(--color-text-dark);
-  padding: 2px 8px;
-  border-radius: 10px;
+  font-size: 0.78rem;
+  background-color: rgba(212, 163, 115, 0.22);
+  color: var(--color-green-dark);
+  font-weight: 600;
+  padding: 3px 10px;
+  border-radius: 12px;
 }
 
 .option-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
-  gap: 10px;
-  margin-top: 12px;
+  grid-template-columns: repeat(auto-fill, minmax(135px, 1fr));
+  gap: 12px;
+  margin-top: 14px;
 }
 
 /* Option Choices styling */
 .option-card-label {
   display: block;
   cursor: pointer;
+  user-select: none;
 }
 
 .option-card-input {
@@ -965,31 +990,56 @@ picture.hero-v1-bg img {
 }
 
 .option-card-content {
-  background-color: var(--color-cream-dark);
-  border: 1px solid var(--color-ochre-light);
-  padding: 12px 8px;
-  border-radius: 12px;
+  background-color: var(--color-white);
+  border: 1.5px solid rgba(212, 163, 115, 0.3);
+  padding: 14px 10px;
+  border-radius: 18px;
   text-align: center;
-  font-size: 0.85rem;
+  font-size: 0.88rem;
   font-weight: 600;
-  transition: var(--transition-smooth);
+  color: var(--color-green-dark);
+  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
   display: flex;
   flex-direction: column;
   justify-content: center;
   align-items: center;
-  min-height: 60px;
+  min-height: 64px;
+  position: relative;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.02);
 }
 
 .option-card-label:hover .option-card-content {
   border-color: var(--color-ochre);
-  background-color: var(--color-ochre-light);
+  background-color: rgba(212, 163, 115, 0.08);
+  transform: translateY(-2px);
+  box-shadow: 0 8px 20px rgba(34, 60, 43, 0.06);
 }
 
 .option-card-input:checked + .option-card-content {
-  background-color: var(--color-terracotta);
-  color: var(--color-white);
+  background-color: rgba(192, 90, 62, 0.08);
+  color: var(--color-terracotta);
   border-color: var(--color-terracotta);
-  box-shadow: 0 4px 8px rgba(192, 90, 62, 0.2);
+  font-weight: 700;
+  box-shadow: 0 6px 18px rgba(192, 90, 62, 0.16);
+  transform: translateY(-2px);
+}
+
+.option-card-input:checked + .option-card-content::after {
+  content: "✓";
+  position: absolute;
+  top: 6px;
+  right: 10px;
+  font-size: 0.75rem;
+  font-weight: 800;
+  color: var(--color-terracotta);
+  background: rgba(192, 90, 62, 0.15);
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
 }
 
 .option-card-extra-price {
@@ -1002,24 +1052,27 @@ picture.hero-v1-bg img {
 .notes-textarea {
   width: 100%;
   height: 80px;
-  background-color: var(--color-cream-dark);
-  border: 1px solid var(--color-ochre-light);
-  border-radius: 12px;
-  padding: 12px;
+  background-color: var(--color-white);
+  border: 1.5px solid rgba(212, 163, 115, 0.3);
+  border-radius: 16px;
+  padding: 14px;
   resize: none;
   font-family: inherit;
   transition: var(--transition-smooth);
+  color: var(--color-green-dark);
 }
 
 .notes-textarea:focus {
   outline: none;
   border-color: var(--color-terracotta);
-  background-color: var(--color-white);
+  box-shadow: 0 0 0 3px rgba(192, 90, 62, 0.1);
 }
 
 .modal-footer {
-  padding: 20px;
-  border-top: 1px solid var(--color-ochre-light);
+  padding: 20px 30px;
+  border-top: 1px solid rgba(212, 163, 115, 0.2);
+  background-color: rgba(253, 251, 247, 0.95);
+  backdrop-filter: blur(8px);
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -2213,4 +2266,119 @@ picture.hero-v1-bg img {
   margin-top: 6px;
   font-weight: 600;
   text-align: center;
+}
+
+/* Dynamic Order Tracking Progress Bar */
+.order-progress-container {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  max-width: 540px;
+  margin: 14px auto 26px auto;
+  padding: 16px 20px;
+  background-color: var(--color-white);
+  border: 1.5px solid rgba(212, 163, 115, 0.28);
+  border-radius: 22px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.03);
+}
+
+.order-progress-step {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  position: relative;
+  z-index: 2;
+  min-width: 68px;
+  transition: var(--transition-smooth);
+}
+
+.order-progress-icon {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.8rem;
+  font-weight: 700;
+  transition: all 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.order-progress-step.completed .order-progress-icon {
+  background-color: #10b981;
+  color: #ffffff;
+  box-shadow: 0 4px 12px rgba(16, 185, 129, 0.25);
+}
+
+.order-progress-step.active .order-progress-icon {
+  background-color: var(--color-terracotta);
+  color: var(--color-white);
+  border: 2px solid #ffffff;
+  box-shadow: 0 0 0 4px rgba(192, 90, 62, 0.2), 0 4px 12px rgba(192, 90, 62, 0.25);
+}
+
+.order-progress-dot {
+  width: 10px;
+  height: 10px;
+  background-color: var(--color-white);
+  border-radius: 50%;
+  animation: pulse 1.5s infinite;
+}
+
+.order-progress-step.pending .order-progress-icon {
+  background-color: var(--color-cream-dark);
+  color: var(--color-text-muted);
+  border: 1.5px solid rgba(212, 163, 115, 0.3);
+}
+
+.order-progress-label {
+  font-size: 0.74rem;
+  font-weight: 600;
+  margin-top: 8px;
+  text-align: center;
+  color: var(--color-text-muted);
+  transition: color 0.3s ease;
+  line-height: 1.2;
+}
+
+.order-progress-step.active .order-progress-label {
+  color: var(--color-green-dark);
+  font-weight: 800;
+}
+
+.order-progress-step.completed .order-progress-label {
+  color: #047857;
+  font-weight: 700;
+}
+
+.order-progress-connector {
+  flex: 1;
+  height: 3px;
+  background-color: rgba(212, 163, 115, 0.22);
+  margin: -14px 4px 0 4px;
+  border-radius: 2px;
+  transition: background-color 0.4s ease;
+  min-width: 15px;
+}
+
+.order-progress-connector.completed {
+  background-color: #10b981;
+}
+
+@media (max-width: 480px) {
+  .order-progress-container {
+    padding: 14px 10px;
+    margin: 8px auto 20px auto;
+  }
+  .order-progress-step {
+    min-width: 52px;
+  }
+  .order-progress-label {
+    font-size: 0.68rem;
+  }
+  .order-progress-icon {
+    width: 28px;
+    height: 28px;
+  }
 }

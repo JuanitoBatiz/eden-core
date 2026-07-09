@@ -120,6 +120,13 @@ export async function GET() {
       });
     });
 
+    if (!SALAD_OPTIONS.toppings.some(x => x.id === 'aguacate' || x.name?.toLowerCase() === 'aguacate')) {
+      SALAD_OPTIONS.toppings.unshift({ id: 'aguacate', name: 'Aguacate' });
+    }
+    if (!SALAD_OPTIONS.toppings.some(x => x.id === 'granos-de-elote' || x.name?.toLowerCase().includes('elote'))) {
+      SALAD_OPTIONS.toppings.splice(1, 0, { id: 'granos-de-elote', name: 'Granos de Elote' });
+    }
+
     return NextResponse.json({
       CATEGORIES: mappedCategories,
       MENU_ITEMS: mappedProducts,
