@@ -512,7 +512,7 @@ export default function OrderStatusPage() {
       <header className="header">
         <div className="container header-content">
           <div className="logo-container" style={{ cursor: 'pointer' }} onClick={() => router.push('/')}>
-            <img src="/images/logo_eden2.png" alt="Edén Logo" className="logo-img" />
+            <img src="/images/logo.webp" alt="Edén Logo" className="logo-img" />
             <div className="logo-text">EDÉN</div>
           </div>
           

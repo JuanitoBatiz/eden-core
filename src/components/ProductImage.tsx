@@ -17,9 +17,20 @@ export default function ProductImage({ src, alt, className = '', priority = fals
 
   useEffect(() => {
     // Si la imagen ya está en caché del navegador o terminó de cargar, activarla al instante
-    if (imgRef.current && imgRef.current.complete && imgRef.current.naturalWidth > 0) {
-      setIsLoaded(true);
+    if (imgRef.current && imgRef.current.complete) {
+      if (imgRef.current.naturalWidth > 0) {
+        setIsLoaded(true);
+      } else {
+        setHasError(true);
+      }
     }
+
+    // Timeout de seguridad (2.2s): evita que un retraso de red o bloqueo del navegador deje el skeleton girando indefinidamente
+    const timer = setTimeout(() => {
+      setIsLoaded(true);
+    }, 2200);
+
+    return () => clearTimeout(timer);
   }, [src]);
 
   if (!src || hasError) {
@@ -66,7 +77,7 @@ export default function ProductImage({ src, alt, className = '', priority = fals
         ref={imgRef}
         src={src}
         alt={alt}
-        loading={priority ? 'eager' : 'lazy'}
+        loading="eager"
         fetchPriority={priority ? 'high' : 'auto'}
         decoding="async"
         className={`${className} product-img-reveal`}
@@ -74,7 +85,7 @@ export default function ProductImage({ src, alt, className = '', priority = fals
           width: '100%',
           height: '100%',
           objectFit: 'cover',
-          opacity: isLoaded ? 1 : 0,
+          opacity: isLoaded ? 1 : 0.01,
           transform: isLoaded ? 'scale(1)' : 'scale(1.04)',
           transition: 'opacity 0.4s ease-out, transform 0.6s cubic-bezier(0.2, 0.8, 0.2, 1)',
           position: 'relative',

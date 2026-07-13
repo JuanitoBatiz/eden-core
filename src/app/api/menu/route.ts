@@ -55,15 +55,43 @@ export async function GET() {
           : 'horizontal'
       );
 
+      // 1. Corregir nombre y ID en vivo si en DB dice Rafaella
+      let correctedName = p.name || '';
+      let correctedId = p.id;
+      if (correctedName.toLowerCase().includes('rafaell')) {
+        correctedName = 'Bowl Rafaello';
+        if (correctedId === 'bowl-rafaella') correctedId = 'bowl-rafaello';
+      }
+
+      // 2. Mapeo veloz y garantizado hacia archivos locales .webp ultra ligeros
       let resolvedImage = p.image_url || staticMatch?.image || '/images/ensalada.webp';
-      if (resolvedImage === '/images/burrito.png' || p.name?.toLowerCase().includes('burrito')) resolvedImage = '/images/rollito3.webp';
-      if (resolvedImage === '/images/rollitos_pollo.png' || p.name?.toLowerCase().includes('pollo') && p.name?.toLowerCase().includes('rollito')) resolvedImage = '/images/rollito1.webp';
-      if (resolvedImage === '/images/rollitos_tsurimi.png' || p.name?.toLowerCase().includes('tsurimi') && p.name?.toLowerCase().includes('rollito')) resolvedImage = '/images/rollito2.webp';
-      if (resolvedImage === '/images/rollitosmixtos.png' || p.name?.toLowerCase().includes('mixto') && p.name?.toLowerCase().includes('rollito')) resolvedImage = '/images/burrito.webp';
+      if (typeof resolvedImage === 'string') {
+        resolvedImage = resolvedImage.replace(/\.(png|jpg|jpeg)$/i, '.webp');
+      }
+
+      const lowerName = correctedName.toLowerCase();
+      if (lowerName.includes('rafaell')) resolvedImage = '/images/rafaello.webp';
+      else if (lowerName.includes('avena')) resolvedImage = '/images/bowl_avena.webp';
+      else if (lowerName.includes('hotcakes')) resolvedImage = '/images/hotcakes.webp';
+      else if (lowerName.includes('cóctel') || lowerName.includes('coctel')) resolvedImage = '/images/coctel.webp';
+      else if (lowerName.includes('yogurt')) resolvedImage = '/images/yogurt.webp';
+      else if (lowerName.includes('burrito')) resolvedImage = '/images/burrito.webp';
+      else if (lowerName.includes('pollo') && lowerName.includes('rollito')) resolvedImage = '/images/rollito1.webp';
+      else if (lowerName.includes('tsurimi') && lowerName.includes('rollito')) resolvedImage = '/images/rollito2.webp';
+      else if (lowerName.includes('mixto') && lowerName.includes('rollito')) resolvedImage = '/images/rollito3.webp';
+      else if (lowerName.includes('ciabatta')) resolvedImage = '/images/ciabatta.webp';
+      else if (lowerName.includes('torta')) resolvedImage = '/images/torta.webp';
+      else if (lowerName.includes('sandwich') || lowerName.includes('sándwich')) resolvedImage = '/images/sandwich.webp';
+      else if (lowerName.includes('ensalada')) resolvedImage = '/images/ensalada.webp';
+      else if (lowerName.includes('infusión') || lowerName.includes('infusion')) resolvedImage = '/images/infusion.webp';
+      else if (lowerName.includes('clasico') || lowerName.includes('clásico')) resolvedImage = '/images/smoothie_clasico.webp';
+      else if (lowerName.includes('deluxe') || lowerName.includes('súper') || lowerName.includes('super')) resolvedImage = '/images/smoothie_deluxe.webp';
+      else if (lowerName.includes('natural')) resolvedImage = '/images/jugo_natural.webp';
+      else if (lowerName.includes('mixto') && lowerName.includes('jugo')) resolvedImage = '/images/jugo_mixto.webp';
 
       const item: any = {
-        id: p.id,
-        name: p.name,
+        id: correctedId,
+        name: correctedName,
         description: p.description,
         price: Number(p.base_price),
         image: resolvedImage,

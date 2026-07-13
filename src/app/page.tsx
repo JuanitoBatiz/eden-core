@@ -707,7 +707,7 @@ export default function MenuPage() {
         <header className="header">
           <div className="container header-content">
             <div className="logo-container">
-              <img src="logo.png" alt="Edén Logo" className="logo-img" />
+              <img src="/images/logo.webp" alt="Edén Logo" className="logo-img" />
               <div className="logo-text">EDÉN</div>
             </div>
             <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
@@ -940,7 +940,7 @@ export default function MenuPage() {
       {/* FOOTER */}
       <footer style={{ backgroundColor: 'var(--color-green-dark)', color: 'var(--color-cream-light)', padding: '40px 0', marginTop: '60px', borderTop: '4px solid var(--color-ochre)' }}>
         <div className="container" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '15px', textAlign: 'center' }}>
-          <img src="logo.png" alt="Edén Logo" style={{ width: '60px', height: '60px', borderRadius: '50%', backgroundColor: '#fff', padding: '5px' }} />
+          <img src="/images/logoclaro.webp" alt="Edén Logo" style={{ width: '60px', height: '60px', borderRadius: '50%', backgroundColor: '#fff', padding: '5px' }} />
           <h2 style={{ fontFamily: 'var(--font-serif)', fontSize: '1.8rem', color: 'var(--color-cream-light)' }}>Edén</h2>
           <p style={{ maxWidth: '400px', fontSize: '0.9rem', opacity: 0.8 }}>
             Higiene, orden y sabor artesanal en Otumba, Estado de México.
