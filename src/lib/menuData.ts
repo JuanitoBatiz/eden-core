@@ -88,7 +88,7 @@ export const MENU_ITEMS: MenuItem[] = [
     description: 'Nuestra deliciosa ensalada fresca. Una cama de hojas crujientes coronada con la proteína de tu elección, deliciosos toppings de temporada, semillas y tu aderezo favorito. Arma tu combinación perfecta en tamaño Chica o Grande.',
     price: 95,
     prices: { 'Chica': 95, 'Grande': 150 },
-    image: '/images/ensalada.png',
+    image: '/images/ensalada.webp',
     image_orientation: 'square',
     category: 'ensaladas',
     customizable: true
@@ -101,7 +101,7 @@ export const MENU_ITEMS: MenuItem[] = [
     description: 'Exprimidos al momento para conservar todas sus vitaminas. Un boost de energía pura y refrescante con frutas selectas de temporada.',
     price: 70,
     prices: { 'Chico': 70, 'Grande': 80 },
-    image: '/images/jugo_natural.png',
+    image: '/images/jugo_natural.webp',
     image_orientation: 'vertical',
     category: 'jugos',
     customizable: true,
@@ -113,7 +113,7 @@ export const MENU_ITEMS: MenuItem[] = [
     description: 'Tu combinación perfecta. Fusionamos tus dos frutas favoritas en un jugo 100% natural, preparado al instante para refrescar tu día.',
     price: 80,
     prices: { 'Chico': 80, 'Grande': 90 },
-    image: '/images/jugo_mixto.png',
+    image: '/images/jugo_mixto.webp',
     image_orientation: 'vertical',
     category: 'jugos',
     customizable: true,
@@ -126,7 +126,7 @@ export const MENU_ITEMS: MenuItem[] = [
     description: 'Nuestra línea exótica. Textura extra cremosa y combinaciones únicas llenas de antioxidantes. El equilibrio perfecto entre salud y un sabor espectacular.',
     price: 80,
     prices: { 'Chico': 80, 'Grande': 90 },
-    image: '/images/smoothie_deluxe.png',
+    image: '/images/smoothie_deluxe.webp',
     image_orientation: 'vertical',
     category: 'smoothies',
     customizable: true,
@@ -138,7 +138,7 @@ export const MENU_ITEMS: MenuItem[] = [
     description: 'Los favoritos de siempre, preparados al punto de nieve con la fruta más fresca de la estación. Helados, dulces y naturalmente deliciosos.',
     price: 70,
     prices: { 'Chico': 70, 'Grande': 80 },
-    image: '/images/smoothie_clasico.png',
+    image: '/images/smoothie_clasico.webp',
     image_orientation: 'vertical',
     category: 'smoothies',
     customizable: true,
@@ -152,7 +152,7 @@ export const MENU_ITEMS: MenuItem[] = [
     description: 'Tés helados y mezclas herbales preparadas artesanalmente. Refrescantes, aromáticas y el maridaje perfecto para tus alimentos.',
     price: 55,
     prices: { 'Chico': 55, 'Grande': 65 },
-    image: '/images/infusion.png',
+    image: '/images/infusion.webp',
     image_orientation: 'vertical',
     category: 'smoothies',
     customizable: true,
@@ -165,7 +165,7 @@ export const MENU_ITEMS: MenuItem[] = [
     name: 'Burrito de Pollo',
     description: 'Un envuelto calientito y saciador. Jugosa pechuga de pollo, cama de vegetales crujientes, frijolitos y un toque de nuestro aderezo chipotle de la casa.',
     price: 75,
-    image: '/images/rollito3.jpg',
+    image: '/images/rollito3.webp',
     image_orientation: 'horizontal',
     category: 'burritos-sandwiches',
     customizable: true
@@ -175,7 +175,7 @@ export const MENU_ITEMS: MenuItem[] = [
     name: 'Sándwich',
     description: 'Sándwich en pan artesanal tostado con vegetales frescos y aderezo. Elige tu especialidad y tipo de pan.',
     price: 65,
-    image: '/images/sandwich.png',
+    image: '/images/sandwich.webp',
     image_orientation: 'horizontal',
     category: 'burritos-sandwiches',
     customizable: true
@@ -185,7 +185,7 @@ export const MENU_ITEMS: MenuItem[] = [
     name: 'Torta',
     description: 'Deliciosa torta calientita con queso fundido, vegetales frescos y aderezo. Elige tu especialidad.',
     price: 65,
-    image: '/images/torta.png',
+    image: '/images/torta.webp',
     image_orientation: 'horizontal',
     category: 'burritos-sandwiches',
     customizable: true
@@ -195,7 +195,7 @@ export const MENU_ITEMS: MenuItem[] = [
     name: 'Rollitos Vietnamitas de Pollo',
     description: 'Orden de 2 rollitos. Nuestra joya oriental. Frescos bocados envueltos en delicado papel de arroz, crujientes por dentro y perfectos para remojar en nuestra salsa secreta.',
     price: 95,
-    image: '/images/rollito1.jpg',
+    image: '/images/rollito1.webp',
     image_orientation: 'horizontal',
     category: 'burritos-sandwiches',
     customizable: true
@@ -205,7 +205,7 @@ export const MENU_ITEMS: MenuItem[] = [
     name: 'Rollitos Vietnamitas de Tsurimi',
     description: 'Orden de 2 rollitos. Una experiencia fresca y exótica. Tsurimi desmenuzado con toques orientales, verduras crocantes y envueltos artesanalmente al momento.',
     price: 90,
-    image: '/images/rollito2.jpg',
+    image: '/images/rollito2.webp',
     image_orientation: 'horizontal',
     category: 'burritos-sandwiches',
     customizable: true
@@ -215,7 +215,7 @@ export const MENU_ITEMS: MenuItem[] = [
     name: 'Rollitos Vietnamitas Mixtos',
     description: 'Orden de 2 rollitos (uno de pollo y uno de tsurimi). Una combinación perfecta envuelta artesanalmente en delicado papel de arroz con verduras crocantes.',
     price: 95,
-    image: '/images/burrito.jpg',
+    image: '/images/burrito.webp',
     image_orientation: 'horizontal',
     category: 'burritos-sandwiches',
     customizable: true
@@ -225,7 +225,7 @@ export const MENU_ITEMS: MenuItem[] = [
     name: 'Ciabatta',
     description: 'Sándwich artesanal en crujiente pan ciabatta horneado, relleno con ingredientes frescos de calidad premium.',
     price: 95,
-    image: '/images/ciabatta.png',
+    image: '/images/ciabatta.webp',
     image_orientation: 'horizontal',
     category: 'burritos-sandwiches',
     customizable: true
@@ -237,7 +237,7 @@ export const MENU_ITEMS: MenuItem[] = [
     name: 'Bowl de Avena',
     description: 'El desayuno perfecto o postre sin culpa. Base de avena cremosa, endulzada naturalmente y coronada con fruta fresca y crujientes semillas a tu elección.',
     price: 60,
-    image: '/images/bowl_avena.png',
+    image: '/images/bowl_avena.webp',
     image_orientation: 'square',
     category: 'bowls',
     customizable: true
@@ -247,7 +247,7 @@ export const MENU_ITEMS: MenuItem[] = [
     name: 'Bowl de Yogurt',
     description: 'Cremoso, fresco y lleno de probióticos. Una base de yogurt natural acompañada de la mejor selección de frutas de temporada y semillas tostadas.',
     price: 55,
-    image: '/images/yogurt.png',
+    image: '/images/yogurt.webp',
     image_orientation: 'square',
     category: 'bowls',
     customizable: true
@@ -257,7 +257,7 @@ export const MENU_ITEMS: MenuItem[] = [
     name: 'Cóctel de Frutas',
     description: 'La frescura de la estación en un solo plato. Fruta recién picada, naturalmente dulce y perfecta para un antojo ligero a cualquier hora.',
     price: 65,
-    image: '/images/coctel.png',
+    image: '/images/coctel.webp',
     image_orientation: 'square',
     category: 'bowls'
   },
@@ -266,7 +266,7 @@ export const MENU_ITEMS: MenuItem[] = [
     name: 'Bowl Rafaello',
     description: 'Especialidad de la casa con un sabor exquisito y reconfortante. Preparado con ingredientes selectos y toque artesanal.',
     price: 95,
-    image: '/images/rafaello.png',
+    image: '/images/rafaello.webp',
     image_orientation: 'square',
     category: 'bowls'
   },
@@ -275,7 +275,7 @@ export const MENU_ITEMS: MenuItem[] = [
     name: 'Hotcakes de Avena',
     description: 'Esponjosos y saludables hotcakes elaborados con base de avena. Un postre o desayuno nutritivo lleno de sabor.',
     price: 85,
-    image: '/images/hotcakes.png',
+    image: '/images/hotcakes.webp',
     image_orientation: 'square',
     category: 'bowls'
   },
@@ -285,7 +285,7 @@ export const MENU_ITEMS: MenuItem[] = [
     id: 'agua-botella',
     name: 'Botella de Agua 600ml',
     price: 20,
-    image: '/images/infusion.png',
+    image: '/images/infusion.webp',
     image_orientation: 'vertical',
     category: 'embotellada'
   },
@@ -293,7 +293,7 @@ export const MENU_ITEMS: MenuItem[] = [
     id: 'cafe',
     name: 'Café',
     price: 35,
-    image: '/images/infusion.png',
+    image: '/images/infusion.webp',
     image_orientation: 'vertical',
     category: 'embotellada'
   }

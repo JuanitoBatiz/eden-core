@@ -55,11 +55,11 @@ export async function GET() {
           : 'horizontal'
       );
 
-      let resolvedImage = p.image_url || staticMatch?.image || '/images/ensalada.png';
-      if (resolvedImage === '/images/burrito.png' || p.name?.toLowerCase().includes('burrito')) resolvedImage = '/images/rollito3.jpg';
-      if (resolvedImage === '/images/rollitos_pollo.png' || p.name?.toLowerCase().includes('pollo') && p.name?.toLowerCase().includes('rollito')) resolvedImage = '/images/rollito1.jpg';
-      if (resolvedImage === '/images/rollitos_tsurimi.png' || p.name?.toLowerCase().includes('tsurimi') && p.name?.toLowerCase().includes('rollito')) resolvedImage = '/images/rollito2.jpg';
-      if (resolvedImage === '/images/rollitosmixtos.png' || p.name?.toLowerCase().includes('mixto') && p.name?.toLowerCase().includes('rollito')) resolvedImage = '/images/burrito.jpg';
+      let resolvedImage = p.image_url || staticMatch?.image || '/images/ensalada.webp';
+      if (resolvedImage === '/images/burrito.png' || p.name?.toLowerCase().includes('burrito')) resolvedImage = '/images/rollito3.webp';
+      if (resolvedImage === '/images/rollitos_pollo.png' || p.name?.toLowerCase().includes('pollo') && p.name?.toLowerCase().includes('rollito')) resolvedImage = '/images/rollito1.webp';
+      if (resolvedImage === '/images/rollitos_tsurimi.png' || p.name?.toLowerCase().includes('tsurimi') && p.name?.toLowerCase().includes('rollito')) resolvedImage = '/images/rollito2.webp';
+      if (resolvedImage === '/images/rollitosmixtos.png' || p.name?.toLowerCase().includes('mixto') && p.name?.toLowerCase().includes('rollito')) resolvedImage = '/images/burrito.webp';
 
       const item: any = {
         id: p.id,

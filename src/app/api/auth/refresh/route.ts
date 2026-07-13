@@ -73,7 +73,7 @@ export async function POST(req: Request) {
     response.headers.set('Set-Cookie', serialize('access_token', accessToken, {
       httpOnly: true,
       secure: isProduction,
-      sameSite: 'strict',
+      sameSite: 'lax',
       maxAge: ACCESS_MAX_AGE,
       path: '/'
     }));
@@ -81,7 +81,7 @@ export async function POST(req: Request) {
     response.headers.append('Set-Cookie', serialize('refresh_token', newRefreshToken, {
       httpOnly: true,
       secure: isProduction,
-      sameSite: 'strict',
+      sameSite: 'lax',
       maxAge: REFRESH_MAX_AGE,
       path: '/'
     }));

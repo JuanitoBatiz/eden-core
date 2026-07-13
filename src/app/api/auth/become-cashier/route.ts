@@ -9,7 +9,7 @@ function makeAuthCookie(name: string, value: string, maxAgeSeconds: number, isPr
   return serialize(name, value, {
     httpOnly: true,
     secure: isProduction,
-    sameSite: 'strict',
+    sameSite: 'lax',
     maxAge: maxAgeSeconds,
     path: '/'
   });

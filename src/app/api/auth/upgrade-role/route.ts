@@ -70,8 +70,7 @@ export async function POST(req: Request) {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
       sameSite: 'lax',
-      path: '/',
-      maxAge: 15 * 60 // 15 minutos
+      maxAge: 2 * 60 * 60 // 2 horas
     });
 
     response.cookies.set('refresh_token', newRefreshToken, {

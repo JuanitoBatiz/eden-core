@@ -12,7 +12,7 @@ export async function POST() {
   const expiredCookieOptions = {
     httpOnly: true,
     secure: process.env.NODE_ENV === 'production',
-    sameSite: 'strict' as const,
+    sameSite: 'lax' as const,
     maxAge: 0,  // Expiración inmediata — el navegador borrará la cookie
     path: '/'
   };

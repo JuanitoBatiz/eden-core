@@ -28,7 +28,8 @@ import {
   UserCircle,
   Store,
   Bike,
-  Utensils
+  Utensils,
+  QrCode
 } from 'lucide-react';
 import { MenuItem, MenuCategory, CATEGORIES as fallbackCategories, MENU_ITEMS as fallbackMenuItems, SALAD_OPTIONS as fallbackSaladOptions } from '@/lib/menuData';
 import { SmsRequest, VerifyOtpRequest, OrderCreateRequest } from '@/types/api-contracts';
@@ -182,15 +183,34 @@ export default function MenuPage() {
     }
   }, []);
 
-  // Silent Auth Check on Mount
+  // Silent Auth Check & Hybrid 30-Day Session Backup on Mount
   useEffect(() => {
+    // 1. Restaurar al instante si existe sesión local con menos de 30 días exactos de inactividad
+    try {
+      const savedSession = localStorage.getItem('eden_user_session');
+      if (savedSession) {
+        const parsed = JSON.parse(savedSession);
+        const thirtyDaysMs = 30 * 24 * 60 * 60 * 1000;
+        if (parsed.lastActive && (Date.now() - parsed.lastActive) < thirtyDaysMs) {
+          setIsAuthenticated(true);
+          if (parsed.name) setCustomerName(parsed.name);
+          if (parsed.phone) setCustomerPhone(parsed.phone);
+        } else {
+          localStorage.removeItem('eden_user_session');
+        }
+      }
+    } catch (e) {
+      console.error('Error al leer sesión local:', e);
+    }
+
     const doRefresh = () => {
       fetch('/api/auth/refresh', { method: 'POST', credentials: 'include' })
         .then(res => {
           if (res.ok) return res.json();
-          // Refresh token caducado (>30 días) — limpiar estado
+          // Refresh token caducado por completo (>30 días de inactividad real) — limpiar estado
           if (res.status === 401) {
             setIsAuthenticated(false);
+            try { localStorage.removeItem('eden_user_session'); } catch (e) {}
           }
           throw new Error('No valid session');
         })
@@ -199,19 +219,26 @@ export default function MenuPage() {
             setIsAuthenticated(true);
             if (data.user.name) setCustomerName(data.user.name);
             if (data.user.phone) setCustomerPhone(data.user.phone);
+            try {
+              localStorage.setItem('eden_user_session', JSON.stringify({
+                name: data.user.name || '',
+                phone: data.user.phone || '',
+                role: data.user.role || 'customer',
+                lastActive: Date.now()
+              }));
+            } catch (e) {}
           }
         })
         .catch(() => {
-          // Not authenticated or network error, do nothing extra
+          // Si hubo error de red, mantener sesión local si sigue dentro de la ventana de 30 días
         });
     };
 
     // Renovar al montar
     doRefresh();
 
-    // Renovar cada 12 minutos para que el access_token (15 min) nunca caduque mientras
-    // el usuario esté en la página. Si el usuario cierra la pestaña, el intervalo se limpia.
-    const refreshInterval = setInterval(doRefresh, 12 * 60 * 1000); // 12 minutos
+    // Renovar cada 12 minutos para que el access_token nunca caduque mientras la pestaña esté abierta
+    const refreshInterval = setInterval(doRefresh, 12 * 60 * 1000);
     return () => clearInterval(refreshInterval);
   }, []);
 
@@ -526,7 +553,16 @@ export default function MenuPage() {
         return;
       }
 
-      // Éxito: la cookie httpOnly ya está seteada, enviar orden directamente
+      // Éxito: guardar sesión híbrida por 30 días y enviar orden
+      try {
+        localStorage.setItem('eden_user_session', JSON.stringify({
+          name: data.user?.name || customerName,
+          phone: data.user?.phone || customerPhone,
+          role: data.user?.role || 'customer',
+          lastActive: Date.now()
+        }));
+      } catch (e) {}
+
       await submitOrder();
 
     } catch (e) {
@@ -724,8 +760,8 @@ export default function MenuPage() {
       {/* FULL-BLEED INMERSIVE HERO (100% DE LA PANTALLA, SIN MÁRGENES) */}
       <section className="hero-fullscreen-v1">
         <picture className="hero-v1-bg">
-          <source media="(max-width: 768px)" srcSet="/images/hero_celular.png" />
-          <img src="/images/hero_desktop.png" alt="Santuario Edén" />
+          <source media="(max-width: 768px)" srcSet="/images/hero_celular.webp" />
+          <img src="/images/hero_desktop.webp" alt="Santuario Edén" />
         </picture>
         <div className="hero-v1-overlay"></div>
         <div className="hero-v1-content">
@@ -831,7 +867,7 @@ export default function MenuPage() {
                     return (
                       <ScrollRevealItem key={product.id} staggerIndex={itemIdx} className={`editorial-card role-${role} ${badgeInfo ? 'shimmer-card' : ''}`}>
                         <div className={`product-img-container orientation-${product.image_orientation || 'horizontal'}`}>
-                          <ProductImage src={product.image} alt={product.name} className="product-img" />
+                          <ProductImage src={product.image} alt={product.name} className="product-img" priority={itemIdx < 4} />
                         </div>
                         <div className="editorial-info">
                           <div>
@@ -962,7 +998,7 @@ export default function MenuPage() {
           <div style={{ marginTop: '30px', display: 'flex', flexDirection: 'column', alignItems: 'center', opacity: 0.7, transition: 'opacity 0.3s', paddingBottom: '20px' }} onMouseOver={e => e.currentTarget.style.opacity = '1'} onMouseOut={e => e.currentTarget.style.opacity = '0.7'}>
             <a href="https://hummingxbi.com" target="_blank" rel="noopener noreferrer" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', textDecoration: 'none', color: 'inherit' }}>
               <span style={{ fontSize: '0.7rem', letterSpacing: '2px', marginBottom: '8px', color: 'var(--color-cream-light)' }}> PRODUCED BY </span>
-              <img src="/images/logoclaro.png" alt="HummingX BI" style={{ height: '26px', width: '26px', borderRadius: '50%', objectFit: 'cover' }} />
+              <img src="/images/logoclaro.webp" alt="HummingX BI" style={{ height: '26px', width: '26px', borderRadius: '50%', objectFit: 'cover' }} />
             </a>
           </div>
         </div>
@@ -1597,75 +1633,104 @@ export default function MenuPage() {
       )}
 
       {/* AUTH & MINI REGISTRATION MODAL */}
+      {/* AUTH & MINI REGISTRATION MODAL (2-Step Compact Sheet) */}
       {isAuthOpen && (
-        <div className="modal-overlay" onClick={() => setIsAuthOpen(false)}>
-          <div className="modal-content" onClick={e => e.stopPropagation()} style={{ maxWidth: '420px', padding: '40px 32px', borderRadius: '24px', border: '1px solid rgba(212, 163, 115, 0.2)', boxShadow: '0 24px 48px rgba(0, 0, 0, 0.1)' }}>
-            <div className="modal-header" style={{ borderBottom: 'none', paddingBottom: '24px', justifyContent: 'center', position: 'relative' }}>
-              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '16px', textAlign: 'center' }}>
-                <div style={{ width: '56px', height: '56px', borderRadius: '50%', background: 'var(--color-cream-light)', color: 'var(--color-green-dark)', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 4px 12px rgba(34, 60, 43, 0.05)' }}>
-                  <Sparkles size={28} />
+        <div className="modal-overlay" onClick={() => setIsAuthOpen(false)} style={{ overscrollBehavior: 'contain' }}>
+          <div
+            className="modal-content"
+            onClick={e => e.stopPropagation()}
+            style={{
+              maxWidth: '420px',
+              width: '92%',
+              padding: '28px 24px',
+              borderRadius: '28px',
+              border: '1px solid rgba(212, 163, 115, 0.3)',
+              boxShadow: '0 24px 60px rgba(0, 0, 0, 0.2)',
+              backgroundColor: 'var(--color-white)',
+              margin: 'auto',
+              maxHeight: '86vh',
+              overflowY: 'auto',
+              overscrollBehavior: 'contain'
+            }}
+          >
+            {/* Header Dinámico 2 Etapas */}
+            <div className="modal-header" style={{ borderBottom: '1px solid rgba(212, 163, 115, 0.15)', paddingBottom: '18px', marginBottom: '20px', justifyContent: 'center', position: 'relative', background: 'transparent' }}>
+              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '12px', textAlign: 'center' }}>
+                <div style={{
+                  width: '50px',
+                  height: '50px',
+                  borderRadius: '50%',
+                  background: !smsSent ? 'var(--color-cream-light)' : '#d1fae5',
+                  color: !smsSent ? 'var(--color-green-dark)' : '#047857',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  boxShadow: '0 4px 12px rgba(34, 60, 43, 0.08)'
+                }}>
+                  {!smsSent ? <Sparkles size={24} /> : <QrCode size={24} />}
                 </div>
                 <div>
-                  <h2 style={{ fontFamily: 'var(--font-serif)', fontSize: '1.75rem', color: 'var(--color-green-dark)', margin: '0 0 8px 0', fontWeight: 600 }}>Casi listo</h2>
-                  <span style={{ fontSize: '0.9rem', color: 'var(--color-text-muted)', lineHeight: '1.4', display: 'block', padding: '0 10px' }}>
-                    Verifica tu número para enlazar tu pedido con cocina y acumular recompensas.
+                  <h2 style={{ fontFamily: 'var(--font-serif)', fontSize: '1.5rem', color: 'var(--color-green-dark)', margin: '0 0 6px 0', fontWeight: 700 }}>
+                    {!smsSent ? 'Datos de tu Pedido' : 'Verifica tu Número'}
+                  </h2>
+                  <span style={{ fontSize: '0.84rem', color: 'var(--color-text-muted)', lineHeight: '1.4', display: 'block', padding: '0 6px' }}>
+                    {!smsSent
+                      ? 'Ingresa tu nombre y celular para coordinar el pedido y acumular puntos Edén Pass.'
+                      : `Enviamos un SMS de 6 dígitos al celular ${customerPhone}.`}
                   </span>
                 </div>
               </div>
-              <button className="close-btn" onClick={() => setIsAuthOpen(false)} style={{ position: 'absolute', top: '-10px', right: '-10px', backgroundColor: 'transparent', color: 'var(--color-text-muted)', width: '32px', height: '32px' }}>
+              <button className="close-btn" onClick={() => setIsAuthOpen(false)} style={{ position: 'absolute', top: '-6px', right: '-6px', backgroundColor: 'transparent', color: 'var(--color-text-muted)', width: '32px', height: '32px' }}>
                 <X size={20} />
               </button>
             </div>
 
             <div className="modal-body" style={{ paddingTop: '0' }}>
               {errorMsg && (
-                <div style={{ backgroundColor: '#fff1f2', color: '#be123c', padding: '12px 16px', borderRadius: '12px', fontSize: '0.85rem', marginBottom: '20px', fontWeight: 500, whiteSpace: 'pre-wrap', border: '1px solid #fecdd3' }}>
+                <div style={{ backgroundColor: '#fff1f2', color: '#be123c', padding: '12px 14px', borderRadius: '12px', fontSize: '0.83rem', marginBottom: '18px', fontWeight: 600, whiteSpace: 'pre-wrap', border: '1px solid #fecdd3' }}>
                   {errorMsg}
                 </div>
               )}
 
-              <div className="form-group" style={{ marginBottom: '20px' }}>
-                <label className="form-label" style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--color-green-dark)', marginBottom: '8px' }}>Nombre Completo</label>
-                <input
-                  type="text"
-                  className="form-input"
-                  style={{ borderRadius: '12px', padding: '14px 16px', border: '1px solid #e2e8f0', backgroundColor: '#f8fafc', transition: 'all 0.2s', fontSize: '0.95rem' }}
-                  placeholder="Ej. Brandon Chavez"
-                  value={customerName}
-                  onChange={e => setCustomerName(e.target.value)}
-                  disabled={smsSent}
-                />
-              </div>
-
               {!smsSent ? (
-                <div className="form-group" style={{ marginBottom: '10px' }}>
-                  <label className="form-label" style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--color-green-dark)', marginBottom: '8px' }}>Número de Celular</label>
-                  <input
-                    type="tel"
-                    maxLength={10}
-                    className="form-input"
-                    style={{ borderRadius: '12px', padding: '14px 16px', border: '1px solid #e2e8f0', backgroundColor: '#f8fafc', transition: 'all 0.2s', fontSize: '0.95rem', letterSpacing: '1px' }}
-                    placeholder="10 dígitos (ej. 6237591105)"
-                    value={customerPhone}
-                    onChange={e => setCustomerPhone(e.target.value.replace(/\D/g, ''))}
-                  />
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                  <div className="form-group" style={{ margin: 0 }}>
+                    <label className="form-label" style={{ fontSize: '0.83rem', fontWeight: 600, color: 'var(--color-green-dark)', marginBottom: '6px' }}>Nombre Completo</label>
+                    <input
+                      type="text"
+                      className="form-input"
+                      style={{ borderRadius: '12px', padding: '13px 16px', border: '1.5px solid #e2e8f0', backgroundColor: '#f8fafc', transition: 'all 0.2s', fontSize: '0.95rem' }}
+                      placeholder="Ej. Brandon Chavez"
+                      value={customerName}
+                      onChange={e => setCustomerName(e.target.value)}
+                    />
+                  </div>
+
+                  <div className="form-group" style={{ margin: 0 }}>
+                    <label className="form-label" style={{ fontSize: '0.83rem', fontWeight: 600, color: 'var(--color-green-dark)', marginBottom: '6px' }}>Número de Celular</label>
+                    <input
+                      type="tel"
+                      maxLength={10}
+                      className="form-input"
+                      style={{ borderRadius: '12px', padding: '13px 16px', border: '1.5px solid #e2e8f0', backgroundColor: '#f8fafc', transition: 'all 0.2s', fontSize: '0.95rem', letterSpacing: '1px' }}
+                      placeholder="10 dígitos (ej. 6237591105)"
+                      value={customerPhone}
+                      onChange={e => setCustomerPhone(e.target.value.replace(/\D/g, ''))}
+                    />
+                  </div>
 
                   <button
                     className="checkout-btn"
-                    style={{ marginTop: '32px', width: '100%', borderRadius: '14px', padding: '16px', fontSize: '1rem', fontWeight: 600, boxShadow: '0 8px 20px rgba(34, 60, 43, 0.15)' }}
+                    style={{ marginTop: '12px', width: '100%', borderRadius: '14px', padding: '15px', fontSize: '0.98rem', fontWeight: 600, boxShadow: '0 6px 18px rgba(34, 60, 43, 0.16)', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}
                     onClick={handleSendSmsCode}
                   >
-                    Enviar Código SMS
+                    <span>Continuar al SMS</span>
+                    <ArrowRight size={18} />
                   </button>
                 </div>
               ) : (
-                <div style={{ marginTop: '20px' }}>
-                  <label className="form-label" style={{ textAlign: 'center', display: 'block' }}>Código de Verificación SMS</label>
-                  <p style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)', textAlign: 'center' }}>
-                    Enviamos un SMS al {customerPhone}
-                  </p>
-
-                  <div className="sms-code-container">
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', marginTop: '6px' }}>
+                  <div className="sms-code-container" style={{ margin: '8px auto 4px auto', gap: '8px' }}>
                     {smsCode.map((digit, index) => (
                       <input
                         key={index}
@@ -1673,6 +1738,7 @@ export default function MenuPage() {
                         type="text"
                         maxLength={1}
                         className="sms-code-input"
+                        style={{ width: '44px', height: '50px', fontSize: '1.25rem', borderRadius: '12px', fontWeight: 700 }}
                         value={digit}
                         onChange={e => {
                           const val = e.target.value;
@@ -1696,18 +1762,18 @@ export default function MenuPage() {
                   </div>
 
                   {sentCode && (
-                    <div className="sms-code-preview-banner">
-                      <strong>Modo de Desarrollo:</strong> Ingresa el código generado: <strong>{sentCode}</strong> o <strong>123456</strong>
+                    <div className="sms-code-preview-banner" style={{ margin: '4px 0', fontSize: '0.8rem', padding: '10px 12px' }}>
+                      <strong>Modo Local:</strong> Ingresa el código: <strong>{sentCode}</strong> o <strong>123456</strong>
                     </div>
                   )}
 
                   {codeResentNotice && (
-                    <div style={{ backgroundColor: '#ecfdf5', color: '#047857', padding: '10px 14px', borderRadius: '10px', fontSize: '0.82rem', marginTop: '12px', fontWeight: 600, textAlign: 'center', border: '1px solid #10b981' }}>
-                      ✓ ¡Hemos reenviado el código de verificación por SMS!
+                    <div style={{ backgroundColor: '#ecfdf5', color: '#047857', padding: '10px 14px', borderRadius: '10px', fontSize: '0.82rem', fontWeight: 600, textAlign: 'center', border: '1px solid #10b981' }}>
+                      ✓ ¡Hemos reenviado el código SMS!
                     </div>
                   )}
 
-                  <div style={{ display: 'flex', justifyContent: 'center', marginTop: '14px' }}>
+                  <div style={{ display: 'flex', justifyContent: 'center' }}>
                     <button
                       type="button"
                       disabled={resendCooldown > 0}
@@ -1717,34 +1783,34 @@ export default function MenuPage() {
                         border: 'none',
                         color: resendCooldown > 0 ? 'var(--color-text-muted)' : 'var(--color-green-dark)',
                         fontWeight: '600',
-                        fontSize: '0.85rem',
+                        fontSize: '0.83rem',
                         cursor: resendCooldown > 0 ? 'not-allowed' : 'pointer',
                         textDecoration: resendCooldown > 0 ? 'none' : 'underline'
                       }}
                     >
                       {resendCooldown > 0
-                        ? `¿No recibiste el código? Reenviar en ${resendCooldown}s`
-                        : '¿No recibiste el código? Volver a enviar'}
+                        ? `Reenviar código en ${resendCooldown}s`
+                        : '¿No te llegó? Volver a enviar SMS'}
                     </button>
                   </div>
 
                   <button
                     className="checkout-btn"
-                    style={{ marginTop: '20px' }}
-                    disabled={isVerifying}
+                    style={{ marginTop: '8px', padding: '15px', borderRadius: '14px', fontSize: '0.98rem', fontWeight: 600, boxShadow: '0 6px 18px rgba(34, 60, 43, 0.16)' }}
+                    disabled={isVerifying || isSubmittingOrder}
                     onClick={handleVerifySmsCode}
                   >
-                    {isSubmittingOrder ? 'Procesando Pedido...' : 'Verificar y Enviar Orden'}
+                    {isVerifying || isSubmittingOrder ? 'Verificando y Procesando...' : 'Verificar y Enviar Orden'}
                   </button>
 
                   <button
-                    style={{ background: 'none', border: 'none', color: 'var(--color-terracotta)', fontWeight: '600', display: 'block', margin: '15px auto 0 auto', cursor: 'pointer' }}
+                    style={{ background: 'none', border: 'none', color: 'var(--color-terracotta)', fontWeight: '600', fontSize: '0.84rem', margin: '4px auto 0 auto', cursor: 'pointer' }}
                     onClick={() => {
                       setSmsSent(false);
                       setSmsCode(['', '', '', '', '', '']);
                     }}
                   >
-                    Regresar / Corregir Celular
+                    ← Corregir Celular o Nombre
                   </button>
                 </div>
               )}

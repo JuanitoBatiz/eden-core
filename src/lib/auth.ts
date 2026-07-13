@@ -58,24 +58,29 @@ export async function verifyAccessToken(request: NextRequest | Request): Promise
     }
   }
 
-  if (!token) {
-    throw new Error('401: Token no proporcionado. Inicia sesión.');
+  let decoded: JwtPayload | null = null;
+
+  // 3. Si hay access_token, intentar verificarlo
+  if (token) {
+    try {
+      decoded = jwt.verify(token, JWT_ACCESS_SECRET) as JwtPayload;
+    } catch (error) {
+      // access_token expirado o inválido, probaremos rescatar con refresh_token abajo
+    }
   }
 
-  let decoded: JwtPayload;
-  try {
-    decoded = jwt.verify(token, JWT_ACCESS_SECRET) as JwtPayload;
-  } catch (error) {
+  // 4. Si no hubo access_token o si expiró, recuperar con el refresh_token (30 días exactos de inactividad)
+  if (!decoded) {
     const refreshToken = cookies.refresh_token;
     if (refreshToken) {
       try {
         const refreshed = verifyRefreshToken(refreshToken);
         decoded = { user_id: refreshed.user_id, role: refreshed.role };
       } catch (refErr) {
-        throw new Error('401: Sesión expirada por completo. Inicia sesión.');
+        throw new Error('401: Sesión de 30 días expirada. Inicia sesión de nuevo.');
       }
     } else {
-      throw new Error('401: Token expirado o inválido');
+      throw new Error('401: Token no proporcionado o expirado. Inicia sesión.');
     }
   }
 

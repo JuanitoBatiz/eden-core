@@ -13,15 +13,45 @@ export default function PerfilPage() {
   const [benefits, setBenefits] = useState<any[]>([]);
 
   useEffect(() => {
+    try {
+      const savedSession = localStorage.getItem('eden_user_session');
+      if (savedSession) {
+        const parsed = JSON.parse(savedSession);
+        if (parsed.lastActive && (Date.now() - parsed.lastActive) < 30 * 24 * 60 * 60 * 1000) {
+          setIsAuthenticated(true);
+          setLoading(false);
+        } else {
+          localStorage.removeItem('eden_user_session');
+        }
+      }
+    } catch (e) {}
+
     fetch('/api/auth/refresh', { method: 'POST', credentials: 'include' })
       .then(res => {
         if (res.ok) {
           setIsAuthenticated(true);
-        } else {
+          return res.json();
+        } else if (res.status === 401) {
           setIsAuthenticated(false);
+          try { localStorage.removeItem('eden_user_session'); } catch (e) {}
+        }
+        return null;
+      })
+      .then(data => {
+        if (data && data.user) {
+          try {
+            localStorage.setItem('eden_user_session', JSON.stringify({
+              name: data.user.name || '',
+              phone: data.user.phone || '',
+              role: data.user.role || 'customer',
+              lastActive: Date.now()
+            }));
+          } catch (e) {}
         }
       })
-      .catch(() => setIsAuthenticated(false))
+      .catch(() => {
+        // Mantener sesión local si hubo error de red
+      })
       .finally(() => setLoading(false));
   }, []);
 
