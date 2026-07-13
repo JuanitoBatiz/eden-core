@@ -74,6 +74,7 @@ export interface Order {
   delivery_fee_confirmed?: boolean;
   status: 'received' | 'in_preparation' | 'ready' | 'in_transit' | 'delivered' | 'cancelled' | 'awaiting_payment';
   payment_status: 'pending_payment' | 'payment_submitted' | 'payment_approved' | 'payment_rejected';
+  payment_method?: string;
   proof_url?: string;
   rejection_reason?: string;
   refund_status?: 'none' | 'pending' | 'completed';

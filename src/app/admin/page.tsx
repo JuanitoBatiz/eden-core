@@ -53,6 +53,10 @@ export default function AdminPage() {
   const [scannerActive, setScannerActive] = useState(false);
   const [isRedeeming, setIsRedeeming] = useState(false);
 
+  // New-order notification state — IDs that arrived since last poll
+  const [newOrderIds, setNewOrderIds] = useState<Set<string>>(new Set());
+  const prevOrderIdsRef = React.useRef<Set<string>>(new Set());
+
   // Auth: verificar sesión via cookie httpOnly (refresh silencioso)
   useEffect(() => {
     const initAuth = async () => {
@@ -89,7 +93,7 @@ export default function AdminPage() {
     return false;
   };
 
-  // Fetch active orders
+  // Fetch active orders — detects newly arrived orders for badge notifications
   const fetchOrders = async () => {
     setIsRefreshing(true);
     try {
@@ -97,7 +101,22 @@ export default function AdminPage() {
       if (handleUnauthorized(res.status)) return;
       const data = await res.json();
       if (res.ok) {
-        setOrders(data.orders);
+        const incoming: Order[] = data.orders;
+        setOrders(incoming);
+
+        // Detect new order IDs (not seen in previous poll)
+        const incomingIds = new Set(incoming.map((o: Order) => o.id));
+        const freshIds = new Set<string>();
+        incomingIds.forEach(id => {
+          if (!prevOrderIdsRef.current.has(id)) freshIds.add(id);
+        });
+        prevOrderIdsRef.current = incomingIds;
+
+        if (freshIds.size > 0) {
+          setNewOrderIds(prev => new Set([...prev, ...freshIds]));
+          // Auto-clear badges after 8 seconds
+          setTimeout(() => setNewOrderIds(new Set()), 8000);
+        }
       }
     } catch (e) {
       console.error('Error fetching admin orders:', e);
@@ -243,11 +262,13 @@ export default function AdminPage() {
     setEdenPassError(null);
     setCustomerProfile(null);
     try {
-      let formattedPhone = phoneSearchQuery;
-      if (!formattedPhone.startsWith('52') && formattedPhone.length === 10) {
-        formattedPhone = '52' + formattedPhone;
+      // Normalize: strip everything except digits
+      const normalized = phoneSearchQuery.replace(/\D/g, '');
+      if (normalized.length < 10) {
+        setEdenPassError('Ingresa al menos 10 dígitos de teléfono.');
+        return;
       }
-      const res = await fetch(`/api/customers?phone=${formattedPhone}`, {
+      const res = await fetch(`/api/customers?phone=${normalized}`, {
         credentials: 'include'
       });
       const data = await res.json();
@@ -449,6 +470,7 @@ export default function AdminPage() {
   if (!can('can_view_all_orders')) return null;
 
   const pendingOrders = orders.filter((o: any) => o.status === 'received');
+  const awaitingPaymentOrders = orders.filter((o: any) => o.status === 'awaiting_payment');
   const preparingOrders = orders.filter((o: any) => o.status === 'in_preparation');
   const readyOrders = orders.filter((o: any) => o.status === 'ready');
   const inTransitOrders = orders.filter((o: any) => o.status === 'in_transit');
@@ -593,9 +615,11 @@ export default function AdminPage() {
             {activeTab === 'cocina' && (
               <KanbanBoard 
                 pendingOrders={pendingOrders}
+                awaitingPaymentOrders={awaitingPaymentOrders}
                 preparingOrders={preparingOrders}
                 readyOrders={readyOrders}
                 inTransitOrders={inTransitOrders}
+                newOrderIds={newOrderIds}
                 updateStatus={updateStatus}
                 setDeliveryFee={handleSetDeliveryFee}
                 getWhatsAppCancelLink={getWhatsAppCancelLink}

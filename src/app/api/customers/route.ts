@@ -33,14 +33,34 @@ export async function GET(req: Request) {
     const adminSupabase = createClient(supabaseUrl, serviceRoleKey);
 
     // 2. Find customer in local database
+    // Normalize: strip spaces, dashes, plus signs
+    const rawPhone = phone.replace(/[\s\-\+]/g, '');
+    
+    // Build phone variants to search (with and without MX country code 52)
+    const phoneVariants: string[] = [rawPhone];
+    if (rawPhone.startsWith('52') && rawPhone.length === 12) {
+      // Has 52 prefix — also try without it (local 10-digit)
+      phoneVariants.push(rawPhone.slice(2));
+    } else if (!rawPhone.startsWith('52') && rawPhone.length === 10) {
+      // Local 10-digit — also try with 52 prefix
+      phoneVariants.push('52' + rawPhone);
+    } else if (rawPhone.startsWith('521') && rawPhone.length === 13) {
+      // Some carriers include 521 — also try without the 1
+      phoneVariants.push('52' + rawPhone.slice(3));
+      phoneVariants.push(rawPhone.slice(3));
+    }
+
+    // Search across all phone variants
     const { data: customer, error: customerErr } = await adminSupabase
       .from('users')
       .select('id, name, phone, role, loyverse_customer_id')
-      .eq('phone', phone)
+      .in('phone', phoneVariants)
+      .limit(1)
       .single();
 
     if (customerErr || !customer) {
-      return NextResponse.json({ error: 'Cliente no registrado en la plataforma' }, { status: 404 });
+      console.warn(`[CUSTOMER SEARCH] No encontrado para variantes: ${phoneVariants.join(', ')}`);
+      return NextResponse.json({ error: 'Cliente no registrado en la plataforma. Verifica el número o pídele que muestre su QR.' }, { status: 404 });
     }
 
     // 3. Consultar puntos en vivo (Loyverse API o Simulación Local)

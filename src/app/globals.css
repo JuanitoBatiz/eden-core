@@ -90,11 +90,14 @@ a {
 }
 
 /* Header Component */
+/* Header Component - Frosted Glass Base */
 .header {
-  background-color: rgba(253, 251, 247, 0.95);
-  backdrop-filter: blur(8px);
-  border-bottom: 1px solid var(--color-ochre-light);
+  background: rgba(253, 251, 247, 0.76);
+  backdrop-filter: blur(20px) saturate(180%);
+  -webkit-backdrop-filter: blur(20px) saturate(180%);
+  border-bottom: 1px solid rgba(212, 163, 95, 0.25);
   padding: 15px 0;
+  box-shadow: 0 4px 15px rgba(20, 38, 26, 0.04);
 }
 
 .header-content {
@@ -167,7 +170,7 @@ a {
 }
 
 /* Category Navigation */
-/* Sticky Header & Nav Container */
+/* Sticky Header & Nav Container - Glassmorphic Floating Panel */
 .sticky-header-container {
   position: fixed;
   top: 0;
@@ -176,7 +179,12 @@ a {
   z-index: 100;
   transition: transform 0.35s cubic-bezier(0.16, 1, 0.3, 1);
   transform: translateY(0);
-  box-shadow: 0 4px 20px var(--color-shadow);
+  background: rgba(253, 251, 247, 0.82);
+  backdrop-filter: blur(24px) saturate(190%);
+  -webkit-backdrop-filter: blur(24px) saturate(190%);
+  box-shadow: 
+    0 10px 30px rgba(20, 38, 26, 0.08),
+    inset 0 -1px 0 rgba(212, 163, 95, 0.35);
 }
 
 .sticky-header-container.hidden {
@@ -187,15 +195,13 @@ a {
   padding-top: 180px;
 }
 
-/* Category Navigation */
+/* Category Navigation - Seamless Glass Integration */
 .category-nav {
-  background-color: rgba(20, 38, 26, 0.45);
-  backdrop-filter: blur(14px);
-  border-bottom: 1px solid rgba(212, 163, 95, 0.3);
+  background: transparent;
   overflow-x: auto;
   white-space: nowrap;
   scrollbar-width: none; /* Firefox */
-  padding: 12px 0;
+  padding: 14px 0;
 }
 
 .category-nav::-webkit-scrollbar {
@@ -212,8 +218,10 @@ a {
 }
 
 .category-btn {
-  background-color: rgba(253, 251, 247, 0.94);
-  border: 1px solid rgba(212, 163, 95, 0.6);
+  background: rgba(255, 255, 255, 0.75);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(212, 163, 95, 0.45);
   padding: 6px 18px 6px 8px;
   min-height: 44px;
   border-radius: 30px;
@@ -222,24 +230,24 @@ a {
   display: flex;
   align-items: center;
   gap: 10px;
-  transition: var(--transition-smooth);
+  transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
   color: var(--color-green-dark);
-  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
+  box-shadow: 0 4px 12px rgba(20, 38, 26, 0.05);
 }
 
 .category-btn:hover {
-  background-color: #ffffff;
+  background: rgba(255, 255, 255, 0.98);
   color: var(--color-green-dark);
   border-color: var(--color-ochre);
   transform: translateY(-2px);
-  box-shadow: 0 6px 15px rgba(0, 0, 0, 0.3);
+  box-shadow: 0 6px 18px rgba(212, 163, 95, 0.2);
 }
 
 .category-btn.active {
-  background: linear-gradient(135deg, var(--color-ochre), #e6b360);
-  color: #112217;
-  border-color: #ffffff;
-  box-shadow: 0 4px 16px rgba(212, 163, 95, 0.55);
+  background: linear-gradient(135deg, rgba(31, 78, 56, 0.94) 0%, rgba(20, 50, 35, 0.98) 100%);
+  color: #ffffff;
+  border-color: rgba(255, 255, 255, 0.3);
+  box-shadow: 0 6px 20px rgba(31, 78, 56, 0.38);
   transform: translateY(-1px);
 }
 
@@ -464,31 +472,81 @@ picture.hero-v1-bg img {
   }
 }
 
-/* Tarjeta Editorial Base */
+/* Tarjeta Editorial Base - Glassmorphism de Lujo */
 .editorial-card {
-  background-color: var(--color-cream-light);
-  border-radius: 24px;
-  border: 1px solid rgba(212, 163, 95, 0.22);
+  background: rgba(253, 251, 247, 0.78);
+  backdrop-filter: blur(18px) saturate(160%);
+  -webkit-backdrop-filter: blur(18px) saturate(160%);
+  border-radius: 26px;
+  border: 1px solid rgba(255, 255, 255, 0.85);
   overflow: hidden;
-  box-shadow: 0 6px 20px rgba(44, 62, 45, 0.04);
+  box-shadow: 
+    0 8px 26px rgba(44, 62, 45, 0.05),
+    inset 0 1px 1px rgba(255, 255, 255, 0.95);
   display: flex;
   flex-direction: column;
   height: 100%;
-  transition: all 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+  transition: all 0.38s cubic-bezier(0.16, 1, 0.3, 1);
   position: relative;
 }
 
 .editorial-card:hover {
-  transform: translateY(-6px);
-  box-shadow: 0 16px 36px rgba(212, 163, 95, 0.18);
-  border-color: var(--color-ochre);
+  background: rgba(255, 255, 255, 0.93);
+  transform: translateY(-7px);
+  box-shadow: 
+    0 18px 40px rgba(212, 163, 95, 0.22),
+    inset 0 1px 2px rgba(255, 255, 255, 1);
+  border-color: rgba(212, 163, 95, 0.7);
 }
 
-/* Variante: Hero Editorial Card (Destacado Principal) */
+/* Destello de luz completo sobre toda la tarjeta (Shimmer Card Sweep across all elements) */
+.editorial-card.shimmer-card::before,
+.editorial-card:hover::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -150%;
+  width: 85%;
+  height: 100%;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(255, 255, 255, 0.05) 30%,
+    rgba(255, 255, 255, 0.45) 50%,
+    rgba(255, 255, 255, 0.05) 70%,
+    transparent 100%
+  );
+  transform: skewX(-25deg);
+  pointer-events: none;
+  z-index: 10;
+  animation: cardFullShimmerSweep 4.8s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+}
+
+.editorial-card.role-hero.shimmer-card::before {
+  animation-duration: 4.2s;
+}
+
+@keyframes cardFullShimmerSweep {
+  0% {
+    left: -150%;
+  }
+  28% {
+    left: 160%;
+  }
+  100% {
+    left: 160%;
+  }
+}
+
+/* Variante: Hero Editorial Card (Destacado Principal Glassmorphic) */
 .editorial-card.role-hero {
-  background: linear-gradient(145deg, #ffffff 0%, var(--color-cream-light) 100%);
-  border: 1.5px solid var(--color-ochre);
-  box-shadow: 0 10px 30px rgba(44, 62, 45, 0.06);
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.88) 0%, rgba(253, 251, 247, 0.75) 100%);
+  backdrop-filter: blur(20px) saturate(180%);
+  -webkit-backdrop-filter: blur(20px) saturate(180%);
+  border: 1.5px solid rgba(212, 163, 95, 0.7);
+  box-shadow: 
+    0 14px 40px rgba(44, 62, 45, 0.08),
+    inset 0 1px 2px rgba(255, 255, 255, 1);
 }
 
 @media (min-width: 768px) {
@@ -511,9 +569,11 @@ picture.hero-v1-bg img {
   }
 }
 
-/* Variante: Wide Editorial Card (Composición apaisada / alterna) */
+/* Variante: Wide Editorial Card Glassmorphic */
 .editorial-card.role-wide {
-  background-color: #ffffff;
+  background: rgba(255, 255, 255, 0.82);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
 }
 
 @media (min-width: 768px) {
@@ -525,19 +585,71 @@ picture.hero-v1-bg img {
   }
 }
 
-/* Badges y Elementos Editoriales */
+/* Badges y Elementos Editoriales - Ultra Premium Shimmer Effect */
 .editorial-badge {
-  display: inline-block;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
   align-self: flex-start;
-  font-size: 0.7rem;
-  font-weight: 700;
+  font-size: 0.72rem;
+  font-weight: 800;
   text-transform: uppercase;
-  letter-spacing: 2px;
-  color: var(--color-ochre);
-  background-color: rgba(212, 163, 95, 0.14);
-  padding: 5px 14px;
-  border-radius: 20px;
+  letter-spacing: 1.5px;
+  color: #8c5818;
+  background: linear-gradient(135deg, rgba(212, 163, 95, 0.2) 0%, rgba(254, 243, 226, 0.7) 100%);
+  padding: 6px 16px;
+  border-radius: 30px;
   margin-bottom: 14px;
+  border: 1px solid rgba(212, 163, 95, 0.45);
+  box-shadow: 0 4px 12px rgba(212, 163, 95, 0.14);
+  transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  position: relative;
+  overflow: hidden;
+}
+
+.badge-lucide-icon {
+  flex-shrink: 0;
+  color: #a16212;
+  stroke-width: 2.2px;
+}
+
+.editorial-card:hover .editorial-badge {
+  transform: translateY(-2px) scale(1.02);
+  box-shadow: 0 6px 18px rgba(212, 163, 95, 0.28);
+  border-color: rgba(212, 163, 95, 0.85);
+  color: #69400e;
+}
+
+.shimmer-badge::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -150%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(255, 255, 255, 0.15) 20%,
+    rgba(255, 255, 255, 0.9) 50%,
+    rgba(255, 255, 255, 0.15) 80%,
+    transparent 100%
+  );
+  transform: skewX(-25deg);
+  animation: badgeShimmerSweep 3.8s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+  pointer-events: none;
+}
+
+@keyframes badgeShimmerSweep {
+  0% {
+    left: -150%;
+  }
+  35% {
+    left: 150%;
+  }
+  100% {
+    left: 150%;
+  }
 }
 
 .editorial-info {
@@ -1612,6 +1724,244 @@ picture.hero-v1-bg img {
   background-color: #ffcdd2;
 }
 
+/* =========================================
+   Kanban Board — Redesign (Tablet-Friendly)
+   ========================================= */
+
+.kanban-board {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 16px;
+  width: 100%;
+  align-items: start;
+  padding-bottom: 24px;
+}
+
+@media (max-width: 1100px) {
+  .kanban-board {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (max-width: 640px) {
+  .kanban-board {
+    grid-template-columns: 1fr;
+  }
+}
+
+.kanban-column {
+  display: flex;
+  flex-direction: column;
+  border-radius: 16px;
+  overflow: hidden;
+  border: 1px solid var(--color-ochre-light);
+  background-color: #fafaf9;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.06);
+  min-height: 200px;
+  max-height: calc(100vh - 220px);
+}
+
+.kanban-col-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 14px 16px 12px;
+  position: sticky;
+  top: 0;
+  z-index: 2;
+}
+
+.kanban-col-body {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 10px 12px 14px;
+  overflow-y: auto;
+  flex: 1;
+  scrollbar-width: thin;
+  scrollbar-color: var(--color-ochre-light) transparent;
+}
+
+.kanban-col-body::-webkit-scrollbar {
+  width: 4px;
+}
+
+.kanban-col-body::-webkit-scrollbar-thumb {
+  background: var(--color-ochre-light);
+  border-radius: 4px;
+}
+
+/* Compact Card */
+.kanban-card {
+  background: #ffffff;
+  border-radius: 12px;
+  border: 1px solid #e5e7eb;
+  padding: 12px 14px;
+  transition: box-shadow 0.15s, transform 0.15s;
+  position: relative;
+}
+
+.kanban-card:hover {
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
+  transform: translateY(-1px);
+}
+
+.kanban-card:active {
+  transform: translateY(0);
+}
+
+/* New-order pulsing dot on card */
+.kanban-new-dot {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  animation: kanban-pulse-dot 1.2s ease-in-out infinite;
+}
+
+/* Badge in column header */
+.kanban-new-badge-dot {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background-color: #dc2626;
+  animation: kanban-pulse-dot 1s ease-in-out infinite;
+  flex-shrink: 0;
+}
+
+@keyframes kanban-pulse-dot {
+  0%, 100% { transform: scale(1); opacity: 1; }
+  50% { transform: scale(1.45); opacity: 0.7; }
+}
+
+/* ── Awaiting Payment Card State ───────────────────── */
+.kanban-card--waiting {
+  background: #faf5ff;
+  border-color: #e9d5ff !important;
+  opacity: 0.92;
+}
+
+.kanban-awaiting-banner {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  background: #ede9fe;
+  color: #6d28d9;
+  border-radius: 8px;
+  padding: 7px 10px;
+  font-size: 0.78rem;
+  font-weight: 700;
+  line-height: 1.3;
+  border: 1px solid #ddd6fe;
+}
+
+/* ── Compact pill badge ────────────────────────────── */
+.kanban-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 0.78rem;
+  font-weight: 700;
+  padding: 3px 9px;
+  border-radius: 20px;
+}
+
+/* ── Modal section label ───────────────────────────── */
+.kanban-modal-label {
+  font-size: 0.7rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 1.2px;
+  color: var(--color-text-muted);
+}
+
+/* ── Modal Overlay ─────────────────────────────────── */
+.kanban-modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.45);
+  backdrop-filter: blur(4px);
+  z-index: 9000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  animation: fadeIn 0.15s ease;
+}
+
+.kanban-modal {
+  background: #ffffff;
+  border-radius: 20px;
+  width: 100%;
+  max-width: 600px;
+  max-height: 90vh;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.22);
+  animation: slideUp 0.2s ease;
+  overflow: hidden;
+}
+
+.kanban-modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  padding: 20px 24px 16px;
+  background: #fafaf9;
+  flex-shrink: 0;
+}
+
+.kanban-modal-body {
+  overflow-y: auto;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  scrollbar-width: thin;
+  scrollbar-color: var(--color-ochre-light) transparent;
+}
+
+.kanban-modal-body::-webkit-scrollbar {
+  width: 4px;
+}
+
+.kanban-modal-section {
+  padding: 14px 20px;
+  border-bottom: 1px solid #f3f4f6;
+}
+
+.kanban-modal-section:last-child {
+  border-bottom: none;
+}
+
+.kanban-modal-footer {
+  display: flex;
+  gap: 10px;
+  padding: 16px 20px;
+  border-top: 2px solid #f3f4f6;
+  background: #fafaf9;
+  flex-shrink: 0;
+  align-items: center;
+}
+
+/* Tablet-specific modal full-screen */
+@media (max-width: 768px) {
+  .kanban-modal-overlay {
+    padding: 0;
+    align-items: flex-end;
+  }
+
+  .kanban-modal {
+    max-width: 100%;
+    border-radius: 24px 24px 0 0;
+    max-height: 95vh;
+  }
+}
+
+
 /* Animations */
 @keyframes fadeIn {
   from { opacity: 0; }
@@ -2023,105 +2373,304 @@ picture.hero-v1-bg img {
   font-weight: 700;
 }
 
-/* Eden Pass QR Component */
-.edenpass-qr-container {
+/* ====================================================
+   EDENPASS VIP MEMBER WALLET CARD (ULTRA-PREMIUM 3D)
+   ==================================================== */
+.edenpass-vip-card-wrapper {
+  width: 100%;
+  max-width: 440px;
+  margin: 0 auto 32px auto;
+  perspective: 1200px;
+}
+
+.edenpass-vip-card {
+  position: relative;
+  background: linear-gradient(135deg, #0d1a12 0%, #173021 50%, #0a140e 100%);
+  border-radius: 28px;
+  border: 1.5px solid rgba(212, 163, 95, 0.65);
+  box-shadow: 
+    0 24px 50px rgba(13, 26, 18, 0.45),
+    inset 0 1px 2px rgba(255, 255, 255, 0.2),
+    inset 0 -1px 2px rgba(0, 0, 0, 0.8);
+  padding: 28px 26px;
+  overflow: hidden;
+  color: #ffffff;
+  transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.edenpass-vip-card:hover {
+  transform: translateY(-5px) rotateX(2deg);
+  box-shadow: 
+    0 32px 64px rgba(13, 26, 18, 0.6),
+    0 0 30px rgba(212, 163, 95, 0.18);
+  border-color: rgba(212, 163, 95, 0.9);
+}
+
+/* Shimmer Sheen Sweep inside VIP Card */
+.edenpass-vip-sheen {
+  position: absolute;
+  top: -50%;
+  left: -150%;
+  width: 100%;
+  height: 200%;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(212, 163, 95, 0.05) 40%,
+    rgba(255, 255, 255, 0.15) 50%,
+    rgba(212, 163, 95, 0.05) 60%,
+    transparent 100%
+  );
+  transform: rotate(30deg);
+  pointer-events: none;
+  animation: vipCardSheenSweep 6s infinite ease-in-out;
+}
+
+@keyframes vipCardSheenSweep {
+  0% { left: -150%; }
+  35% { left: 160%; }
+  100% { left: 160%; }
+}
+
+/* Header Group */
+.edenpass-vip-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  z-index: 2;
+}
+
+.edenpass-vip-logo-group {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.edenpass-vip-crown-icon {
+  width: 44px;
+  height: 44px;
+  border-radius: 14px;
+  background: linear-gradient(135deg, rgba(212, 163, 95, 0.25) 0%, rgba(212, 163, 95, 0.08) 100%);
+  border: 1px solid rgba(212, 163, 95, 0.45);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+}
+
+.edenpass-vip-brand {
+  font-family: var(--font-serif);
+  font-size: 1.15rem;
+  font-weight: 800;
+  letter-spacing: 1.5px;
+  color: #fcf8f2;
+}
+
+.edenpass-vip-subbrand {
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 2.2px;
+  color: #d4a35f;
+  text-transform: uppercase;
+  margin-top: 2px;
+}
+
+.edenpass-vip-status-chip {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 14px;
+  border-radius: 20px;
+  background: rgba(212, 163, 95, 0.15);
+  border: 1px solid rgba(212, 163, 95, 0.4);
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 1.5px;
+  color: #d4a35f;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
+}
+
+/* Smart Chip Row */
+.edenpass-vip-chip-row {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  z-index: 2;
+  padding-bottom: 6px;
+  border-bottom: 1px dashed rgba(212, 163, 95, 0.25);
+}
+
+.edenpass-smart-chip {
+  width: 48px;
+  height: 36px;
+  border-radius: 8px;
+  background: linear-gradient(135deg, #e6c589 0%, #b8863b 50%, #dfb873 100%);
+  border: 1px solid #ffeaaf;
+  position: relative;
+  overflow: hidden;
+  box-shadow: 
+    0 4px 12px rgba(0, 0, 0, 0.4),
+    inset 0 1px 1px rgba(255, 255, 255, 0.6);
+  flex-shrink: 0;
+}
+
+.chip-line.horizontal {
+  position: absolute;
+  top: 50%;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background: rgba(0, 0, 0, 0.35);
+}
+
+.chip-line.vertical {
+  position: absolute;
+  left: 50%;
+  top: 0;
+  bottom: 0;
+  width: 1px;
+  background: rgba(0, 0, 0, 0.35);
+}
+
+.chip-inner {
+  position: absolute;
+  top: 8px;
+  bottom: 8px;
+  left: 12px;
+  right: 12px;
+  border: 1px solid rgba(0, 0, 0, 0.35);
+  border-radius: 4px;
+}
+
+.edenpass-vip-motto {
+  display: flex;
+  flex-direction: column;
+}
+
+.motto-title {
+  font-size: 0.8rem;
+  font-weight: 800;
+  letter-spacing: 1.5px;
+  color: #ffffff;
+}
+
+.motto-subtitle {
+  font-size: 0.74rem;
+  color: rgba(255, 255, 255, 0.65);
+  margin-top: 2px;
+}
+
+/* QR Center Stage inside VIP Card */
+.edenpass-vip-qr-stage {
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  text-align: center;
+  z-index: 2;
+  padding: 18px 0;
 }
 
-.edenpass-qr-title {
-  font-size: 1.5rem;
-  font-weight: 900;
-  color: var(--color-green-dark);
-  margin-bottom: 4px;
-  font-family: var(--font-serif);
-}
-
-.edenpass-qr-subtitle {
-  color: var(--color-text-muted);
-  font-size: 0.9rem;
-  margin-bottom: 24px;
-}
-
-.edenpass-qr-box {
+.edenpass-vip-qr-frame {
   position: relative;
-  padding: 20px;
-  background-color: var(--color-cream-light);
-  border-radius: 24px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  min-height: 220px;
-  min-width: 220px;
-  border: 1px solid var(--color-ochre-light);
-}
-
-.edenpass-qr-wrapper {
-  background-color: var(--color-white);
+  background: #ffffff;
   padding: 16px;
-  border-radius: 16px;
-  box-shadow: 0 4px 15px rgba(0,0,0,0.05);
-  animation: fadeIn 0.4s ease-out;
+  border-radius: 20px;
+  border: 2.5px solid #d4a35f;
+  box-shadow: 
+    0 12px 30px rgba(0, 0, 0, 0.5),
+    0 0 20px rgba(212, 163, 95, 0.25);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 14px;
 }
 
-.edenpass-timer-badge {
+.qr-corner {
+  position: absolute;
+  width: 12px;
+  height: 12px;
+  border-color: #112217;
+  border-style: solid;
+}
+
+.qr-corner.top-left { top: 6px; left: 6px; border-width: 2px 0 0 2px; }
+.qr-corner.top-right { top: 6px; right: 6px; border-width: 2px 2px 0 0; }
+.qr-corner.bottom-left { bottom: 6px; left: 6px; border-width: 0 0 2px 2px; }
+.qr-corner.bottom-right { bottom: 6px; right: 6px; border-width: 0 2px 2px 0; }
+
+.edenpass-vip-hint {
+  font-size: 0.82rem;
+  color: rgba(255, 255, 255, 0.75);
+  text-align: center;
+  max-width: 310px;
+  line-height: 1.45;
+  margin: 0;
+}
+
+/* Footer Section */
+.edenpass-vip-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  z-index: 2;
+  padding-top: 14px;
+  border-top: 1px solid rgba(255, 255, 255, 0.12);
+}
+
+.edenpass-vip-timer {
   display: flex;
   align-items: center;
   gap: 8px;
-  font-size: 0.85rem;
-  color: var(--color-text-dark);
-  background-color: var(--color-cream-dark);
-  padding: 6px 16px;
-  border-radius: 20px;
-  margin-bottom: 16px;
-  margin-top: 24px;
-  font-weight: 600;
-}
-
-.edenpass-indicator {
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-}
-
-.edenpass-indicator.good {
-  background-color: #10b981;
-  animation: pulse 2s infinite;
-}
-
-.edenpass-indicator.warning {
-  background-color: #ef4444;
-  animation: pulse 1s infinite;
-}
-
-.edenpass-refresh-btn {
-  width: 100%;
-  display: flex;
-  items-center: center;
-  justify-content: center;
-  gap: 8px;
-  padding: 14px;
-  background-color: var(--color-green-dark);
-  color: var(--color-white);
-  border: none;
-  border-radius: 30px;
+  font-size: 0.82rem;
   font-weight: 700;
-  transition: var(--transition-smooth);
+  color: #f4ebd9;
+}
+
+.edenpass-vip-refresh-btn {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 18px;
+  border-radius: 20px;
+  background: rgba(212, 163, 95, 0.2);
+  border: 1px solid rgba(212, 163, 95, 0.5);
+  color: #d4a35f;
+  font-size: 0.82rem;
+  font-weight: 700;
   cursor: pointer;
+  transition: all 0.25s ease;
 }
 
-.edenpass-refresh-btn:hover {
-  background-color: #12271c;
-  transform: translateY(-1px);
+.edenpass-vip-refresh-btn:hover {
+  background: #d4a35f;
+  color: #112217;
+  box-shadow: 0 4px 14px rgba(212, 163, 95, 0.4);
 }
 
-.edenpass-refresh-btn:disabled {
-  opacity: 0.7;
-  cursor: not-allowed;
-  transform: none;
+.edenpass-vip-loading,
+.edenpass-vip-error {
+  min-height: 180px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  text-align: center;
+  color: #ffffff;
+  font-size: 0.9rem;
+}
+
+.edenpass-vip-retry-btn {
+  background: #d4a35f;
+  color: #112217;
+  border: none;
+  padding: 8px 18px;
+  border-radius: 20px;
+  font-weight: 700;
+  cursor: pointer;
 }
 
 /* =========================================
@@ -2381,4 +2930,211 @@ picture.hero-v1-bg img {
     width: 28px;
     height: 28px;
   }
+}
+
+/* ==========================================
+   EDENPASS VIP LUXURY REWARDS ROADMAP MODULE
+   ========================================== */
+.profile-rewards-catalog-card {
+  background: var(--color-white);
+  border: 1px solid var(--color-ochre-light);
+  border-radius: 22px;
+  padding: 26px 24px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.03);
+  color: var(--color-text);
+  position: relative;
+  overflow: hidden;
+  margin-top: 24px;
+}
+
+.profile-rewards-catalog-title {
+  font-size: 1.25rem;
+  font-weight: 850;
+  color: var(--color-green-dark);
+  margin: 0;
+  font-family: var(--font-serif);
+  letter-spacing: -0.3px;
+}
+
+.profile-rewards-points-pill {
+  font-size: 0.82rem;
+  font-weight: 750;
+  color: var(--color-green-dark);
+  background: rgba(17, 34, 23, 0.07);
+  border: 1px solid rgba(17, 34, 23, 0.2);
+  padding: 5px 14px;
+  border-radius: 99px;
+  letter-spacing: 0.3px;
+}
+
+.profile-rewards-catalog-subtitle {
+  font-size: 0.88rem;
+  color: var(--color-text-muted);
+  margin: 12px 0 22px 0;
+  line-height: 1.55;
+  font-weight: 450;
+}
+
+.profile-rewards-grid-luxury {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.profile-reward-luxury-item {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  padding: 20px;
+  border-radius: 16px;
+  overflow: hidden;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.profile-reward-luxury-item.unlocked {
+  background: #fffcf5;
+  border: 1.5px solid #d4a35f;
+  border-left: 5px solid var(--color-green-dark);
+  box-shadow: 0 8px 25px rgba(212, 163, 95, 0.12);
+}
+
+.profile-reward-luxury-item.locked {
+  background: #f8fafc;
+  border: 1px dashed #cbd5e1;
+  border-left: 4px solid #cbd5e1;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.02);
+}
+
+.reward-luxury-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 10px;
+  z-index: 1;
+}
+
+.reward-luxury-title-group {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.reward-luxury-icon-box {
+  width: 38px;
+  height: 38px;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.profile-reward-luxury-item.unlocked .reward-luxury-icon-box {
+  background: rgba(212, 163, 95, 0.2);
+  color: var(--color-green-dark);
+  border: 1px solid rgba(212, 163, 95, 0.4);
+}
+
+.profile-reward-luxury-item.locked .reward-luxury-icon-box {
+  background: #e2e8f0;
+  color: #64748b;
+  border: 1px solid #cbd5e1;
+}
+
+.reward-luxury-name {
+  font-size: 1.05rem;
+  font-weight: 800;
+  color: var(--color-green-dark);
+  margin: 0;
+  line-height: 1.3;
+}
+
+.profile-reward-luxury-item.locked .reward-luxury-name {
+  color: #1e293b;
+}
+
+.reward-luxury-cost-badge {
+  padding: 4px 12px;
+  border-radius: 99px;
+  font-size: 0.78rem;
+  font-weight: 850;
+  letter-spacing: 0.4px;
+  flex-shrink: 0;
+}
+
+.profile-reward-luxury-item.unlocked .reward-luxury-cost-badge {
+  background: #d4a35f;
+  color: var(--color-green-dark);
+}
+
+.profile-reward-luxury-item.locked .reward-luxury-cost-badge {
+  background: #f1f5f9;
+  color: #475569;
+  border: 1px solid #cbd5e1;
+}
+
+.reward-luxury-description {
+  font-size: 0.88rem;
+  color: #475569;
+  margin: 0 0 16px 50px;
+  line-height: 1.55;
+  z-index: 1;
+}
+
+.profile-reward-luxury-item.unlocked .reward-luxury-description {
+  color: #374151;
+  font-weight: 500;
+}
+
+.reward-luxury-footer {
+  margin-left: 50px;
+  z-index: 1;
+  border-top: 1px solid #e2e8f0;
+  padding-top: 14px;
+}
+
+.profile-reward-luxury-item.unlocked .reward-luxury-footer {
+  border-top: 1px solid rgba(212, 163, 95, 0.3);
+}
+
+.reward-unlocked-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 0.82rem;
+  font-weight: 750;
+  color: var(--color-green-dark);
+  background: rgba(17, 34, 23, 0.08);
+  padding: 6px 14px;
+  border-radius: 10px;
+  border: 1px solid rgba(17, 34, 23, 0.25);
+}
+
+.reward-locked-progress-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 0.82rem;
+  margin-bottom: 8px;
+  color: #475569;
+}
+
+.reward-locked-missing-text strong {
+  color: var(--color-green-dark);
+  font-weight: 850;
+}
+
+.reward-progress-track {
+  width: 100%;
+  height: 6px;
+  background-color: #e2e8f0;
+  border-radius: 3px;
+  overflow: hidden;
+}
+
+.reward-progress-fill {
+  height: 100%;
+  background: linear-gradient(90deg, var(--color-green-dark), #d4a35f);
+  border-radius: 3px;
+  transition: width 0.6s cubic-bezier(0.4, 0, 0.2, 1);
 }

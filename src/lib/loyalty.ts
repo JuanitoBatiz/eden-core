@@ -59,7 +59,7 @@ export async function getLoyaltyInfoFromLoyverse(loyverseCustomerId: string, sup
 
       let earnedSimulated = 0;
       if (userOrders && userOrders.length > 0) {
-        earnedSimulated = userOrders.reduce((acc, curr) => acc + Math.floor((curr.total || 0) * 0.1), 0);
+        earnedSimulated = userOrders.reduce((acc, curr) => acc + Math.floor((curr.total || 0) * 0.03), 0);
       }
 
       // Restar puntos canjeados
@@ -78,7 +78,7 @@ export async function getLoyaltyInfoFromLoyverse(loyverseCustomerId: string, sup
       }
 
       localPoints = Math.max(0, earnedSimulated - spentSimulated);
-      console.log(`📊 [LOYALTY DIAGNOSTIC] Puntos locales calculados: ${localPoints} (Ganados: ${earnedSimulated}, Canjeados: ${spentSimulated})`);
+      console.log(`📊 [LOYALTY DIAGNOSTIC] Puntos locales calculados al 3%: ${localPoints} (Ganados: ${earnedSimulated}, Canjeados: ${spentSimulated})`);
     } catch (err: any) {
       console.error('❌ [LOYALTY DIAGNOSTIC EXCEPTION] Excepción calculando puntos locales en DB:', err?.message || err);
     }
@@ -87,9 +87,9 @@ export async function getLoyaltyInfoFromLoyverse(loyverseCustomerId: string, sup
   // Tomamos el mayor valor entre lo reportado por Loyverse y lo acumulado localmente en Edén
   const finalPoints = Math.max(loyversePoints, localPoints);
   let tier = 'Estándar';
-  if (finalPoints >= 1800) tier = 'Diamante';
-  else if (finalPoints >= 600) tier = 'Oro';
-  else if (finalPoints >= 150) tier = 'Plata';
+  if (finalPoints >= 140) tier = 'Diamante';
+  else if (finalPoints >= 90) tier = 'Oro';
+  else if (finalPoints >= 40) tier = 'Plata';
 
   return {
     loyalty_points: finalPoints,

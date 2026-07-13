@@ -13,6 +13,11 @@ import {
   ArrowRight,
   MessageSquare,
   Sparkles,
+  ChefHat,
+  Leaf,
+  Award,
+  Crown,
+  ShieldCheck,
   Info,
   Salad,
   CupSoda,
@@ -803,23 +808,39 @@ export default function MenuPage() {
 
                     // Asignación de roles editoriales y jerarquía para el Bento Grid
                     let role = 'standard';
-                    let badgeText = '';
-                    if (itemIdx === 0) {
+                    let badgeInfo: { text: string; icon: React.ReactNode } | null = null;
+                    const lowerName = (product.name || '').toLowerCase();
+                    if (lowerName.includes('edén') || lowerName.includes('eden')) {
+                      badgeInfo = { text: 'Receta de la Casa', icon: <Crown size={14} className="badge-lucide-icon" /> };
+                    } else if (itemIdx === 0) {
                       role = 'hero';
-                      badgeText = 'Destacado Edén';
+                      badgeInfo = isSaladItem
+                        ? { text: 'Favorito del Chef', icon: <ChefHat size={14} className="badge-lucide-icon" /> }
+                        : { text: 'Destacado Edén', icon: <Sparkles size={14} className="badge-lucide-icon" /> };
+                    } else if (itemIdx === 1 && isSaladItem) {
+                      badgeInfo = { text: '100% Orgánico', icon: <Leaf size={14} className="badge-lucide-icon" /> };
                     } else if (items.length >= 4 && (itemIdx === 3 || itemIdx === 6)) {
                       role = 'wide';
-                      badgeText = 'Selección de Temporada';
+                      badgeInfo = { text: 'Selección de Temporada', icon: <Award size={14} className="badge-lucide-icon" /> };
+                    } else if (lowerName.includes('verde') || lowerName.includes('detox')) {
+                      badgeInfo = { text: 'Detox Natural', icon: <Leaf size={14} className="badge-lucide-icon" /> };
+                    } else if (lowerName.includes('antioxidante') || lowerName.includes('berry')) {
+                      badgeInfo = { text: 'Antioxidante Top', icon: <Sparkles size={14} className="badge-lucide-icon" /> };
                     }
 
                     return (
-                      <ScrollRevealItem key={product.id} staggerIndex={itemIdx} className={`editorial-card role-${role}`}>
+                      <ScrollRevealItem key={product.id} staggerIndex={itemIdx} className={`editorial-card role-${role} ${badgeInfo ? 'shimmer-card' : ''}`}>
                         <div className={`product-img-container orientation-${product.image_orientation || 'horizontal'}`}>
                           <ProductImage src={product.image} alt={product.name} className="product-img" />
                         </div>
                         <div className="editorial-info">
                           <div>
-                            {badgeText && <span className="editorial-badge">{badgeText}</span>}
+                            {badgeInfo && (
+                              <span className="editorial-badge shimmer-badge">
+                                {badgeInfo.icon}
+                                <span>{badgeInfo.text}</span>
+                              </span>
+                            )}
                             <h3 className="editorial-name">{product.name}</h3>
                             {product.description && <p className="editorial-desc">{product.description}</p>}
                           </div>

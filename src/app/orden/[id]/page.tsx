@@ -22,7 +22,8 @@ import {
   ShieldCheck,
   Award,
   QrCode,
-  Camera
+  Camera,
+  Crown
 } from 'lucide-react';
 import { supabase, isSupabaseConfigured } from '@/lib/supabase';
 
@@ -888,24 +889,40 @@ export default function OrderStatusPage() {
                 Tu pedido ha sido confirmado y está siendo preparado con ingredientes frescos.
               </p>
 
-              <div style={{ margin: '26px 0', padding: '24px 20px', backgroundColor: '#ffffff', borderRadius: '18px', border: '1px solid var(--color-cream-dark)', boxShadow: '0 4px 15px rgba(46, 44, 41, 0.03)' }}>
-                <div style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', color: 'var(--color-terracotta)', fontSize: '0.75rem', fontWeight: 700, letterSpacing: '1px', textTransform: 'uppercase' }}>
-                  <Sparkles size={14} /> Membresía EdenPass
+              <div className="edenpass-vip-card" style={{ margin: '26px 0', padding: '24px 20px', borderRadius: '24px' }}>
+                <div className="edenpass-vip-sheen"></div>
+                <div className="edenpass-vip-header">
+                  <div className="edenpass-vip-logo-group">
+                    <div className="edenpass-vip-crown-icon" style={{ width: '36px', height: '36px' }}>
+                      <Crown size={18} color="#d4a35f" />
+                    </div>
+                    <div>
+                      <div className="edenpass-vip-brand" style={{ fontSize: '1rem' }}>RESTAURANTE EDÉN</div>
+                      <div className="edenpass-vip-subbrand">MEMBRESÍA VIP • EDENPASS</div>
+                    </div>
+                  </div>
+                  <div className="edenpass-vip-status-chip" style={{ padding: '4px 10px', fontSize: '0.65rem' }}>
+                    <ShieldCheck size={12} color="#d4a35f" />
+                    <span>SOCIO ACTIVO</span>
+                  </div>
                 </div>
-                <div style={{ fontSize: '3.2rem', fontWeight: 800, color: 'var(--color-green-dark)', fontFamily: 'var(--font-serif)', margin: '6px 0 2px 0', letterSpacing: '-1px' }}>
-                  +{Math.floor(order.total * 0.1)} <span style={{ fontSize: '1.25rem', fontFamily: 'var(--font-sans)', fontWeight: 600, color: 'var(--color-ochre)' }}>pts</span>
-                </div>
-                <div style={{ fontSize: '0.85rem', color: 'var(--color-text-muted)', marginTop: '4px' }}>
-                  Acumulados automáticamente en tu pase digital
+
+                <div style={{ textAlign: 'center', padding: '10px 0', zIndex: 2 }}>
+                  <div style={{ fontSize: '3.4rem', fontWeight: 800, color: '#ffffff', fontFamily: 'var(--font-serif)', margin: '4px 0', letterSpacing: '-1px', textShadow: '0 2px 10px rgba(0,0,0,0.3)' }}>
+                    +{Math.max(1, Math.floor(order.total * 0.03))} <span style={{ fontSize: '1.2rem', fontFamily: 'var(--font-sans)', fontWeight: 700, color: '#d4a35f' }}>PUNTOS VIP</span>
+                  </div>
+                  <div style={{ fontSize: '0.85rem', color: 'rgba(255, 255, 255, 0.8)', marginTop: '2px' }}>
+                    Acumulados automáticamente a tu tarjeta de fidelidad Edén
+                  </div>
                 </div>
               </div>
 
               <div style={{ display: 'flex', gap: '12px' }}>
                 <button 
                   onClick={() => router.push('/perfil')}
-                  style={{ flex: 1, padding: '14px 16px', backgroundColor: 'var(--color-green-dark)', color: '#ffffff', border: 'none', borderRadius: '14px', fontWeight: 600, fontSize: '0.95rem', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', transition: 'all 0.2s', boxShadow: '0 6px 16px rgba(30, 51, 41, 0.12)' }}
+                  style={{ flex: 1, padding: '16px', background: 'linear-gradient(135deg, #d4a35f 0%, #b8863b 100%)', color: '#112217', border: 'none', borderRadius: '18px', fontWeight: 800, fontSize: '0.98rem', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', transition: 'all 0.2s', boxShadow: '0 8px 20px rgba(212, 163, 95, 0.35)' }}
                 >
-                  <QrCode size={18} /> Ver mi EdenPass
+                  <QrCode size={18} color="#112217" /> Ver mi Tarjeta VIP
                 </button>
                 <button 
                   onClick={() => router.push('/')}

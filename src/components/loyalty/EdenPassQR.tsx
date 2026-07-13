@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { QRCodeSVG } from 'qrcode.react';
+import { Crown, ShieldCheck, RefreshCw, CreditCard, Sparkles } from 'lucide-react';
 
 export default function EdenPassQR() {
   const [token, setToken] = useState<string | null>(null);
@@ -15,7 +16,6 @@ export default function EdenPassQR() {
       setLoading(true);
       setError(null);
 
-      // credentials:'include' envía la cookie httpOnly access_token automáticamente
       const res = await fetch('/api/me/qr-token', {
         credentials: 'include'
       });
@@ -35,33 +35,28 @@ export default function EdenPassQR() {
     }
   }, []);
 
-  // Fetch token on mount
   useEffect(() => {
     fetchToken();
   }, [fetchToken]);
 
-  // Countdown timer and auto-refresh logic
   useEffect(() => {
     if (!expiresAt) return;
 
     const intervalId = setInterval(() => {
       const now = new Date();
       const differenceInSeconds = Math.max(0, Math.floor((expiresAt.getTime() - now.getTime()) / 1000));
-      
+
       setTimeLeft(differenceInSeconds);
 
-      // Auto-refresh when 10 seconds or less remain
       if (differenceInSeconds <= 10 && !loading) {
-        console.log('Renovando token QR silenciomante...');
+        console.log('Renovando token QR silenciosamente...');
         fetchToken();
       }
-
     }, 1000);
 
     return () => clearInterval(intervalId);
   }, [expiresAt, fetchToken, loading]);
 
-  // Formatting timer
   const formatTime = (seconds: number) => {
     const m = Math.floor(seconds / 60);
     const s = seconds % 60;
@@ -69,50 +64,89 @@ export default function EdenPassQR() {
   };
 
   return (
-    <div className="profile-card edenpass-qr-container">
-      <h2 className="edenpass-qr-title">EdenPass</h2>
-      <p className="edenpass-qr-subtitle">Escanea en mostrador para sumar puntos o canjear recompensas</p>
+    <div className="edenpass-vip-card-wrapper">
+      <div className="edenpass-vip-card">
+        {/* Shimmer Sheen Highlights */}
+        <div className="edenpass-vip-sheen"></div>
 
-      <div className="edenpass-qr-box">
-        {loading && !token ? (
-          <div className="spin-icon" style={{ width: '40px', height: '40px', border: '3px solid var(--color-green-light)', borderTopColor: 'var(--color-green-dark)', borderRadius: '50%' }}></div>
-        ) : error ? (
-          <div style={{ color: '#ef4444', fontSize: '0.9rem', fontWeight: 600 }}>{error}</div>
-        ) : token ? (
-          <div className="edenpass-qr-wrapper">
-            <QRCodeSVG 
-              value={token} 
-              size={180}
-              level="H"
-              fgColor="#1B3B2B" 
-            />
+        {/* Card Header */}
+        <div className="edenpass-vip-header">
+          <div className="edenpass-vip-logo-group">
+            <div className="edenpass-vip-crown-icon">
+              <Crown size={20} color="#d4a35f" />
+            </div>
+            <div>
+              <div className="edenpass-vip-brand"> EDÉN</div>
+              <div className="edenpass-vip-subbrand">• EDENPASS</div>
+            </div>
           </div>
-        ) : null}
-      </div>
-
-      {token && !error && (
-        <div style={{ width: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-          <div className="edenpass-timer-badge">
-            <div className={`edenpass-indicator ${timeLeft > 30 ? 'good' : 'warning'}`}></div>
-            <span>Válido por {formatTime(timeLeft)}</span>
+          <div className="edenpass-vip-status-chip">
+            <ShieldCheck size={14} color="#d4a35f" />
+            <span>SOCIO VIP</span>
           </div>
-
-          <button
-            onClick={fetchToken}
-            disabled={loading}
-            className="edenpass-refresh-btn"
-          >
-            {loading ? (
-              <div className="spin-icon" style={{ width: '20px', height: '20px', border: '2px solid rgba(255,255,255,0.3)', borderTopColor: '#fff', borderRadius: '50%' }}></div>
-            ) : (
-              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" style={{ width: '20px', height: '20px' }}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0l3.181 3.183a8.25 8.25 0 0013.803-3.7M4.031 9.865a8.25 8.25 0 0113.803-3.7l3.181 3.182m0-4.991v4.99" />
-              </svg>
-            )}
-            <span>{loading ? 'Actualizando...' : 'Actualizar código'}</span>
-          </button>
         </div>
-      )}
+
+        {/* Smart Chip Row */}
+        <div className="edenpass-vip-chip-row">
+          <div className="edenpass-smart-chip">
+            <div className="chip-line horizontal"></div>
+            <div className="chip-line vertical"></div>
+            <div className="chip-inner"></div>
+          </div>
+          <div className="edenpass-vip-motto">
+            <div className="motto-title">BARRA DE ENSALADAS & JUGOS</div>
+          </div>
+        </div>
+
+        {/* Center Stage QR Box */}
+        <div className="edenpass-vip-qr-stage">
+          {loading && !token ? (
+            <div className="edenpass-vip-loading">
+              <div className="spin-icon gold-spin" style={{ width: '40px', height: '40px', border: '3px solid rgba(212, 163, 95, 0.2)', borderTopColor: '#d4a35f', borderRadius: '50%' }}></div>
+              <span>Generando credencial segura...</span>
+            </div>
+          ) : error ? (
+            <div className="edenpass-vip-error">
+              <span>{error}</span>
+              <button onClick={fetchToken} className="edenpass-vip-retry-btn">Reintentar</button>
+            </div>
+          ) : token ? (
+            <div className="edenpass-vip-qr-frame">
+              <QRCodeSVG
+                value={token}
+                size={180}
+                level="H"
+                fgColor="#112217"
+              />
+              <div className="qr-corner top-left"></div>
+              <div className="qr-corner top-right"></div>
+              <div className="qr-corner bottom-left"></div>
+              <div className="qr-corner bottom-right"></div>
+            </div>
+          ) : null}
+          <p className="edenpass-vip-hint">Presenta y escanea tu código en mostrador para acumular puntos o canjear productos</p>
+        </div>
+
+        {/* Card Footer / Timer */}
+        {token && !error && (
+          <div className="edenpass-vip-footer">
+            <div className="edenpass-vip-timer">
+              <div className={`edenpass-indicator ${timeLeft > 30 ? 'good' : 'warning'}`}></div>
+              <span>Válido por {formatTime(timeLeft)}</span>
+            </div>
+
+            <button
+              onClick={fetchToken}
+              disabled={loading}
+              className="edenpass-vip-refresh-btn"
+              title="Actualizar Código QR"
+            >
+              <RefreshCw size={15} className={loading ? 'animate-spin' : ''} />
+              <span>{loading ? 'Actualizando...' : 'Renovar QR'}</span>
+            </button>
+          </div>
+        )}
+      </div>
     </div>
   );
 }
