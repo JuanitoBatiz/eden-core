@@ -165,7 +165,7 @@ export const MENU_ITEMS: MenuItem[] = [
     name: 'Burrito de Pollo',
     description: 'Un envuelto calientito y saciador. Jugosa pechuga de pollo, cama de vegetales crujientes, frijolitos y un toque de nuestro aderezo chipotle de la casa.',
     price: 75,
-    image: '/images/rollito3.webp',
+    image: '/images/burrito.webp',
     image_orientation: 'horizontal',
     category: 'burritos-sandwiches',
     customizable: true
@@ -215,7 +215,7 @@ export const MENU_ITEMS: MenuItem[] = [
     name: 'Rollitos Vietnamitas Mixtos',
     description: 'Orden de 2 rollitos (uno de pollo y uno de tsurimi). Una combinación perfecta envuelta artesanalmente en delicado papel de arroz con verduras crocantes.',
     price: 95,
-    image: '/images/burrito.webp',
+    image: '/images/rollito3.webp',
     image_orientation: 'horizontal',
     category: 'burritos-sandwiches',
     customizable: true
