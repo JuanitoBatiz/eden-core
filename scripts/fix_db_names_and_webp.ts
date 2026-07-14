@@ -46,8 +46,8 @@ async function run() {
 
     const lowerName = (p.name || '').toLowerCase();
     if (lowerName.includes('rafaell')) newUrl = '/images/rafaello.webp';
-    else if (lowerName.includes('avena')) newUrl = '/images/bowl_avena.webp';
     else if (lowerName.includes('hotcakes')) newUrl = '/images/hotcakes.webp';
+    else if (lowerName.includes('avena')) newUrl = '/images/bowl_avena.webp';
     else if (lowerName.includes('cóctel') || lowerName.includes('coctel')) newUrl = '/images/coctel.webp';
     else if (lowerName.includes('yogurt')) newUrl = '/images/yogurt.webp';
     else if (lowerName.includes('burrito')) newUrl = '/images/burrito.webp';

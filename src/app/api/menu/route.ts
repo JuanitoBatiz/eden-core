@@ -71,8 +71,8 @@ export async function GET() {
 
       const lowerName = correctedName.toLowerCase();
       if (lowerName.includes('rafaell')) resolvedImage = '/images/rafaello.webp';
-      else if (lowerName.includes('avena')) resolvedImage = '/images/bowl_avena.webp';
       else if (lowerName.includes('hotcakes')) resolvedImage = '/images/hotcakes.webp';
+      else if (lowerName.includes('avena')) resolvedImage = '/images/bowl_avena.webp';
       else if (lowerName.includes('cóctel') || lowerName.includes('coctel')) resolvedImage = '/images/coctel.webp';
       else if (lowerName.includes('yogurt')) resolvedImage = '/images/yogurt.webp';
       else if (lowerName.includes('burrito')) resolvedImage = '/images/burrito.webp';
