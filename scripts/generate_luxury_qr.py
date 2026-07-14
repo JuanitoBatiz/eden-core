@@ -120,8 +120,8 @@ def generate_luxury_qr():
     line_y = 510
     draw_card.line([((card_width - line_w) / 2, line_y), ((card_width + line_w) / 2, line_y)], fill=color_ochre_gold, width=4)
 
-    # 4. Instrucción fina y elegante con mayor impacto en QR
-    text_inst = "ESCANEA EL CÓDIGO QR PARA VER NUESTRO MENÚ DIGITAL"
+    # 4. Instrucción fina y elegante
+    text_inst = "Escanea el código QR para explorar nuestros platillos y ordenar"
     bbox_i = draw_card.textbbox((0, 0), text_inst, font=font_instruct)
     draw_card.text(((card_width - (bbox_i[2] - bbox_i[0])) / 2, 570), text_inst, fill=color_green_dark, font=font_instruct)
 
