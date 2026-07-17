@@ -946,7 +946,7 @@ export default function OrderStatusPage() {
               {order.items.map((item, index) => (
                 <div key={index} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', fontSize: '0.9rem', padding: '8px 0', borderBottom: '1px dashed var(--color-ochre-light)' }}>
                   <div>
-                    <span style={{ fontWeight: 700 }}>{item.quantity}x</span> {item.name} {item.size && `(${item.size})`}
+                    <span style={{ fontWeight: 700 }}>{item.quantity}x</span> {item.name} {(item.size || item.variant) && `(${item.size || item.variant})`}
                     {item.customizations && (
                       <div style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)', marginTop: '4px' }}>
                         {item.customizations.proteins?.length > 0 && <div>• Prot: {item.customizations.proteins.join(', ')}</div>}

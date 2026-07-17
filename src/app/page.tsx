@@ -121,6 +121,7 @@ export default function MenuPage() {
   const [selectedProteinOptions, setSelectedProteinOptions] = useState<string[]>(['Pechuga empanizada']);
   const [selectedOmissions, setSelectedOmissions] = useState<string[]>([]);
   const [customNotes, setCustomNotes] = useState('');
+  const [isSmoothieMixto, setIsSmoothieMixto] = useState<boolean>(false);
 
   // Checkout & Auth Modal State
   const [isAuthOpen, setIsAuthOpen] = useState(false);
@@ -210,7 +211,7 @@ export default function MenuPage() {
           // Refresh token caducado por completo (>30 días de inactividad real) — limpiar estado
           if (res.status === 401) {
             setIsAuthenticated(false);
-            try { localStorage.removeItem('eden_user_session'); } catch (e) {}
+            try { localStorage.removeItem('eden_user_session'); } catch (e) { }
           }
           throw new Error('No valid session');
         })
@@ -226,7 +227,7 @@ export default function MenuPage() {
                 role: data.user.role || 'customer',
                 lastActive: Date.now()
               }));
-            } catch (e) {}
+            } catch (e) { }
           }
         })
         .catch(() => {
@@ -347,6 +348,7 @@ export default function MenuPage() {
     setSelectedProteinOptions([]);
     setSelectedOmissions([]);
     setCustomNotes('');
+    setIsSmoothieMixto(false);
 
     // If product is not customizable, add directly to cart
     if (!product.customizable) {
@@ -378,9 +380,18 @@ export default function MenuPage() {
     if (!selectedProduct) return;
 
     // Build item details
-    const price = selectedProduct.prices
-      ? selectedProduct.prices[customSize]
-      : selectedProduct.price;
+    const isSmoothieClasico = Boolean(
+      selectedProduct && (
+        selectedProduct.id === 'smoothies-clasicos' ||
+        selectedProduct.name?.toLowerCase().includes('smoothie clásico') ||
+        selectedProduct.name?.toLowerCase().includes('smoothies clásicos') ||
+        selectedProduct.name?.toLowerCase().includes('smoothie clasico') ||
+        selectedProduct.name?.toLowerCase().includes('smoothies clasicos')
+      )
+    );
+    const price = (isSmoothieClasico && isSmoothieMixto)
+      ? (customSize === 'Chico' ? 80 : (customSize === 'Grande' ? 90 : 80))
+      : (selectedProduct.prices ? selectedProduct.prices[customSize] : selectedProduct.price);
 
     // Calculate Extras addition
     let extraPrice = 0;
@@ -422,10 +433,12 @@ export default function MenuPage() {
       flavors: selectedFlavors
     };
 
+    const cartItemName = (isSmoothieClasico && isSmoothieMixto) ? 'Smoothie Mixto' : selectedProduct.name;
+
     const cartItem: CartItem = {
       cartId: selectedProduct.id + '_' + Date.now(),
       id: selectedProduct.id,
-      name: selectedProduct.name,
+      name: cartItemName,
       price: itemPrice,
       size: selectedProduct.prices ? customSize : undefined,
       quantity: 1,
@@ -561,7 +574,7 @@ export default function MenuPage() {
           role: data.user?.role || 'customer',
           lastActive: Date.now()
         }));
-      } catch (e) {}
+      } catch (e) { }
 
       await submitOrder();
 
@@ -1015,7 +1028,20 @@ export default function MenuPage() {
                     ? 'CREA TU ENSALADA'
                     : 'PERSONALIZAR'}
                 </span>
-                <h2>{selectedProduct.name}</h2>
+                <h2>
+                  {(() => {
+                    const isSmoothieClasico = Boolean(
+                      selectedProduct && (
+                        selectedProduct.id === 'smoothies-clasicos' ||
+                        selectedProduct.name?.toLowerCase().includes('smoothie clásico') ||
+                        selectedProduct.name?.toLowerCase().includes('smoothies clásicos') ||
+                        selectedProduct.name?.toLowerCase().includes('smoothie clasico') ||
+                        selectedProduct.name?.toLowerCase().includes('smoothies clasicos')
+                      )
+                    );
+                    return (isSmoothieClasico && isSmoothieMixto) ? 'Smoothie Mixto' : selectedProduct.name;
+                  })()}
+                </h2>
               </div>
               <button className="close-btn" onClick={() => setSelectedProduct(null)}>
                 <X size={20} />
@@ -1028,21 +1054,35 @@ export default function MenuPage() {
                 <div className="option-group">
                   <div className="option-group-title">Tamaño del producto</div>
                   <div className="option-grid">
-                    {Object.keys(selectedProduct.prices).map((size: any) => (
-                      <label key={size} className="option-card-label">
-                        <input
-                          type="radio"
-                          name="size"
-                          className="option-card-input"
-                          checked={customSize === size}
-                          onChange={() => setCustomSize(size)}
-                        />
-                        <div className="option-card-content">
-                          <span>{size}</span>
-                          <span className="option-card-extra-price">${selectedProduct.prices?.[size]}</span>
-                        </div>
-                      </label>
-                    ))}
+                    {Object.keys(selectedProduct.prices).map((size: any) => {
+                      const isSmoothieClasico = Boolean(
+                        selectedProduct && (
+                          selectedProduct.id === 'smoothies-clasicos' ||
+                          selectedProduct.name?.toLowerCase().includes('smoothie clásico') ||
+                          selectedProduct.name?.toLowerCase().includes('smoothies clásicos') ||
+                          selectedProduct.name?.toLowerCase().includes('smoothie clasico') ||
+                          selectedProduct.name?.toLowerCase().includes('smoothies clasicos')
+                        )
+                      );
+                      const displayPrice = (isSmoothieClasico && isSmoothieMixto)
+                        ? (size === 'Chico' ? 80 : (size === 'Grande' ? 90 : 80))
+                        : selectedProduct.prices?.[size];
+                      return (
+                        <label key={size} className="option-card-label">
+                          <input
+                            type="radio"
+                            name="size"
+                            className="option-card-input"
+                            checked={customSize === size}
+                            onChange={() => setCustomSize(size)}
+                          />
+                          <div className="option-card-content">
+                            <span>{size}</span>
+                            <span className="option-card-extra-price">${displayPrice}</span>
+                          </div>
+                        </label>
+                      );
+                    })}
                   </div>
                 </div>
               )}
@@ -1060,22 +1100,138 @@ export default function MenuPage() {
                       (Adicionales tienen costo extra de +$30 c/u)
                     </p>
                     <div className="option-grid">
-                      {SALAD_OPTIONS.proteins.map((protein: any) => (
-                        <label key={protein.id} className="option-card-label">
-                          <input
-                            type="checkbox"
-                            className="option-card-input"
-                            checked={selectedProteins.includes(protein.id)}
-                            onChange={() => toggleOption(protein.id, selectedProteins, setSelectedProteins, constraints.proteins)}
-                          />
-                          <div className="option-card-content">
+                      {SALAD_OPTIONS.proteins.map((protein: any) => {
+                        const count = selectedProteins.filter((p: any) => p === protein.id).length;
+                        const isSelected = count > 0;
+                        return (
+                          <div
+                            key={protein.id}
+                            onClick={() => {
+                              if (!isSelected) {
+                                setSelectedProteins([...selectedProteins, protein.id]);
+                              }
+                            }}
+                            className="option-card-content"
+                            style={{
+                              cursor: 'pointer',
+                              position: 'relative',
+                              minHeight: isSelected ? '84px' : '64px',
+                              padding: '14px 12px',
+                              backgroundColor: isSelected ? 'rgba(192, 90, 62, 0.08)' : 'var(--color-white)',
+                              borderColor: isSelected ? 'var(--color-terracotta)' : 'rgba(212, 163, 115, 0.3)',
+                              color: isSelected ? 'var(--color-terracotta)' : 'var(--color-green-dark)',
+                              fontWeight: isSelected ? 700 : 600,
+                              boxShadow: isSelected ? '0 6px 18px rgba(192, 90, 62, 0.16)' : '0 2px 6px rgba(0, 0, 0, 0.02)',
+                              transform: isSelected ? 'translateY(-2px)' : 'none',
+                              transition: 'all 0.25s cubic-bezier(0.16, 1, 0.3, 1)',
+                              display: 'flex',
+                              flexDirection: 'column',
+                              justifyContent: 'center',
+                              alignItems: 'center',
+                              borderRadius: '18px'
+                            }}
+                          >
                             <span>{protein.name}</span>
-                            {selectedProteins.length >= constraints.proteins && !selectedProteins.includes(protein.id) && (
-                              <span className="option-card-extra-price">+$30</span>
+                            {!isSelected && selectedProteins.length >= constraints.proteins && (
+                              <span className="option-card-extra-price" style={{ marginTop: '3px' }}>+$30</span>
+                            )}
+
+                            {isSelected && (
+                              <div
+                                onClick={(e) => e.stopPropagation()}
+                                style={{
+                                  display: 'inline-flex',
+                                  alignItems: 'center',
+                                  gap: '10px',
+                                  marginTop: '10px',
+                                  padding: '3px 8px',
+                                  backgroundColor: 'var(--color-white)',
+                                  border: '1.2px solid var(--color-terracotta)',
+                                  borderRadius: '24px',
+                                  boxShadow: '0 2px 8px rgba(192, 90, 62, 0.15)',
+                                  transition: 'all 0.2s ease'
+                                }}
+                              >
+                                <button
+                                  type="button"
+                                  onClick={(e) => {
+                                    e.preventDefault();
+                                    e.stopPropagation();
+                                    const index = selectedProteins.indexOf(protein.id);
+                                    if (index !== -1) {
+                                      const next = [...selectedProteins];
+                                      next.splice(index, 1);
+                                      setSelectedProteins(next);
+                                    }
+                                  }}
+                                  style={{
+                                    width: '24px',
+                                    height: '24px',
+                                    borderRadius: '50%',
+                                    border: 'none',
+                                    backgroundColor: 'rgba(192, 90, 62, 0.12)',
+                                    color: 'var(--color-terracotta)',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    cursor: 'pointer',
+                                    transition: 'all 0.15s ease'
+                                  }}
+                                  title="Disminuir porción"
+                                >
+                                  <Minus size={13} strokeWidth={2.5} />
+                                </button>
+
+                                <span style={{
+                                  fontSize: '0.8rem',
+                                  fontWeight: 700,
+                                  color: 'var(--color-terracotta)',
+                                  minWidth: '54px',
+                                  textAlign: 'center',
+                                  letterSpacing: '0.2px'
+                                }}>
+                                  {count === 1 ? '1x' : '2x Doble'}
+                                </span>
+
+                                <button
+                                  type="button"
+                                  onClick={(e) => {
+                                    e.preventDefault();
+                                    e.stopPropagation();
+                                    if (count < 2) {
+                                      setSelectedProteins([...selectedProteins, protein.id]);
+                                    }
+                                  }}
+                                  disabled={count >= 2}
+                                  style={{
+                                    width: '24px',
+                                    height: '24px',
+                                    borderRadius: '50%',
+                                    border: 'none',
+                                    backgroundColor: count >= 2 ? 'rgba(0, 0, 0, 0.05)' : 'var(--color-terracotta)',
+                                    color: count >= 2 ? 'var(--color-text-muted)' : '#ffffff',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    cursor: count >= 2 ? 'default' : 'pointer',
+                                    transition: 'all 0.15s ease',
+                                    opacity: count >= 2 ? 0.35 : 1
+                                  }}
+                                  title={count >= 2 ? 'Límite máximo de porción alcanzado' : 'Añadir porción doble'}
+                                >
+                                  <Plus size={13} strokeWidth={2.5} />
+                                </button>
+                              </div>
+                            )}
+
+                            {isSelected && count === 1 && selectedProteins.length >= constraints.proteins && (
+                              <span style={{ fontSize: '0.72rem', color: 'var(--color-terracotta)', fontWeight: 600, marginTop: '4px', opacity: 0.9 }}>
+                                +$30 por doble
+                              </span>
                             )}
                           </div>
-                        </label>
-                      ))}
+                        );
+                      })}
                     </div>
                   </div>
 
@@ -1092,21 +1248,21 @@ export default function MenuPage() {
                       {SALAD_OPTIONS.toppings
                         .filter((t: any) => t.id !== 'platano' && t.name?.toLowerCase() !== 'plátano' && t.name?.toLowerCase() !== 'platano')
                         .map((topping: any) => (
-                        <label key={topping.id} className="option-card-label">
-                          <input
-                            type="checkbox"
-                            className="option-card-input"
-                            checked={selectedToppings.includes(topping.id)}
-                            onChange={() => toggleOption(topping.id, selectedToppings, setSelectedToppings, constraints.toppings)}
-                          />
-                          <div className="option-card-content">
-                            <span>{topping.name}</span>
-                            {selectedToppings.length >= constraints.toppings && !selectedToppings.includes(topping.id) && (
-                              <span className="option-card-extra-price">+$15</span>
-                            )}
-                          </div>
-                        </label>
-                      ))}
+                          <label key={topping.id} className="option-card-label">
+                            <input
+                              type="checkbox"
+                              className="option-card-input"
+                              checked={selectedToppings.includes(topping.id)}
+                              onChange={() => toggleOption(topping.id, selectedToppings, setSelectedToppings, constraints.toppings)}
+                            />
+                            <div className="option-card-content">
+                              <span>{topping.name}</span>
+                              {selectedToppings.length >= constraints.toppings && !selectedToppings.includes(topping.id) && (
+                                <span className="option-card-extra-price">+$15</span>
+                              )}
+                            </div>
+                          </label>
+                        ))}
                     </div>
                   </div>
 
@@ -1230,53 +1386,139 @@ export default function MenuPage() {
               )}
 
               {/* Flavor Selector for Drinks & Infusions */}
-              {selectedProduct.flavors && (
-                <div className="option-group">
-                  <div className="option-group-title">
-                    <span>Sabor a elegir</span>
-                    {selectedProduct.maxFlavors && selectedProduct.maxFlavors > 1 ? (
-                      <span className="option-group-limit">Hasta {selectedProduct.maxFlavors} sabores</span>
-                    ) : (
-                      <span className="option-group-limit">Obligatorio</span>
-                    )}
-                  </div>
-                  <p style={{ fontSize: '0.85rem', color: 'var(--color-text-muted)', marginBottom: '10px' }}>
-                    {selectedProduct.maxFlavors && selectedProduct.maxFlavors > 1
-                      ? `Elige hasta ${selectedProduct.maxFlavors} sabores combinados.`
-                      : 'Selecciona el sabor para tu bebida.'}
-                  </p>
-                  <div className="option-grid">
-                    {selectedProduct.flavors.map((flavor: any) => {
-                      const isChecked = selectedFlavors.includes(flavor);
-                      return (
-                        <label key={flavor} className="option-card-label">
-                          <input
-                            type={selectedProduct.maxFlavors && selectedProduct.maxFlavors > 1 ? "checkbox" : "radio"}
-                            name="flavor"
-                            className="option-card-input"
-                            checked={isChecked}
-                            onChange={() => {
-                              const max = selectedProduct.maxFlavors || 1;
-                              if (isChecked) {
-                                setSelectedFlavors(selectedFlavors.filter((f: any) => f !== flavor));
-                              } else {
-                                if (max === 1) {
-                                  setSelectedFlavors([flavor]);
-                                } else if (selectedFlavors.length < max) {
-                                  setSelectedFlavors([...selectedFlavors, flavor]);
-                                }
-                              }
-                            }}
-                          />
-                          <div className="option-card-content">
-                            <span>{flavor}</span>
+              {selectedProduct.flavors && (() => {
+                const isSmoothieClasico = Boolean(
+                  selectedProduct && (
+                    selectedProduct.id === 'smoothies-clasicos' ||
+                    selectedProduct.name?.toLowerCase().includes('smoothie clásico') ||
+                    selectedProduct.name?.toLowerCase().includes('smoothies clásicos') ||
+                    selectedProduct.name?.toLowerCase().includes('smoothie clasico') ||
+                    selectedProduct.name?.toLowerCase().includes('smoothies clasicos')
+                  )
+                );
+                const effectiveMaxFlavors = (isSmoothieClasico && isSmoothieMixto) ? 2 : (selectedProduct.maxFlavors || 1);
+
+                return (
+                  <div className="option-group">
+                    {isSmoothieClasico && (
+                      <label
+                        className="option-card-label"
+                        style={{ marginBottom: '18px' }}
+                      >
+                        <input
+                          type="checkbox"
+                          className="option-card-input"
+                          checked={isSmoothieMixto}
+                          onChange={(e) => {
+                            const checked = e.target.checked;
+                            setIsSmoothieMixto(checked);
+                            if (!checked && selectedFlavors.length > 1) {
+                              setSelectedFlavors(selectedFlavors.slice(0, 1));
+                            }
+                          }}
+                        />
+                        <div
+                          className="option-card-content"
+                          style={{
+                            flexDirection: 'row',
+                            justifyContent: 'space-between',
+                            padding: '16px 20px',
+                            minHeight: 'auto',
+                            textAlign: 'left',
+                            background: isSmoothieMixto ? 'rgba(192, 90, 62, 0.06)' : 'var(--color-white)',
+                            borderColor: isSmoothieMixto ? 'var(--color-terracotta)' : 'rgba(212, 163, 115, 0.3)'
+                          }}
+                        >
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
+                            <div
+                              style={{
+                                width: '38px',
+                                height: '38px',
+                                borderRadius: '12px',
+                                backgroundColor: isSmoothieMixto ? 'var(--color-terracotta)' : 'rgba(212, 163, 115, 0.15)',
+                                color: isSmoothieMixto ? '#ffffff' : 'var(--color-green-dark)',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                transition: 'all 0.25s ease'
+                              }}
+                            >
+                              <Sparkles size={18} />
+                            </div>
+                            <div>
+                              <div style={{ fontSize: '0.92rem', fontWeight: 700, color: isSmoothieMixto ? 'var(--color-terracotta)' : 'var(--color-green-dark)' }}>
+                                Smoothie Mixto
+                              </div>
+                              <div style={{ fontSize: '0.78rem', fontWeight: 500, color: 'var(--color-text-muted)', marginTop: '2px' }}>
+                                Combina 2 de tus frutas favoritas
+                              </div>
+                            </div>
                           </div>
-                        </label>
-                      );
-                    })}
+                          <div
+                            style={{
+                              width: '22px',
+                              height: '22px',
+                              borderRadius: '50%',
+                              border: `2px solid ${isSmoothieMixto ? 'var(--color-terracotta)' : 'rgba(212, 163, 115, 0.4)'}`,
+                              backgroundColor: isSmoothieMixto ? 'var(--color-terracotta)' : 'transparent',
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              color: '#ffffff',
+                              transition: 'all 0.2s ease'
+                            }}
+                          >
+                            {isSmoothieMixto && <Check size={13} strokeWidth={3} />}
+                          </div>
+                        </div>
+                      </label>
+                    )}
+
+                    <div className="option-group-title">
+                      <span>Sabor a elegir</span>
+                      {effectiveMaxFlavors > 1 ? (
+                        <span className="option-group-limit">Hasta {effectiveMaxFlavors} sabores</span>
+                      ) : (
+                        <span className="option-group-limit">Obligatorio</span>
+                      )}
+                    </div>
+                    <p style={{ fontSize: '0.85rem', color: 'var(--color-text-muted)', marginBottom: '10px' }}>
+                      {effectiveMaxFlavors > 1
+                        ? `Elige hasta ${effectiveMaxFlavors} sabores combinados.`
+                        : 'Selecciona el sabor para tu bebida.'}
+                    </p>
+                    <div className="option-grid">
+                      {selectedProduct.flavors.map((flavor: any) => {
+                        const isChecked = selectedFlavors.includes(flavor);
+                        return (
+                          <label key={flavor} className="option-card-label">
+                            <input
+                              type={effectiveMaxFlavors > 1 ? "checkbox" : "radio"}
+                              name="flavor"
+                              className="option-card-input"
+                              checked={isChecked}
+                              onChange={() => {
+                                if (isChecked) {
+                                  setSelectedFlavors(selectedFlavors.filter((f: any) => f !== flavor));
+                                } else {
+                                  if (effectiveMaxFlavors === 1) {
+                                    setSelectedFlavors([flavor]);
+                                  } else if (selectedFlavors.length < effectiveMaxFlavors) {
+                                    setSelectedFlavors([...selectedFlavors, flavor]);
+                                  }
+                                }
+                              }}
+                            />
+                            <div className="option-card-content">
+                              <span>{flavor}</span>
+                            </div>
+                          </label>
+                        );
+                      })}
+                    </div>
                   </div>
-                </div>
-              )}
+                );
+              })()}
 
               {/* Especialidad / Proteína for Sandwiches & Tortas */}
               {(selectedProduct.id === 'sandwich' || selectedProduct.id === 'torta' || selectedProduct.id === 'sandwich-pavo' || selectedProduct.id === 'sandwich-pollo' || selectedProduct.name?.includes('Sándwich') || selectedProduct.name?.includes('Torta')) && (
@@ -1411,7 +1653,18 @@ export default function MenuPage() {
                 <div className="modal-total-price">
                   {/* Calculate dynamic price */}
                   ${(() => {
-                    const price = selectedProduct.prices ? selectedProduct.prices[customSize] : selectedProduct.price;
+                    const isSmoothieClasico = Boolean(
+                      selectedProduct && (
+                        selectedProduct.id === 'smoothies-clasicos' ||
+                        selectedProduct.name?.toLowerCase().includes('smoothie clásico') ||
+                        selectedProduct.name?.toLowerCase().includes('smoothies clásicos') ||
+                        selectedProduct.name?.toLowerCase().includes('smoothie clasico') ||
+                        selectedProduct.name?.toLowerCase().includes('smoothies clasicos')
+                      )
+                    );
+                    const price = (isSmoothieClasico && isSmoothieMixto)
+                      ? (customSize === 'Chico' ? 80 : (customSize === 'Grande' ? 90 : 80))
+                      : (selectedProduct.prices ? selectedProduct.prices[customSize] : selectedProduct.price);
                     let extra = 0;
                     const isEnsalada = selectedProduct.category === 'ensaladas' || selectedProduct.category === '299824bb-ede2-47ed-bf0e-b5fd9548af73' || menuData?.CATEGORIES?.find((c: any) => c.id === selectedProduct.category)?.name === 'Ensaladas' || selectedProduct.name?.toLowerCase().includes('ensalada');
                     const isSandwichOrTorta = selectedProduct.id === 'sandwich' || selectedProduct.id === 'torta' || selectedProduct.id === 'sandwich-pavo' || selectedProduct.id === 'sandwich-pollo' || selectedProduct.name?.includes('Sándwich') || selectedProduct.name?.includes('Torta');

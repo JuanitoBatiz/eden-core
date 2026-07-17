@@ -262,7 +262,7 @@ export default function KanbanBoard({
                     <span style={{ fontWeight: 900, color: 'var(--color-green-dark)', fontSize: '0.95rem', flexShrink: 0 }}>{item.quantity}×</span>
                     <div style={{ flex: 1, minWidth: 0 }}>
                       <div style={{ fontWeight: 600, fontSize: '0.88rem', color: 'var(--color-text-dark)' }}>
-                        {item.name}{item.variant && <span style={{ color: 'var(--color-text-muted)', fontWeight: 400 }}> · {item.variant}</span>}
+                        {item.name}{(item.size || item.variant) && <span style={{ color: 'var(--color-text-muted)', fontWeight: 400 }}> · {item.size || item.variant}</span>}
                       </div>
                       {item.customizations && (() => {
                         const lines: string[] = [];

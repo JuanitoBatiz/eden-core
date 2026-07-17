@@ -27,6 +27,7 @@ export interface OrderItemRequest {
   quantity: number;
   notes?: string;
   variant?: string;
+  size?: string;
   customizations?: any;
 }
 
