@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { requireRole } from '@/lib/auth';
 import { createClient } from '@supabase/supabase-js';
 import { RedeemBenefitRequest } from '@/types/api-contracts';
+import { getLoyaltyInfoFromLoyverse } from '@/lib/loyalty';
 
 // POST: Registrar un canje manual de puntos (Loyalty)
 export async function POST(req: Request, { params }: { params: Promise<{ id: string }> }) {
@@ -40,7 +41,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     // 2. Verify target customer exists
     const { data: customer, error: customerErr } = await adminSupabase
       .from('users')
-      .select('id')
+      .select('id, loyverse_customer_id')
       .eq('id', customerId)
       .single();
 
@@ -65,6 +66,16 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
       console.warn('⚠️ [LOYALTY REDEEM WARNING] Intento de canje de beneficio inactivo:', benefit.name);
       return NextResponse.json({ error: 'Este beneficio se encuentra inactivo.' }, { status: 400 });
     }
+
+    // --- BLOQUEO DE SEGURIDAD (Validación estricta de saldo) ---
+    const requiredPoints = benefit.points_required || benefit.points_cost || 0;
+    const currentLoyalty = await getLoyaltyInfoFromLoyverse(customer.loyverse_customer_id || '', customerId);
+
+    if (currentLoyalty.loyalty_points < requiredPoints) {
+      console.warn(`⚠️ [LOYALTY REDEEM SECURITY] Usuario ${customerId} intentó canjear ${benefit.name} sin puntos suficientes (${currentLoyalty.loyalty_points} pts < ${requiredPoints} req).`);
+      return NextResponse.json({ error: 'El cliente no tiene suficientes puntos para canjear este beneficio.' }, { status: 400 });
+    }
+    // -----------------------------------------------------------
 
     // 4. Register Redemption Locally
     // Nota Crítica: Como se documentó en el plan, la API v1.0 de Loyverse no provee

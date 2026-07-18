@@ -77,15 +77,20 @@ export async function getLoyaltyInfoFromLoyverse(loyverseCustomerId: string, sup
         spentSimulated = redemptions.reduce((acc, curr) => acc + (curr.points_used || 0), 0);
       }
 
-      localPoints = Math.max(0, earnedSimulated - spentSimulated);
-      console.log(`📊 [LOYALTY DIAGNOSTIC] Puntos locales calculados al 3%: ${localPoints} (Ganados: ${earnedSimulated}, Canjeados: ${spentSimulated})`);
+      // El sistema de lealtad vive en la web.
+      // Tomamos los puntos base (lo ganado en la web, o lo de loyverse por si acaso es mayor)
+      // y SIEMPRE le restamos los puntos que ya se canjearon en la plataforma web.
+      const baseEarned = Math.max(earnedSimulated, loyversePoints);
+      localPoints = Math.max(0, baseEarned - spentSimulated);
+      
+      console.log(`📊 [LOYALTY DIAGNOSTIC] Puntos finales calculados: ${localPoints} (Base Ganada: ${baseEarned}, Canjeados Web: ${spentSimulated})`);
     } catch (err: any) {
       console.error('❌ [LOYALTY DIAGNOSTIC EXCEPTION] Excepción calculando puntos locales en DB:', err?.message || err);
     }
   }
 
-  // Tomamos el mayor valor entre lo reportado por Loyverse y lo acumulado localmente en Edén
-  const finalPoints = Math.max(loyversePoints, localPoints);
+  // Para el cliente, la verdad absoluta son los puntos calculados en la web
+  const finalPoints = supabaseUserId ? localPoints : loyversePoints;
   let tier = 'Estándar';
   if (finalPoints >= 140) tier = 'Diamante';
   else if (finalPoints >= 90) tier = 'Oro';
