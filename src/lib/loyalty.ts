@@ -46,12 +46,13 @@ export async function getLoyaltyInfoFromLoyverse(loyverseCustomerId: string, sup
     try {
       const adminSupabase = createAdminClient();
       
-      // Sumar el 10% de todas las órdenes válidas (no canceladas) de este usuario
+      // Sumar el 10% (calculado luego como 3%) de órdenes válidas, PAGADAS o ENTREGADAS, y no canceladas.
       const { data: userOrders, error: ordersErr } = await adminSupabase
         .from('orders')
         .select('total')
         .eq('user_id', supabaseUserId)
-        .neq('status', 'cancelled');
+        .neq('status', 'cancelled')
+        .or('payment_status.eq.payment_approved,status.eq.delivered');
 
       if (ordersErr) {
         console.error('❌ [LOYALTY DIAGNOSTIC DB ERROR] Error consultando órdenes locales del usuario:', ordersErr.message);

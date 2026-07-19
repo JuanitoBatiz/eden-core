@@ -3,6 +3,7 @@ import { requireRole } from '@/lib/auth';
 import { createClient } from '@supabase/supabase-js';
 import { RedeemBenefitRequest } from '@/types/api-contracts';
 import { getLoyaltyInfoFromLoyverse } from '@/lib/loyalty';
+import { checkRateLimit } from '@/lib/rateLimit';
 
 // POST: Registrar un canje manual de puntos (Loyalty)
 export async function POST(req: Request, { params }: { params: Promise<{ id: string }> }) {
@@ -66,6 +67,15 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
       console.warn('⚠️ [LOYALTY REDEEM WARNING] Intento de canje de beneficio inactivo:', benefit.name);
       return NextResponse.json({ error: 'Este beneficio se encuentra inactivo.' }, { status: 400 });
     }
+
+    // --- PROTECCIÓN CONTRA DOBLE GASTO (Race Condition) ---
+    // Bloqueamos que un mismo cliente (o cajero) haga más de 1 petición en 4 segundos
+    const limitResult = checkRateLimit(`redeem:${customerId}`, 1, 4);
+    if (!limitResult.allowed) {
+      console.warn(`⚠️ [LOYALTY REDEEM RATE LIMIT] Intento de doble gasto bloqueado para usuario ${customerId}.`);
+      return NextResponse.json({ error: 'Operación en proceso. Espera unos segundos para realizar otro canje.' }, { status: 429 });
+    }
+    // ------------------------------------------------------
 
     // --- BLOQUEO DE SEGURIDAD (Validación estricta de saldo) ---
     const requiredPoints = benefit.points_required || benefit.points_cost || 0;
