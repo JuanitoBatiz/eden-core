@@ -87,7 +87,7 @@ export function calculateOrderTotal(cartItems: any[], dbProducts: any[]) {
                 freeLimit = item.size === 'Grande' ? 4 : 2;
                 if (!foundGroup.extra_price) foundGroup.extra_price = 15;
               } else if (foundGroup.name === 'Aderezos') {
-                freeLimit = 1;
+                freeLimit = 2;
                 if (!foundGroup.extra_price) foundGroup.extra_price = 15;
               }
             }

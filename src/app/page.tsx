@@ -322,9 +322,9 @@ export default function MenuPage() {
     const isSalad = selectedProduct.category === 'ensaladas' || selectedProduct.category === '299824bb-ede2-47ed-bf0e-b5fd9548af73' || selectedProduct.name?.toLowerCase().includes('ensalada');
     if (isSalad) {
       if (customSize === 'Grande' || selectedProduct.name === 'Ensalada Grande') {
-        return { proteins: 2, toppings: 6, seeds: 4, dressings: 1 };
+        return { proteins: 2, toppings: 6, seeds: 4, dressings: 2 };
       }
-      return { proteins: 1, toppings: 4, seeds: 2, dressings: 1 };
+      return { proteins: 1, toppings: 4, seeds: 2, dressings: 2 };
     }
     if (selectedProduct.name === 'Bowl de Avena' || selectedProduct.name === 'Bowl de Yogurt') {
       return { proteins: 0, toppings: 2, seeds: 2, dressings: 0 };
