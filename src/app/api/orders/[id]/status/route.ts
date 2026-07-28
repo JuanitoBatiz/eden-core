@@ -96,21 +96,26 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
       if (order.loyverse_receipt_id) {
         try {
           await refundLoyverseReceipt(order.loyverse_receipt_id);
-        } catch (err) {
+        } catch (err: any) {
           console.error('Failed to void receipt in Loyverse POS:', err);
-          // Opcionalmente podrías marcar un campo en DB como 'loyverse_refund_failed: true' para reintentar después,
-          // pero por ahora solo logueamos el error para no bloquear la cancelación en la web.
+          return NextResponse.json({ error: 'No se pudo cancelar en la caja Loyverse. Intenta de nuevo. ' + err.message }, { status: 500 });
         }
       }
     }
 
-    const { error: updateErr } = await adminSupabase
+    const { data: updatedRows, error: updateErr } = await adminSupabase
       .from('orders')
       .update(updateData)
-      .eq('id', orderId);
+      .eq('id', orderId)
+      .eq('status', currentStatus)
+      .select();
 
     if (updateErr) {
       throw new Error(`DB Error: ${updateErr.message}`);
+    }
+
+    if (!updatedRows || updatedRows.length === 0) {
+      return NextResponse.json({ error: 'La orden fue modificada por otro usuario. Refresca la página.' }, { status: 409 });
     }
 
     return NextResponse.json({ success: true, status: newStatus });

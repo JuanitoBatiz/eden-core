@@ -2,12 +2,12 @@ import type { NextConfig } from "next";
 
 const cspHeader = `
   default-src 'self';
-  script-src 'self' 'unsafe-eval' 'unsafe-inline';
-  style-src 'self' 'unsafe-inline';
-  img-src 'self' blob: data: https://*.supabase.co;
+  script-src 'self' 'unsafe-eval' 'unsafe-inline' https://*.googleapis.com https://maps.googleapis.com;
+  style-src 'self' 'unsafe-inline' https://fonts.googleapis.com;
+  img-src 'self' blob: data: https://*.supabase.co https://*.googleapis.com https://*.gstatic.com;
   media-src 'self' blob:;
-  connect-src 'self' https://*.supabase.co;
-  font-src 'self' data:;
+  connect-src 'self' https://*.supabase.co https://*.googleapis.com;
+  font-src 'self' data: https://fonts.gstatic.com;
   object-src 'none';
   base-uri 'self';
   form-action 'self';
@@ -30,7 +30,7 @@ const nextConfig: NextConfig = {
           },
           {
             key: 'Permissions-Policy',
-            value: 'camera=self',
+            value: 'camera=self, geolocation=self',
           },
           {
             key: 'X-Frame-Options',

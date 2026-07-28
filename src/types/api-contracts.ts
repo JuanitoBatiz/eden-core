@@ -39,6 +39,15 @@ export interface OrderCreateRequest {
   notes?: string;
   service_type?: 'pickup' | 'delivery';
   delivery_address?: string;
+  /** Coordenadas GPS del destino (solo para delivery) */
+  delivery_lat?: number;
+  delivery_lng?: number;
+  /** Distancia calculada en el frontend — se RE-VALIDA en el backend antes de guardar */
+  delivery_distance_km?: number;
+  /** ID de la zona de entrega cotizada */
+  delivery_zone_id?: string;
+  /** Tarifa cotizada — se RE-CALCULA y valida en el backend */
+  delivery_fee?: number;
 }
 
 export interface RedeemBenefitRequest {
@@ -58,6 +67,41 @@ export interface OrderRejectPaymentRequest {
   reason: string;
 }
 
+// ── Nuevas interfaces para el sistema de delivery GPS ──────────────────────────
+
+export interface DeliveryZone {
+  id: string;
+  label: string;
+  max_distance_km: number;
+  fee: number;
+  min_order_amount?: number;
+  delivery_time_mins?: number;
+  active?: boolean;
+}
+
+export interface SavedAddress {
+  id: string;
+  label: string;
+  address_text: string;
+  lat: number;
+  lng: number;
+  is_default: boolean;
+  created_at?: string;
+}
+
+export interface DeliveryQuote {
+  in_range: boolean;
+  distance_km: number;
+  fee: number | null;
+  zone: DeliveryZone | null;
+  calculation_method?: 'google_distance_matrix' | 'haversine_fallback';
+  message?: string;
+  lat?: number;
+  lng?: number;
+}
+
+// ── ────────────────────────────────────────────────────────────────────────────
+
 export interface Order {
   id: string;
   created_at: string;
@@ -69,9 +113,16 @@ export interface Order {
   notes?: string;
   service_type: 'pickup' | 'delivery';
   delivery_address?: string;
-  /** Tarifa de envío cotizada por caja/cocina. NULL = pendiente de cotizar. */
+  /** Coordenadas GPS del destino de entrega */
+  delivery_lat?: number | null;
+  delivery_lng?: number | null;
+  /** Distancia calculada desde el restaurante en km */
+  delivery_distance_km?: number | null;
+  /** ID de la zona de entrega aplicada */
+  delivery_zone_id?: string | null;
+  /** Tarifa de envío. NULL = pendiente. NUMBER = confirmada automáticamente por el sistema. */
   delivery_fee?: number | null;
-  /** true cuando la caja/cocina ha confirmado la tarifa de envío */
+  /** true cuando el sistema calculó y confirmó la tarifa automáticamente */
   delivery_fee_confirmed?: boolean;
   status: 'received' | 'in_preparation' | 'ready' | 'in_transit' | 'delivered' | 'cancelled' | 'awaiting_payment';
   payment_status: 'pending_payment' | 'payment_submitted' | 'payment_approved' | 'payment_rejected';

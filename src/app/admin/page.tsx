@@ -6,6 +6,7 @@ import MenuManager from '@/components/admin/MenuManager';
 import UsersManager from '@/components/admin/UsersManager';
 import BankConfigManager from '@/components/admin/BankConfigManager';
 import RefundsManager from '@/components/admin/RefundsManager';
+import DeliveryZonesManager from '@/components/admin/DeliveryZonesManager';
 import { 
   Check, 
   X, 
@@ -21,7 +22,11 @@ import {
   UserCircle,
   Award,
   Users,
-  Landmark
+  Landmark,
+  Bike,
+  MapPin,
+  BellRing,
+  BellOff
 } from 'lucide-react';
 import KanbanBoard from '@/components/admin/KanbanBoard';
 import FinanceApproval from '@/components/admin/FinanceApproval';
@@ -38,7 +43,7 @@ export default function AdminPage() {
   const { can, loading: permsLoading } = usePermissions();
 
   // Financial Tab State
-  const [activeTab, setActiveTab] = useState<'cocina' | 'finanzas' | 'reembolsos' | 'edenpass' | 'menu' | 'usuarios' | 'banco'>('cocina');
+  const [activeTab, setActiveTab] = useState<'cocina' | 'finanzas' | 'reembolsos' | 'edenpass' | 'menu' | 'usuarios' | 'banco' | 'zonas'>('cocina');
   const [pendingPayments, setPendingPayments] = useState<Order[]>([]);
   const [auditOrders, setAuditOrders] = useState<Order[]>([]);
   const [activeFinancialOrder, setActiveFinancialOrder] = useState<string | null>(null);
@@ -56,6 +61,41 @@ export default function AdminPage() {
   // New-order notification state — IDs that arrived since last poll
   const [newOrderIds, setNewOrderIds] = useState<Set<string>>(new Set());
   const prevOrderIdsRef = React.useRef<Set<string>>(new Set());
+  
+  // Audio notification state
+  const [soundEnabled, setSoundEnabled] = useState(false);
+  const soundEnabledRef = React.useRef(false);
+  const audioCtxRef = React.useRef<AudioContext | null>(null);
+
+  const playChime = () => {
+    try {
+      const ctx = audioCtxRef.current;
+      if (!ctx) return;
+      if (ctx.state === 'suspended') ctx.resume();
+
+      const playNote = (freq: number, startTime: number) => {
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.type = 'sine';
+        osc.frequency.value = freq;
+        
+        gain.gain.setValueAtTime(0, startTime);
+        gain.gain.linearRampToValueAtTime(0.3, startTime + 0.05);
+        gain.gain.exponentialRampToValueAtTime(0.01, startTime + 0.6);
+        
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.start(startTime);
+        osc.stop(startTime + 0.6);
+      };
+
+      const now = ctx.currentTime;
+      playNote(659.25, now);       // E5
+      playNote(830.61, now + 0.15); // G#5
+    } catch (e) {
+      console.error("Audio error", e);
+    }
+  };
 
   // Auth: verificar sesión via cookie httpOnly (refresh silencioso)
   useEffect(() => {
@@ -114,6 +154,11 @@ export default function AdminPage() {
 
         if (freshIds.size > 0) {
           setNewOrderIds(prev => new Set([...prev, ...freshIds]));
+          
+          if (soundEnabledRef.current) {
+            playChime();
+          }
+
           // Auto-clear badges after 8 seconds
           setTimeout(() => setNewOrderIds(new Set()), 8000);
         }
@@ -489,6 +534,47 @@ export default function AdminPage() {
           </div>
           
           <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
+            <button
+              onClick={() => {
+                const newState = !soundEnabled;
+                setSoundEnabled(newState);
+                soundEnabledRef.current = newState;
+                if (newState) {
+                  // Inicializar AudioContext en interacción del usuario para desbloquearlo
+                  if (!audioCtxRef.current) {
+                    const AudioContextClass = window.AudioContext || (window as any).webkitAudioContext;
+                    if (AudioContextClass) {
+                      audioCtxRef.current = new AudioContextClass();
+                    }
+                  }
+                  if (audioCtxRef.current && audioCtxRef.current.state === 'suspended') {
+                    audioCtxRef.current.resume();
+                  }
+                  // Reproducir una nota muy suave al activar para confirmar
+                  playChime();
+                }
+              }}
+              className="cart-icon-btn"
+              style={{ 
+                background: soundEnabled ? '#dcfce7' : '#fee2e2', 
+                border: `1px solid ${soundEnabled ? '#86efac' : '#fca5a5'}`,
+                color: soundEnabled ? '#166534' : '#991b1b',
+                display: 'flex', 
+                gap: '6px',
+                padding: '8px 16px',
+                borderRadius: '30px'
+              }}
+              title={soundEnabled ? 'Silenciar notificaciones' : 'Activar sonido'}
+            >
+              {soundEnabled ? <BellRing size={18} /> : <BellOff size={18} />}
+            </button>
+            <a
+              href="/repartidor"
+              style={{ display: 'flex', alignItems: 'center', gap: '6px', background: '#e0f2fe', border: '1px solid #bfdbfe', color: '#0284c7', padding: '8px 16px', borderRadius: '30px', fontWeight: 700, fontSize: '0.88rem', textDecoration: 'none' }}
+              title="Panel del repartidor"
+            >
+              <Bike size={16} /> Repartidor
+            </a>
             <button 
               className="cart-icon-btn" 
               onClick={() => fetchOrders()} 
@@ -594,6 +680,15 @@ export default function AdminPage() {
               Usuarios
             </button>
           )}
+          {can('can_manage_menu') && (
+            <button 
+              onClick={() => setActiveTab('zonas')}
+              className={`admin-tab-btn ${activeTab === 'zonas' ? 'active active-menu' : ''}`}
+            >
+              <MapPin size={20} />
+              Zonas de Envío
+            </button>
+          )}
           {can('can_configure_bank') && (
             <button 
               onClick={() => setActiveTab('banco')}
@@ -667,8 +762,12 @@ export default function AdminPage() {
             {activeTab === 'usuarios' && (
               <UsersManager accessToken={''} />
             )}
+            
+            {activeTab === 'zonas' && can('can_manage_menu') && (
+              <DeliveryZonesManager />
+            )}
 
-            {activeTab === 'banco' && (
+            {activeTab === 'banco' && can('can_configure_bank') && (
               <BankConfigManager accessToken={''} />
             )}
           </>

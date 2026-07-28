@@ -2,7 +2,8 @@ import React, { useState } from 'react';
 import {
   Clock, ChefHat, PackageCheck, Bike,
   ClipboardList, MessageCircle, AlertCircle, MapPin,
-  Truck, X, Phone, ChevronRight, CreditCard, Hourglass, CheckCircle2
+  Truck, X, Phone, ChevronRight, CreditCard, Hourglass, CheckCircle2,
+  ExternalLink, Navigation, RotateCcw
 } from 'lucide-react';
 import { Order } from '@/types/api-contracts';
 
@@ -50,6 +51,19 @@ export default function KanbanBoard({
     in_transit:       inTransitOrders,
   };
 
+  // Construye un deep-link a Google Maps con la dirección o coordenadas del pedido
+  const buildMapsUrl = (order: Order): string => {
+    const lat = (order as any).delivery_lat;
+    const lng = (order as any).delivery_lng;
+    if (lat && lng) {
+      return `https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}&travelmode=driving`;
+    }
+    if (order.delivery_address) {
+      return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(order.delivery_address)}`;
+    }
+    return '';
+  };
+
   const getNextStatus = (order: Order) => {
     switch (order.status) {
       case 'received':         return 'awaiting_payment';
@@ -75,15 +89,19 @@ export default function KanbanBoard({
   const needsDeliveryFeeConfirmation = (order: Order) =>
     order.service_type === 'delivery' && !order.delivery_fee_confirmed;
 
+  // Permite sobrescribir la tarifa aunque ya esté auto-confirmada (manual override)
+  const [showFeeOverride, setShowFeeOverride] = useState<Record<string, boolean>>({});
+
   const handleConfirmFee = async (order: Order) => {
     const fee = parseFloat(deliveryFeeInputs[order.id] ?? '');
-    if (isNaN(fee) || fee < 0) { alert('Ingresa una tarifa válida.'); return; }
+    if (isNaN(fee) || fee < 0) { alert('Ingresa una tarifa válida (puede ser 0 si es sin costo).'); return; }
     setDeliveryFeeLoading(prev => ({ ...prev, [order.id]: true }));
     try {
       await setDeliveryFee(order.id, fee);
       if (selectedOrder?.id === order.id) {
         setSelectedOrder(prev => prev ? { ...prev, delivery_fee: fee, delivery_fee_confirmed: true } : prev);
       }
+      setShowFeeOverride(prev => ({ ...prev, [order.id]: false }));
     } finally {
       setDeliveryFeeLoading(prev => ({ ...prev, [order.id]: false }));
     }
@@ -125,7 +143,7 @@ export default function KanbanBoard({
           </div>
         ) : (
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <div style={{ display: 'flex', gap: '4px', flexWrap: 'wrap' }}>
+            <div style={{ display: 'flex', gap: '4px', flexWrap: 'wrap', alignItems: 'center' }}>
               <span style={{
                 fontSize: '0.72rem', fontWeight: 700, padding: '2px 7px', borderRadius: '20px',
                 color: order.service_type === 'delivery' ? '#0369a1' : '#065f46',
@@ -133,6 +151,15 @@ export default function KanbanBoard({
               }}>
                 {order.service_type === 'delivery' ? '🛵' : '🏠'} {order.service_type === 'delivery' ? 'Domicilio' : 'Recoger'}
               </span>
+              {/* Chip de distancia cuando la tenemos */}
+              {order.service_type === 'delivery' && (order as any).delivery_distance_km != null && (
+                <span style={{
+                  fontSize: '0.68rem', fontWeight: 700, padding: '2px 6px', borderRadius: '20px',
+                  color: '#0369a1', backgroundColor: '#dbeafe',
+                }}>
+                  {(order as any).delivery_distance_km} km
+                </span>
+              )}
             </div>
             <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
               <span style={{ fontSize: '0.95rem', fontWeight: 800, color: 'var(--color-green-dark)' }}>${order.total}</span>
@@ -212,42 +239,103 @@ export default function KanbanBoard({
               )}
             </div>
 
-            {/* Address */}
+            {/* Address + Map link */}
             {order.service_type === 'delivery' && order.delivery_address && (
               <div className="kanban-modal-section">
-                <div style={{ display: 'flex', gap: '8px', alignItems: 'flex-start', backgroundColor: '#eff6ff', padding: '10px 12px', borderRadius: '10px' }}>
-                  <MapPin size={15} color="#0284c7" style={{ flexShrink: 0, marginTop: '1px' }} />
-                  <span style={{ fontSize: '0.88rem', color: '#1e40af', lineHeight: '1.4' }}>{order.delivery_address}</span>
+                <div style={{ backgroundColor: '#eff6ff', borderRadius: '10px', overflow: 'hidden', border: '1.5px solid #bfdbfe' }}>
+                  <div style={{ display: 'flex', gap: '8px', alignItems: 'flex-start', padding: '10px 12px' }}>
+                    <MapPin size={15} color="#0284c7" style={{ flexShrink: 0, marginTop: '1px' }} />
+                    <span style={{ fontSize: '0.88rem', color: '#1e40af', lineHeight: '1.4', flex: 1 }}>
+                      {order.delivery_address}
+                    </span>
+                  </div>
+                  {/* Fila de meta: distancia + botón mapa */}
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '6px 12px', backgroundColor: '#dbeafe', borderTop: '1px solid #bfdbfe' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.78rem', color: '#1d4ed8', fontWeight: 700 }}>
+                      <Navigation size={12} />
+                      {(order as any).delivery_distance_km != null
+                        ? `${(order as any).delivery_distance_km} km del restaurante`
+                        : 'Distancia calculada al cotizar'}
+                    </div>
+                    {buildMapsUrl(order) && (
+                      <a
+                        href={buildMapsUrl(order)}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        style={{
+                          display: 'flex', alignItems: 'center', gap: '4px',
+                          backgroundColor: '#1d4ed8', color: '#fff',
+                          padding: '4px 10px', borderRadius: '20px',
+                          fontSize: '0.74rem', fontWeight: 800, textDecoration: 'none',
+                          flexShrink: 0,
+                        }}
+                      >
+                        <ExternalLink size={11} /> Ver en mapa
+                      </a>
+                    )}
+                  </div>
                 </div>
               </div>
             )}
 
-            {/* Delivery fee */}
-            {order.service_type === 'delivery' && pendingFee && (
+            {/* Delivery fee — auto-confirmed o pendiente */}
+            {order.service_type === 'delivery' && (
               <div className="kanban-modal-section">
-                <div style={{ backgroundColor: '#fffbeb', border: '1px solid #f59e0b', borderRadius: '10px', padding: '12px' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontWeight: 700, color: '#92400e', marginBottom: '8px', fontSize: '0.85rem' }}>
-                    <Truck size={15} /> Cotizar envío
-                  </div>
-                  <div style={{ display: 'flex', gap: '8px' }}>
-                    <div style={{ position: 'relative', flex: 1 }}>
-                      <span style={{ position: 'absolute', left: '10px', top: '50%', transform: 'translateY(-50%)', color: '#92400e', fontWeight: 700 }}>$</span>
-                      <input
-                        type="number" min="0" step="5" placeholder="0"
-                        value={feeInputVal}
-                        onChange={e => setDeliveryFeeInputs(prev => ({ ...prev, [order.id]: e.target.value }))}
-                        style={{ width: '100%', padding: '9px 9px 9px 26px', border: '1.5px solid #f59e0b', borderRadius: '8px', fontSize: '0.95rem', fontWeight: 700, boxSizing: 'border-box', outline: 'none' }}
-                      />
+                {feeConfirmed && !showFeeOverride[order.id] ? (
+                  // Fee auto-confirmada por el sistema
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', backgroundColor: '#f0fdf4', border: '1px solid #86efac', borderRadius: '10px', padding: '10px 14px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                      <CheckCircle2 size={15} color="#16a34a" />
+                      <span style={{ fontSize: '0.85rem', fontWeight: 700, color: '#166534' }}>
+                        Envío: <strong>${order.delivery_fee}</strong>
+                        <span style={{ fontWeight: 400, fontSize: '0.78rem', marginLeft: '4px', color: '#15803d' }}>(calculado automáticamente)</span>
+                      </span>
                     </div>
                     <button
-                      onClick={() => handleConfirmFee(order)}
-                      disabled={feeLoading || feeInputVal === ''}
-                      style={{ padding: '9px 16px', backgroundColor: feeLoading ? '#d1d5db' : '#f59e0b', color: '#1c1917', border: 'none', borderRadius: '8px', fontWeight: 800, fontSize: '0.85rem', cursor: feeLoading || feeInputVal === '' ? 'not-allowed' : 'pointer', flexShrink: 0 }}
+                      onClick={() => setShowFeeOverride(prev => ({ ...prev, [order.id]: true }))}
+                      style={{ background: 'transparent', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '3px', color: '#6b7280', fontSize: '0.74rem', fontWeight: 600, padding: '4px 8px', borderRadius: '6px' }}
+                      title="Cambiar tarifa manualmente"
                     >
-                      {feeLoading ? '…' : 'Confirmar'}
+                      <RotateCcw size={11} /> Cambiar
                     </button>
                   </div>
-                </div>
+                ) : (
+                  // Entrada manual (pendiente o en override)
+                  <div style={{ backgroundColor: pendingFee ? '#fffbeb' : '#fafafa', border: `1px solid ${pendingFee ? '#f59e0b' : '#e5e7eb'}`, borderRadius: '10px', padding: '12px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontWeight: 700, color: pendingFee ? '#92400e' : '#374151', marginBottom: '8px', fontSize: '0.85rem' }}>
+                      <Truck size={15} />
+                      {pendingFee ? 'Cotizar envío manualmente' : 'Cambiar tarifa de envío'}
+                    </div>
+                    <div style={{ display: 'flex', gap: '8px' }}>
+                      <div style={{ position: 'relative', flex: 1 }}>
+                        <span style={{ position: 'absolute', left: '10px', top: '50%', transform: 'translateY(-50%)', color: '#92400e', fontWeight: 700 }}>$</span>
+                        <input
+                          type="number" min="0" step="5"
+                          placeholder={feeConfirmed ? String(order.delivery_fee ?? 0) : '0'}
+                          value={feeInputVal}
+                          onChange={e => setDeliveryFeeInputs(prev => ({ ...prev, [order.id]: e.target.value }))}
+                          style={{ width: '100%', padding: '9px 9px 9px 26px', border: `1.5px solid ${pendingFee ? '#f59e0b' : '#d1d5db'}`, borderRadius: '8px', fontSize: '0.95rem', fontWeight: 700, boxSizing: 'border-box', outline: 'none' }}
+                        />
+                      </div>
+                      <button
+                        onClick={() => handleConfirmFee(order)}
+                        disabled={feeLoading || feeInputVal === ''}
+                        style={{ padding: '9px 16px', backgroundColor: feeLoading || feeInputVal === '' ? '#d1d5db' : '#f59e0b', color: '#1c1917', border: 'none', borderRadius: '8px', fontWeight: 800, fontSize: '0.85rem', cursor: feeLoading || feeInputVal === '' ? 'not-allowed' : 'pointer', flexShrink: 0 }}
+                      >
+                        {feeLoading ? '…' : 'Confirmar'}
+                      </button>
+                      {!pendingFee && (
+                        <button
+                          onClick={() => setShowFeeOverride(prev => ({ ...prev, [order.id]: false }))}
+                          style={{ padding: '9px', backgroundColor: '#f3f4f6', color: '#6b7280', border: 'none', borderRadius: '8px', cursor: 'pointer', flexShrink: 0 }}
+                          title="Cancelar"
+                        >
+                          <X size={16} />
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                )}
               </div>
             )}
 

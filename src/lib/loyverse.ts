@@ -80,6 +80,11 @@ export async function createLoyverseReceipt(order: {
   delivery_address?: string;
   payment_method?: string;
   payment_status?: string;
+  delivery_lat?: number;
+  delivery_lng?: number;
+  delivery_distance_km?: number;
+  delivery_fee?: number;
+  delivery_fee_confirmed?: boolean;
 }) {
   const formatItemCustomizations = (item: any): string[] => {
     const parts: string[] = [];
@@ -142,7 +147,14 @@ export async function createLoyverseReceipt(order: {
   // Formatear el Tipo de Servicio para el Ticket de Cocina / POS de Loyverse
   let serviceTypeText = '[PARA RECOGER EN SUCURSAL]';
   if (order.service_type === 'delivery') {
-    serviceTypeText = `[ENVÍO] Dir: ${order.delivery_address || 'No especificada'}`;
+    let mapsLink = '';
+    if (order.delivery_lat !== undefined && order.delivery_lng !== undefined && order.delivery_lat !== null) {
+      mapsLink = ` | 📍 maps.google.com/?q=${order.delivery_lat},${order.delivery_lng}`;
+    }
+    const distance = order.delivery_distance_km !== undefined && order.delivery_distance_km !== null ? ` | ${order.delivery_distance_km} km` : '';
+    const feeInfo = order.delivery_fee_confirmed && order.delivery_fee !== undefined ? ` | Tarifa: $${order.delivery_fee}` : '';
+    
+    serviceTypeText = `[ENVÍO] Dir: ${order.delivery_address || 'No especificada'}${mapsLink}${distance}${feeInfo}`;
   } else if (order.service_type === 'dine_in' || order.service_type === 'local' || order.service_type === 'comer_local') {
     serviceTypeText = '[COMER EN LOCAL (MESA)]';
   }

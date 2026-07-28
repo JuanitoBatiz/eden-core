@@ -32,8 +32,9 @@ import {
   QrCode
 } from 'lucide-react';
 import { MenuItem, MenuCategory, CATEGORIES as fallbackCategories, MENU_ITEMS as fallbackMenuItems, SALAD_OPTIONS as fallbackSaladOptions } from '@/lib/menuData';
-import { SmsRequest, VerifyOtpRequest, OrderCreateRequest } from '@/types/api-contracts';
+import { SmsRequest, VerifyOtpRequest, OrderCreateRequest, DeliveryQuote } from '@/types/api-contracts';
 import ProductImage from '@/components/ProductImage';
+import DeliveryAddressSelector from '@/components/DeliveryAddressSelector';
 import ScrollRevealItem from '@/components/ScrollRevealItem';
 
 // Helper local icon
@@ -148,7 +149,10 @@ export default function MenuPage() {
 
   // Service Type State
   const [serviceType, setServiceType] = useState<'pickup' | 'delivery' | 'dine_in'>('pickup');
+  // Delivery GPS State (solo activo cuando serviceType === 'delivery')
   const [deliveryAddress, setDeliveryAddress] = useState('');
+  const [deliveryCoords, setDeliveryCoords] = useState<{ lat: number; lng: number } | null>(null);
+  const [deliveryQuote, setDeliveryQuote] = useState<DeliveryQuote | null>(null);
 
   // Active Orders State (For floating banner)
   const [activeOrders, setActiveOrders] = useState<any[]>([]);
@@ -613,7 +617,13 @@ export default function MenuPage() {
         items: cart,
         notes: finalNotes,
         service_type: serviceType === 'dine_in' ? 'pickup' : serviceType,
-        delivery_address: serviceType === 'delivery' ? deliveryAddress : undefined
+        delivery_address: serviceType === 'delivery' ? deliveryAddress : undefined,
+        // Campos GPS — solo se envían para delivery
+        ...(serviceType === 'delivery' && deliveryCoords ? {
+          delivery_lat: deliveryCoords.lat,
+          delivery_lng: deliveryCoords.lng,
+          delivery_zone_id: deliveryQuote?.zone?.id,
+        } : {}),
       };
 
       const res = await fetch('/api/orders', {
@@ -656,6 +666,9 @@ export default function MenuPage() {
 
       // Éxito: limpiar carrito y redirigir al estado de la orden
       saveCart([]);
+      setDeliveryCoords(null);
+      setDeliveryQuote(null);
+      setDeliveryAddress('');
       setIsAuthOpen(false);
       router.push(`/orden/${data.order.id}`);
 
@@ -1828,29 +1841,22 @@ export default function MenuPage() {
                   </div>
 
                   {serviceType === 'delivery' && (
-                    <div className="delivery-address-box">
-                      <input
-                        type="text"
-                        className="delivery-address-input"
-                        placeholder="Calle, núm., col. y referencias (ej. portón negro)..."
-                        value={deliveryAddress}
-                        onChange={e => setDeliveryAddress(e.target.value)}
-                        autoFocus
-                      />
-                      <span className="delivery-hint"> Te lo llevamos caliente y fresco hasta tu puerta</span>
-                      {/* Delivery fee notice */}
-                      <div style={{
-                        marginTop: '10px', padding: '10px 12px',
-                        backgroundColor: '#fffbeb', border: '1px solid #f59e0b',
-                        borderRadius: '8px', fontSize: '0.8rem', color: '#78350f',
-                        display: 'flex', gap: '8px', alignItems: 'flex-start', lineHeight: '1.4'
-                      }}>
-                        <Bike size={14} style={{ flexShrink: 0, marginTop: '1px', color: '#f59e0b' }} />
-                        <span>
-                          <strong>Costo de envío por confirmar:</strong> Revisaremos tu dirección y te confirmaremos la tarifa antes de empezar a preparar tu pedido.
-                        </span>
-                      </div>
-                    </div>
+                    <DeliveryAddressSelector
+                      isAuthenticated={isAuthenticated}
+                      confirmedAddress={deliveryAddress || null}
+                      confirmedQuote={deliveryQuote}
+                      onAddressConfirmed={({ address, lat, lng, quote }) => {
+                        setDeliveryAddress(address);
+                        setDeliveryCoords({ lat, lng });
+                        setDeliveryQuote(quote);
+                        setErrorMsg('');
+                      }}
+                      onClear={() => {
+                        setDeliveryAddress('');
+                        setDeliveryCoords(null);
+                        setDeliveryQuote(null);
+                      }}
+                    />
                   )}
                 </div>
 
@@ -1866,8 +1872,12 @@ export default function MenuPage() {
                 <button
                   className="checkout-btn"
                   onClick={() => {
-                    if (serviceType === 'delivery' && !deliveryAddress.trim()) {
-                      setErrorMsg('Por favor ingresa tu dirección de entrega para el pedido a domicilio.');
+                    if (serviceType === 'delivery' && !deliveryCoords) {
+                      setErrorMsg('Por favor selecciona tu dirección de entrega y calcula el costo de envío.');
+                      return;
+                    }
+                    if (serviceType === 'delivery' && !deliveryQuote?.in_range) {
+                      setErrorMsg('La dirección seleccionada está fuera de nuestra zona de entrega.');
                       return;
                     }
                     setErrorMsg('');
