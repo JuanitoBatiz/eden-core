@@ -990,7 +990,7 @@ export default function OrderStatusPage() {
 
             <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '1rem', fontWeight: 700, marginTop: '12px', paddingTop: '10px', borderTop: '1px dashed var(--color-ochre-light)', color: 'var(--color-green-dark)' }}>
               <span>Subtotal</span>
-              <span>${order.total}</span>
+              <span>${order.total - (order.service_type === 'delivery' ? (order.delivery_fee ?? 0) : 0)}</span>
             </div>
 
             {order.service_type === 'delivery' && (
@@ -1009,7 +1009,7 @@ export default function OrderStatusPage() {
               <span>
                 {order.service_type === 'delivery' && !order.delivery_fee_confirmed
                   ? <span style={{ fontSize: '0.9rem', color: '#92400e', fontStyle: 'italic' }}>Pendiente de cotización</span>
-                  : `$${order.total + (order.service_type === 'delivery' ? (order.delivery_fee ?? 0) : 0)}`
+                  : `$${order.total}`
                 }
               </span>
             </div>

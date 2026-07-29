@@ -57,7 +57,7 @@ const NEXT_LABEL: Record<string, string> = {
 // Genera el deep-link a Google Maps con navegación vuelta al restaurante
 const buildMapsNavUrl = (order: DeliveryOrder): string => {
   if (order.delivery_lat && order.delivery_lng) {
-    return `https://www.google.com/maps/dir/?api=1&destination=${order.delivery_lat},${order.delivery_lng}&travelmode=driving`;
+    return `https://www.google.com/maps/search/?api=1&query=${order.delivery_lat},${order.delivery_lng}`;
   }
   if (order.delivery_address) {
     return `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(order.delivery_address)}&travelmode=driving`;

@@ -108,7 +108,11 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
           service_type: order.service_type,
           delivery_address: order.delivery_address,
           payment_method: order.payment_method || 'transferencia',
-          payment_status: 'payment_approved'
+          payment_status: 'payment_approved',
+          delivery_fee: order.delivery_fee,
+          delivery_lat: order.delivery_lat,
+          delivery_lng: order.delivery_lng,
+          delivery_fee_confirmed: order.delivery_fee_confirmed,
         });
 
         if (loyverseResult?.receipt_id) {

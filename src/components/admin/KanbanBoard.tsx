@@ -56,7 +56,7 @@ export default function KanbanBoard({
     const lat = (order as any).delivery_lat;
     const lng = (order as any).delivery_lng;
     if (lat && lng) {
-      return `https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}&travelmode=driving`;
+      return `https://www.google.com/maps/search/?api=1&query=${lat},${lng}`;
     }
     if (order.delivery_address) {
       return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(order.delivery_address)}`;
@@ -395,10 +395,10 @@ export default function KanbanBoard({
             <div className="kanban-modal-section">
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <span style={{ fontSize: '0.85rem', color: 'var(--color-text-muted)' }}>
-                  {order.service_type === 'delivery' && feeConfirmed ? 'Total (con envío)' : 'Total productos'}
+                  {order.service_type === 'delivery' && feeConfirmed ? 'Total (con envío)' : 'Total'}
                 </span>
                 <span style={{ fontWeight: 900, fontSize: '1.2rem', color: 'var(--color-green-dark)' }}>
-                  ${order.service_type === 'delivery' && feeConfirmed ? (order.total + (order.delivery_fee ?? 0)) : order.total}
+                  ${order.total}
                   {order.service_type === 'delivery' && !feeConfirmed && (
                     <span style={{ fontSize: '0.75rem', color: '#f59e0b', fontWeight: 600, marginLeft: '6px' }}>+ envío</span>
                   )}

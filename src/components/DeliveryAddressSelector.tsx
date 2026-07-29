@@ -17,7 +17,7 @@
  */
 
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { MapPin, Navigation, Search, Star, Trash2, X, ChevronUp, ChevronDown, Bike, CheckCircle2, AlertCircle, Loader2, Clock } from 'lucide-react';
+import { MapPin, LocateFixed, Search, Star, Trash2, X, ChevronUp, ChevronDown, Bike, CheckCircle2, AlertCircle, Loader2, History, Edit2, Bookmark } from 'lucide-react';
 import { DeliveryQuote, SavedAddress } from '@/types/api-contracts';
 
 declare global {
@@ -132,6 +132,7 @@ export default function DeliveryAddressSelector({
   const [showSearchInput, setShowSearchInput] = useState(false);
   const [searchFocused, setSearchFocused] = useState(false);
   const [fallbackInput, setFallbackInput] = useState('');
+  const [showHint, setShowHint] = useState(true);
 
   const mapDivRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<any>(null);
@@ -148,6 +149,14 @@ export default function DeliveryAddressSelector({
     style.textContent = CSS_ANIMATIONS;
     document.head.appendChild(style);
   }, []);
+
+  // ── Ocultar Hint después de 3.5 segundos ──
+  useEffect(() => {
+    if (mapsReady) {
+      const timer = setTimeout(() => setShowHint(false), 3500);
+      return () => clearTimeout(timer);
+    }
+  }, [mapsReady]);
 
   // ── Cargar Google Maps ─────────────────────────────────────────────────────
   useEffect(() => {
@@ -371,8 +380,9 @@ export default function DeliveryAddressSelector({
 
       const finalLat = finalCoords?.lat ?? data.lat ?? 0;
       const finalLng = finalCoords?.lng ?? data.lng ?? 0;
+      const finalAddress = (hasGoogleMaps ? addressLine : fallbackInput) || 'Ubicación seleccionada en el mapa';
 
-      onAddressConfirmed({ address: hasGoogleMaps ? addressLine : fallbackInput, lat: finalLat, lng: finalLng, quote: data });
+      onAddressConfirmed({ address: finalAddress, lat: finalLat, lng: finalLng, quote: data });
 
       if (wantToSave && saveLabel.trim() && isAuthenticated) {
         setIsSaving(true);
@@ -394,45 +404,44 @@ export default function DeliveryAddressSelector({
     }
   };
 
-  // ── Vista: Dirección ya confirmada ─────────────────────────────────────────
-  if (confirmedAddress && confirmedQuote?.in_range) {
-    return (
-      <div className="das-fadeUp" style={{
-        marginTop: 12,
-        borderRadius: 16,
-        backgroundColor: '#ffffff',
-        border: '1px solid #e5e7eb',
-        boxShadow: '0 4px 15px rgba(0,0,0,0.04)',
-        padding: '16px',
-        display: 'flex',
-        gap: 12,
-        alignItems: 'center',
+  // ── Vista: Dirección ya confirmada (Extraída para reusar) ──
+  const ConfirmedView = () => (
+    <div className="das-fadeUp" style={{
+      marginTop: 12,
+      borderRadius: 16,
+      backgroundColor: '#ffffff',
+      border: '1px solid #e5e7eb',
+      boxShadow: '0 4px 15px rgba(0,0,0,0.04)',
+      padding: '16px',
+      display: 'flex',
+      gap: 12,
+      alignItems: 'center',
+    }}>
+      <div style={{
+        flexShrink: 0, width: 44, height: 44, borderRadius: '50%',
+        backgroundColor: 'rgba(212,163,95,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center'
       }}>
-        <div style={{
-          flexShrink: 0, width: 44, height: 44, borderRadius: '50%',
-          backgroundColor: 'rgba(212,163,95,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center'
-        }}>
-          <MapPin size={22} color="#d4a35f" />
-        </div>
-        <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ fontWeight: 700, fontSize: '0.75rem', color: '#6b7a99', textTransform: 'uppercase', letterSpacing: '1px', marginBottom: 4 }}>Enviar a:</div>
-          <div style={{ fontSize: '0.9rem', color: '#1B3B2B', fontWeight: 600, lineHeight: 1.3, wordBreak: 'break-word' }}>{confirmedAddress}</div>
-          <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: '0.8rem', color: '#d4a35f', fontWeight: 700, marginTop: 6 }}>
-            <Bike size={14} />
-            <span>${confirmedQuote.fee} envío {confirmedQuote.distance_km != null && `(${confirmedQuote.distance_km} km)`}</span>
-          </div>
-        </div>
-        <button onClick={onClear} style={{
-          background: '#f9f9f9', border: '1px solid #e5e7eb', cursor: 'pointer', color: '#1B3B2B', padding: 8, borderRadius: 10, display: 'flex', alignItems: 'center', flexShrink: 0
-        }} title="Cambiar dirección" type="button">
-          <Edit2 size={16} />
-        </button>
+        <MapPin size={22} color="#d4a35f" />
       </div>
-    );
-  }
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <div style={{ fontWeight: 700, fontSize: '0.75rem', color: '#6b7a99', textTransform: 'uppercase', letterSpacing: '1px', marginBottom: 4 }}>Enviar a:</div>
+        <div style={{ fontSize: '0.9rem', color: '#1B3B2B', fontWeight: 600, lineHeight: 1.3, wordBreak: 'break-word' }}>{confirmedAddress}</div>
+        <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: '0.8rem', color: '#d4a35f', fontWeight: 700, marginTop: 6 }}>
+          <Bike size={14} />
+          <span>${confirmedQuote?.fee} envío {confirmedQuote?.distance_km != null && `(${confirmedQuote.distance_km} km)`}</span>
+        </div>
+      </div>
+      <button onClick={onClear} style={{
+        background: '#f9f9f9', border: '1px solid #e5e7eb', cursor: 'pointer', color: '#1B3B2B', padding: 8, borderRadius: 10, display: 'flex', alignItems: 'center', flexShrink: 0
+      }} title="Cambiar dirección" type="button">
+        <Edit2 size={16} />
+      </button>
+    </div>
+  );
 
   // ── Vista Fallback (sin API key de Google) ─────────────────────────────────
   if (!hasGoogleMaps) {
+    if (confirmedAddress && confirmedQuote?.in_range) return <ConfirmedView />;
     return (
       <div style={S.fallbackWrap}>
         <div style={S.fallbackTitle}>
@@ -455,10 +464,14 @@ export default function DeliveryAddressSelector({
   }
 
   // ── Vista Principal: Mapa Premium ──────────────────────────────────────────
+  const isConfirmed = confirmedAddress && confirmedQuote?.in_range;
+
   return (
     <div style={S.root}>
-      {/* ── Contenedor del mapa ── */}
-      <div style={S.mapWrap}>
+      {isConfirmed ? <ConfirmedView /> : null}
+
+      {/* ── Contenedor del mapa (oculto si ya se confirmó) ── */}
+      <div style={{ ...S.mapWrap, display: isConfirmed ? 'none' : 'block' }}>
         {/* Spinner de carga del mapa */}
         {!mapsReady && (
           <div style={S.mapLoading}>
@@ -519,7 +532,7 @@ export default function DeliveryAddressSelector({
                 <div style={{ display: 'flex', gap: 6, flexShrink: 0 }}>
                   {isAuthenticated && savedAddresses.length > 0 && (
                     <button type="button" onClick={() => setShowSaved(v => !v)} style={S.actionBtn} title="Mis direcciones">
-                      <Clock size={15} color="#1B3B2B" />
+                      <History size={15} color="#1B3B2B" />
                     </button>
                   )}
                 </div>
@@ -538,25 +551,30 @@ export default function DeliveryAddressSelector({
       disabled={isLocating}
     >
       {isLocating
-        ? <Loader2 size={20} color="#1B3B2B" className="das-spin" />
-        : <Navigation size={20} color={isLocating ? '#1B3B2B' : '#6b7a99'} fill={isLocating ? '#1B3B2B' : 'none'} className={isLocating ? 'das-pulse-loc' : ''} />
+        ? <><Loader2 size={18} color="#1B3B2B" className="das-spin" /><span style={S.locateBtnText}>Ubicando...</span></>
+        : <><LocateFixed size={18} color="#1B3B2B" className={isLocating ? 'das-pulse-loc' : ''} /><span style={S.locateBtnText}>Mi ubicación</span></>
       }
     </button>
   )}
 
-        {/* ── Etiqueta "Arrastra el mapa" ── */}
+        {/* ── Overlay Inicial "Arrastra el mapa" ── */}
         {mapsReady && !addressLine && (
-          <div style={S.dragHint} className="das-fadeUp">
-            Arrastra el mapa para elegir tu dirección
+          <div style={{
+            ...S.dragHintOverlay,
+            opacity: showHint ? 1 : 0,
+            visibility: showHint ? 'visible' : 'hidden',
+          }}>
+            <div style={S.dragHintText}>Arrastra el mapa</div>
+            <div style={S.dragHintSubtext}>para elegir tu punto de entrega</div>
           </div>
         )}
       </div>
 
-      {/* ── Panel de Direcciones Guardadas ── */}
-      {showSaved && isAuthenticated && savedAddresses.length > 0 && (
+      {/* ── Panel de Direcciones Guardadas (Oculto si se confirmó) ── */}
+      {!isConfirmed && showSaved && isAuthenticated && savedAddresses.length > 0 && (
         <div style={S.savedPanel} className="das-fadeUp">
           <div style={S.savedPanelHeader}>
-            <Clock size={14} color="#1B3B2B" />
+            <History size={14} color="#1B3B2B" />
             <span style={{ fontWeight: 700, fontSize: '0.78rem', color: '#1B3B2B', letterSpacing: '0.5px', textTransform: 'uppercase' }}>Mis direcciones</span>
             <button type="button" onClick={() => setShowSaved(false)} style={S.searchClose}><X size={14} color="#1B3B2B" /></button>
           </div>
@@ -582,8 +600,8 @@ export default function DeliveryAddressSelector({
         </div>
       )}
 
-      {/* ── Bottom Sheet: Confirmar Envío ── */}
-      {mapsReady && (
+      {/* ── Bottom Sheet: Confirmar Envío (Oculto si se confirmó) ── */}
+      {!isConfirmed && mapsReady && (
         <div style={S.bottomSheet} className="das-fadeUp">
           {/* Línea de la dirección detectada */}
           <div style={S.bottomAddressRow}>
@@ -611,20 +629,63 @@ export default function DeliveryAddressSelector({
 
           {/* Opción de guardar dirección */}
           {isAuthenticated && addressLine && (
-            <div style={{ marginBottom: 4 }}>
-              <label style={S.saveLabel}>
-                <input type="checkbox" checked={wantToSave} onChange={e => setWantToSave(e.target.checked)} style={{ accentColor: '#d4a35f', width: 14, height: 14, flexShrink: 0 }} />
-                <span>Guardar esta dirección</span>
-              </label>
+            <div style={{ marginBottom: wantToSave ? 12 : 16 }}>
+              <div
+                onClick={() => setWantToSave(!wantToSave)}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  padding: '12px 14px',
+                  backgroundColor: wantToSave ? 'rgba(212,163,95,0.06)' : '#f9fafb',
+                  border: `1px solid ${wantToSave ? 'rgba(212,163,95,0.3)' : '#e5e7eb'}`,
+                  borderRadius: 12,
+                  cursor: 'pointer',
+                  transition: 'all 0.2s ease',
+                  marginBottom: wantToSave ? 8 : 0,
+                }}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                  <Bookmark size={16} color={wantToSave ? '#d4a35f' : '#6b7a99'} />
+                  <span style={{ fontSize: '0.85rem', fontWeight: 600, color: wantToSave ? '#1B3B2B' : '#4b5563' }}>Guardar esta dirección</span>
+                </div>
+                {/* Toggle Switch */}
+                <div style={{
+                  width: 36, height: 20, borderRadius: 10,
+                  backgroundColor: wantToSave ? '#d4a35f' : '#d1d5db',
+                  position: 'relative', transition: 'background-color 0.2s'
+                }}>
+                  <div style={{
+                    width: 16, height: 16, borderRadius: '50%', backgroundColor: '#fff',
+                    position: 'absolute', top: 2, left: wantToSave ? 18 : 2,
+                    transition: 'left 0.2s', boxShadow: '0 1px 3px rgba(0,0,0,0.2)'
+                  }} />
+                </div>
+              </div>
+              
               {wantToSave && (
-                <input
-                  type="text"
-                  value={saveLabel}
-                  onChange={e => setSaveLabel(e.target.value)}
-                  placeholder='Ej: "Casa", "Trabajo"...'
-                  maxLength={30}
-                  style={{ ...S.saveLabelInput }}
-                />
+                <div className="das-fadeUp">
+                  <input
+                    type="text"
+                    value={saveLabel}
+                    onChange={e => setSaveLabel(e.target.value)}
+                    placeholder='Nombre (Ej: "Casa", "Oficina")'
+                    maxLength={30}
+                    autoFocus
+                    style={{
+                      width: '100%',
+                      padding: '12px 14px',
+                      backgroundColor: '#ffffff',
+                      border: '1px solid #d4a35f',
+                      borderRadius: 10,
+                      color: '#1B3B2B',
+                      fontSize: '0.85rem',
+                      outline: 'none',
+                      boxShadow: '0 0 0 3px rgba(212,163,95,0.1)',
+                      boxSizing: 'border-box'
+                    }}
+                  />
+                </div>
               )}
             </div>
           )}
@@ -799,40 +860,59 @@ const S: Record<string, React.CSSProperties> = {
     bottom: 16,
     right: 14,
     zIndex: 10,
-    width: 44,
     height: 44,
-    borderRadius: '50%',
+    padding: '0 16px',
+    borderRadius: 22,
     backgroundColor: '#ffffff',
     border: '1px solid #e5e7eb',
     boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
     display: 'flex',
     alignItems: 'center',
-    justifyContent: 'center',
+    gap: 8,
     cursor: 'pointer',
     transition: 'all 0.2s ease',
   },
+  locateBtnText: {
+    fontSize: '0.82rem',
+    fontWeight: 700,
+    color: '#1B3B2B',
+  },
   locateBtnActive: {
-    borderColor: '#1B3B2B',
+    border: '1px solid #1B3B2B',
     backgroundColor: '#f3f4f6',
   },
 
-  // ── Hint de arrastre ──
-  dragHint: {
+  // ── Overlay Inicial de Arrastre ──
+  dragHintOverlay: {
     position: 'absolute',
-    bottom: 20,
-    left: '50%',
-    transform: 'translateX(-50%)',
-    backgroundColor: 'rgba(27, 59, 43, 0.9)',
-    backdropFilter: 'blur(8px)',
-    WebkitBackdropFilter: 'blur(8px)',
-    color: '#ffffff',
-    fontSize: '0.74rem',
-    padding: '6px 14px',
-    borderRadius: 20,
-    border: '1px solid rgba(255,255,255,0.1)',
-    whiteSpace: 'nowrap',
+    inset: 0,
+    display: 'flex',
+    flexDirection: 'column',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(255, 255, 255, 0.25)', // Capa muy ligera
+    backdropFilter: 'blur(10px)',
+    WebkitBackdropFilter: 'blur(10px)',
+    zIndex: 20, // Por encima del mapa y del pin
     pointerEvents: 'none',
-    zIndex: 4,
+    transition: 'opacity 0.8s ease, visibility 0.8s ease',
+  },
+  dragHintText: {
+    color: '#1B3B2B',
+    fontWeight: 800,
+    fontSize: '1.4rem',
+    textAlign: 'center',
+    textShadow: '0 2px 10px rgba(255,255,255,0.9)',
+    letterSpacing: '0.5px',
+  },
+  dragHintSubtext: {
+    color: '#1B3B2B',
+    fontWeight: 600,
+    fontSize: '0.95rem',
+    textAlign: 'center',
+    marginTop: 8,
+    opacity: 0.9,
+    textShadow: '0 1px 6px rgba(255,255,255,0.8)',
   },
 
   // ── Panel de guardadas ──

@@ -144,6 +144,16 @@ export async function createLoyverseReceipt(order: {
     };
   });
 
+  if (order.service_type === 'delivery' && order.delivery_fee && order.delivery_fee > 0) {
+    lineItems.push({
+      variant_id: LOYVERSE_GENERIC_VARIANT_ID,
+      quantity: 1,
+      price: order.delivery_fee,
+      note: 'Costo de Envío a Domicilio',
+      line_note: 'Costo de Envío a Domicilio'
+    });
+  }
+
   // Formatear el Tipo de Servicio para el Ticket de Cocina / POS de Loyverse
   let serviceTypeText = '[PARA RECOGER EN SUCURSAL]';
   if (order.service_type === 'delivery') {

@@ -188,6 +188,22 @@ export default function MenuPage() {
     }
   }, []);
 
+  // Lock body scroll when a modal is open to prevent double scrollbars and background scrolling
+  useEffect(() => {
+    if (isCartOpen || selectedProduct !== null || isAuthOpen) {
+      document.body.style.overflow = 'hidden';
+      document.documentElement.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = '';
+      document.documentElement.style.overflow = '';
+    }
+    return () => {
+      document.body.style.overflow = '';
+      document.documentElement.style.overflow = '';
+    };
+  }, [isCartOpen, selectedProduct, isAuthOpen]);
+
+
   // Silent Auth Check & Hybrid 30-Day Session Backup on Mount
   useEffect(() => {
     // 1. Restaurar al instante si existe sesión local con menos de 30 días exactos de inactividad

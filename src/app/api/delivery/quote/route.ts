@@ -146,12 +146,12 @@ export async function POST(req: Request) {
       calculationMethod = 'haversine_fallback';
     }
 
-    // Hard ceiling for delivery
-    if (distanceKm > 30) {
+    // Límite máximo operativo estricto (5.0 km) basado en la tabla de zonas
+    if (distanceKm > 5.0) {
       return NextResponse.json({
         success: true,
         in_range: false,
-        message: 'La dirección supera nuestro límite máximo de distancia operativa (30 km).'
+        message: `Tu ubicación está a ${distanceKm.toFixed(1)} km. Por el momento nuestro límite de entrega a domicilio es de 5.0 km. ¡Te invitamos a visitarnos o recoger tu pedido en tienda!`
       });
     }
 

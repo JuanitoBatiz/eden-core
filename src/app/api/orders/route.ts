@@ -53,13 +53,16 @@ export async function GET(req: Request) {
     // Endpoint protegido por requireRole → usar adminClient para bypassear RLS
     const adminSupabase = createAdminClient();
 
+    // Solo mostrar órdenes de las últimas 24 horas — el kanban es una vista operativa del día
     const { searchParams } = new URL(req.url);
     const statusQuery = searchParams.get('status');
+    const since = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
 
     let query = adminSupabase
       .from('orders')
       .select('*')
-      .in('status', ['received', 'in_preparation', 'ready', 'in_transit', 'delivered', 'cancelled'])
+      .in('status', ['received', 'awaiting_payment', 'in_preparation', 'ready', 'in_transit', 'delivered', 'cancelled'])
+      .gte('created_at', since)
       .order('created_at', { ascending: true });
 
     if (statusQuery) {
@@ -182,14 +185,14 @@ export async function POST(req: Request) {
       }
       
       // 5b. Distancia no debe exceder límite rígido
-      if (serverDistanceKm > 30) {
-        return NextResponse.json({ error: 'La dirección supera nuestro límite máximo de distancia operativa (30 km).' }, { status: 422 });
+      if (serverDistanceKm > 5.0) {
+        return NextResponse.json({ error: 'La dirección supera nuestro límite máximo de distancia operativa (5.0 km).' }, { status: 422 });
       }
 
       // 5c. Buscar la zona de entrega correspondiente en la BD
       const { data: zones } = await adminSupabase
         .from('delivery_zones')
-        .select('id, label, max_distance_km, fee, min_order_amount')
+        .select('id, label, max_distance_km, fee')
         .eq('active', true)
         .order('max_distance_km', { ascending: true });
 
@@ -202,12 +205,6 @@ export async function POST(req: Request) {
         );
       }
 
-      if (matchedZone.min_order_amount && total < matchedZone.min_order_amount) {
-        return NextResponse.json(
-          { error: `El pedido mínimo para esta zona es de $${matchedZone.min_order_amount}. Te faltan $${(matchedZone.min_order_amount - total).toFixed(2)}.` },
-          { status: 422 }
-        );
-      }
 
       serverDeliveryFee = matchedZone.fee;
       resolvedZoneId = matchedZone.id;
