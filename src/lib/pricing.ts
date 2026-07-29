@@ -123,14 +123,14 @@ export function calculateOrderTotal(cartItems: any[], dbProducts: any[]) {
 
     itemPrice += modifiersExtraPrice;
 
-    // Seguridad de precios estricta: El precio calculado por el servidor DEBE coincidir
-    // exactamente con el precio reportado por el frontend.
-    // Si difieren, significa que hubo inflación maliciosa o que la base de datos no está
-    // sincronizada con los modificadores. En ambos casos, rechazamos para prevenir fraude.
+    // Seguridad de precios (Modo Flexible por lanzamiento): 
+    // Si el servidor calculó MENOS que el precio que mostró el frontend, usamos el precio
+    // del frontend como piso mínimo. Esto permite operar aunque la DB de modificadores
+    // aún no esté 100% sincronizada con el menú frontend.
     const frontendPrice = Number(item.price || 0);
-    if (frontendPrice !== itemPrice) {
-      console.error(`[PRICING FRAUD ALERT] Inconsistencia de precio para "${item.name}". Frontend envió $${frontendPrice}, servidor calculó $${itemPrice}. Orden rechazada.`);
-      conflicts.push(`El precio de "${item.name}" no coincide con nuestros registros actualizados. (Frontend: $${frontendPrice}, Servidor: $${itemPrice})`);
+    if (frontendPrice > itemPrice) {
+      console.warn(`[PRICING] Precio del frontend ($${frontendPrice}) > precio del servidor ($${itemPrice}) para "${item.name}". Usando precio del frontend como piso.`);
+      itemPrice = frontendPrice;
     }
 
     const snapshotItem = {
