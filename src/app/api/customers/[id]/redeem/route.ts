@@ -75,7 +75,26 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
       console.warn(`⚠️ [LOYALTY REDEEM RATE LIMIT] Intento de doble gasto bloqueado para usuario ${customerId}.`);
       return NextResponse.json({ error: 'Operación en proceso. Espera unos segundos para realizar otro canje.' }, { status: 429 });
     }
-    // ------------------------------------------------------
+    // --- PROTECCIÓN DE CONCURRENCIA EN BASE DE DATOS (Anti-Doble Gasto) ---
+    // Verificamos si este cliente tiene un canje registrado en los últimos 10 segundos
+    const tenSecondsAgo = new Date(Date.now() - 10000).toISOString();
+    const { data: recentRedemptions, error: lockErr } = await adminSupabase
+      .from('loyalty_redemptions')
+      .select('id')
+      .eq('user_id', customerId)
+      .gte('created_at', tenSecondsAgo)
+      .limit(1);
+
+    if (lockErr) {
+      console.error('❌ [LOYALTY REDEEM LOCK ERROR] Error verificando concurrencia:', lockErr.message);
+      return NextResponse.json({ error: 'Error verificando seguridad de la transacción.' }, { status: 500 });
+    }
+
+    if (recentRedemptions && recentRedemptions.length > 0) {
+      console.warn(`⚠️ [LOYALTY REDEEM CONCURRENCY LOCK] Transacción bloqueada por doble gasto de ${customerId}.`);
+      return NextResponse.json({ error: 'Operación bloqueada: Ya realizaste un canje hace unos segundos.' }, { status: 429 });
+    }
+    // ------------------------------------------------------------------------
 
     // --- BLOQUEO DE SEGURIDAD (Validación estricta de saldo) ---
     const requiredPoints = benefit.points_required || benefit.points_cost || 0;

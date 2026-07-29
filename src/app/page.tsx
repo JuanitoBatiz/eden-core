@@ -505,6 +505,33 @@ export default function MenuPage() {
     }
 
     try {
+      // 1. Verificar si el celular ya existe con otro nombre
+      const checkRes = await fetch('/api/auth/check-phone', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ phone: customerPhone })
+      });
+      
+      if (checkRes.ok) {
+        const checkData = await checkRes.json();
+        const currentNameLower = customerName.trim().toLowerCase();
+        
+        if (checkData.exists && checkData.nameHash) {
+          // Validamos si el nombre ingresado coincide con el de la BD, usando el hash
+          const currentNameHash = btoa(unescape(encodeURIComponent(currentNameLower)));
+          
+          if (currentNameHash !== checkData.nameHash) {
+            const proceed = window.confirm(`El número de celular ${customerPhone} ya está registrado a nombre de "${checkData.name}".\n\n¿Deseas continuar e iniciar sesión en esta cuenta?`);
+            if (!proceed) {
+              return; // Cancelar flujo
+            }
+            // NOTA: No sobreescribimos customerName aquí con checkData.name porque está ofuscado.
+            // El backend simplemente ignorará el nombre enviado y usará el real del usuario existente.
+          }
+        }
+      }
+
+      // 2. Enviar SMS
       const payload: SmsRequest = { phone: customerPhone, name: customerName };
       const res = await fetch('/api/sms', {
         method: 'POST',
@@ -2009,7 +2036,7 @@ export default function MenuPage() {
                 </div>
               ) : (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', marginTop: '6px' }}>
-                  <div className="sms-code-container" style={{ margin: '8px auto 4px auto', gap: '8px' }}>
+                  <div className="sms-code-container" style={{ margin: '8px auto 4px auto', display: 'flex', gap: '6px', justifyContent: 'center', width: '100%' }}>
                     {smsCode.map((digit, index) => (
                       <input
                         key={index}
@@ -2017,7 +2044,7 @@ export default function MenuPage() {
                         type="text"
                         maxLength={1}
                         className="sms-code-input"
-                        style={{ width: '44px', height: '50px', fontSize: '1.25rem', borderRadius: '12px', fontWeight: 700 }}
+                        style={{ width: '40px', height: '46px', fontSize: '1.25rem', borderRadius: '12px', fontWeight: 700, textAlign: 'center' }}
                         value={digit}
                         onChange={e => {
                           const val = e.target.value;
