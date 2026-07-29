@@ -291,13 +291,7 @@ export default function KanbanBoard({
                         <span style={{ fontWeight: 400, fontSize: '0.78rem', marginLeft: '4px', color: '#15803d' }}>(calculado automáticamente)</span>
                       </span>
                     </div>
-                    <button
-                      onClick={() => setShowFeeOverride(prev => ({ ...prev, [order.id]: true }))}
-                      style={{ background: 'transparent', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '3px', color: '#6b7280', fontSize: '0.74rem', fontWeight: 600, padding: '4px 8px', borderRadius: '6px' }}
-                      title="Cambiar tarifa manualmente"
-                    >
-                      <RotateCcw size={11} /> Cambiar
-                    </button>
+
                   </div>
                 ) : (
                   // Entrada manual (pendiente o en override)
