@@ -144,6 +144,7 @@ export default function OrderStatusPage() {
   const [uploading, setUploading] = useState(false);
   const [uploadError, setUploadError] = useState('');
   const [showThankYou, setShowThankYou] = useState(false);
+  const [confirmingReceipt, setConfirmingReceipt] = useState(false);
   const [dynamicStep, setDynamicStep] = useState(0);
 
   // Helper universal de copiado (funciona en HTTP LAN móvil y dispara vibración háptica)
@@ -871,10 +872,24 @@ export default function OrderStatusPage() {
                 </div>
               </div>
               <button 
-                onClick={() => setShowThankYou(true)}
-                style={{ width: '100%', padding: '12px', backgroundColor: '#2e7d32', color: 'white', border: 'none', borderRadius: '10px', fontWeight: 700, fontSize: '1rem', cursor: 'pointer' }}
+                onClick={async () => {
+                  setConfirmingReceipt(true);
+                  try {
+                    await fetch(`/api/orders/${order.id}/confirm-receipt`, {
+                      method: 'POST',
+                      credentials: 'include',
+                    });
+                  } catch (e) {
+                    console.error('[CONFIRM-RECEIPT] Error de red:', e);
+                  } finally {
+                    setConfirmingReceipt(false);
+                    setShowThankYou(true);
+                  }
+                }}
+                disabled={confirmingReceipt}
+                style={{ width: '100%', padding: '12px', backgroundColor: confirmingReceipt ? '#6b9e6e' : '#2e7d32', color: 'white', border: 'none', borderRadius: '10px', fontWeight: 700, fontSize: '1rem', cursor: confirmingReceipt ? 'not-allowed' : 'pointer', opacity: confirmingReceipt ? 0.8 : 1, transition: 'all 0.2s' }}
               >
-                Pedido Recibido
+                {confirmingReceipt ? 'Confirmando...' : 'Pedido Recibido'}
               </button>
             </div>
           )}
@@ -903,10 +918,6 @@ export default function OrderStatusPage() {
                       <div className="edenpass-vip-brand" style={{ fontSize: '1rem' }}>RESTAURANTE EDÉN</div>
                       <div className="edenpass-vip-subbrand">MEMBRESÍA VIP • EDENPASS</div>
                     </div>
-                  </div>
-                  <div className="edenpass-vip-status-chip" style={{ padding: '4px 10px', fontSize: '0.65rem' }}>
-                    <ShieldCheck size={12} color="#d4a35f" />
-                    <span>SOCIO ACTIVO</span>
                   </div>
                 </div>
 

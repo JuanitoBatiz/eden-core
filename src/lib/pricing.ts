@@ -123,6 +123,16 @@ export function calculateOrderTotal(cartItems: any[], dbProducts: any[]) {
 
     itemPrice += modifiersExtraPrice;
 
+    // Seguridad de precios: Si el servidor calculó MENOS que el precio que mostró el frontend,
+    // es señal de que hay modificadores con costo que aún no están en Supabase.
+    // En ese caso usamos el precio del frontend como piso mínimo para no subcobrar al cliente.
+    // Nota: Math.max protege contra el caso inverso (alguien que envíe un precio menor para pagar menos).
+    const frontendPrice = Number(item.price || 0);
+    if (frontendPrice > itemPrice) {
+      console.warn(`[PRICING] Precio del frontend ($${frontendPrice}) > precio del servidor ($${itemPrice}) para "${item.name}". Usando precio del frontend como piso — posibles modificadores sin registrar en Supabase.`);
+      itemPrice = frontendPrice;
+    }
+
     const snapshotItem = {
       ...item,
       // We overwrite the price coming from the frontend with the server truth
@@ -131,6 +141,7 @@ export function calculateOrderTotal(cartItems: any[], dbProducts: any[]) {
     };
     validItems.push(snapshotItem);
     total += itemPrice * item.quantity;
+
   }
 
   return { total, conflicts, validItems };
