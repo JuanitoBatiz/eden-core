@@ -17,7 +17,7 @@ export async function GET(req: Request) {
       .from('orders')
       .select('id, status, created_at')
       .eq('user_id', tokenPayload.user_id)
-      .in('status', ['received', 'in_preparation', 'ready', 'in_transit'])
+      .in('status', ['received', 'awaiting_payment', 'in_preparation', 'ready', 'in_transit'])
       .order('created_at', { ascending: false });
 
     if (error) {
