@@ -40,10 +40,14 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
     }
 
     // Actualizar estado para mandarla a cocina directamente
+    // También se marca el pago como aprobado y el método como efectivo para que
+    // NO aparezca en la vista de finanzas/transferencias pendientes del cajero.
     const { error: updateErr } = await adminSupabase
       .from('orders')
       .update({
         status: 'in_preparation',
+        payment_status: 'payment_approved',
+        payment_method: 'efectivo'
       })
       .eq('id', orderId);
 

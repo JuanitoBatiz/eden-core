@@ -706,6 +706,20 @@ export default function OrderStatusPage() {
                 <p style={{ fontSize: '0.9rem', color: 'var(--color-text-muted)', margin: 0, lineHeight: '1.5' }}>Tu pedido está listo para prepararse. Confirma cómo deseas pagar:</p>
               </div>
 
+              {/* Aviso de comprobante rechazado — visible solo cuando hay un motivo de rechazo */}
+              {order.rejection_reason && (
+                <div style={{ marginBottom: '20px', padding: '14px 16px', backgroundColor: '#fef2f2', border: '1px solid #fecaca', borderRadius: '12px', display: 'flex', gap: '12px', alignItems: 'flex-start' }}>
+                  <XCircle size={20} color="#dc2626" style={{ flexShrink: 0, marginTop: '2px' }} />
+                  <div>
+                    <strong style={{ color: '#991b1b', fontSize: '0.95rem', display: 'block', marginBottom: '4px' }}>Comprobante rechazado por caja</strong>
+                    <span style={{ color: '#b91c1c', fontSize: '0.875rem', lineHeight: '1.4' }}>
+                      Motivo: {order.rejection_reason}
+                    </span>
+                    <p style={{ color: '#991b1b', fontSize: '0.8rem', margin: '6px 0 0 0' }}>Por favor sube un nuevo comprobante corregido.</p>
+                  </div>
+                </div>
+              )}
+
               <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
                 <button 
                   onClick={async () => {

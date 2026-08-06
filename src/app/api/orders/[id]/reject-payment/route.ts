@@ -46,16 +46,18 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
       return NextResponse.json({ error: 'Orden no encontrada.' }, { status: 404 });
     }
 
-    if (order.payment_status !== 'payment_submitted') {
+    if (order.payment_status !== 'payment_submitted' && order.payment_status !== 'pending_payment') {
       return NextResponse.json({ error: 'Esta orden no está pendiente de validación.' }, { status: 400 });
     }
 
-    // 3. Execute Update
+    // 3. Execute Update — resetear a pending_payment para que el cliente pueda reintentar
+    // Se guarda rejection_reason para que la UI muestre el motivo del rechazo.
     const { error: updateErr } = await adminSupabase
       .from('orders')
       .update({
-        payment_status: 'payment_rejected',
-        rejection_reason: reason.trim()
+        payment_status: 'pending_payment',
+        rejection_reason: reason.trim(),
+        proof_url: null // Limpiar el comprobante anterior rechazado
       })
       .eq('id', orderId);
 
@@ -63,7 +65,7 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
       throw new Error(`DB Error: ${updateErr.message}`);
     }
 
-    return NextResponse.json({ success: true, payment_status: 'payment_rejected' });
+    return NextResponse.json({ success: true, payment_status: 'pending_payment', message: 'Comprobante rechazado. El cliente puede reintentar.' });
 
   } catch (error: any) {
     console.error('Reject payment error:', error);
