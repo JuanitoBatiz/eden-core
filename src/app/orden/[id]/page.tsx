@@ -766,6 +766,21 @@ export default function OrderStatusPage() {
                           </div>
                         ) : bankConfig ? (
                           <div style={{ fontSize: '0.9rem', color: '#334155', display: 'flex', flexDirection: 'column', gap: '14px' }}>
+
+                            {/* ── MONTO EXACTO A TRANSFERIR ─────────────────────────── */}
+                            <div style={{ backgroundColor: '#f0fdf4', border: '2px solid #16a34a', borderRadius: '12px', padding: '14px 16px', display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                              <span style={{ fontSize: '0.75rem', fontWeight: 700, color: '#15803d', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Transfiere exactamente:</span>
+                              <span style={{ fontSize: '2rem', fontWeight: 900, color: '#166534', fontFamily: 'var(--font-serif)', lineHeight: 1.1 }}>
+                                ${order.total}
+                              </span>
+                              {order.service_type === 'delivery' && order.delivery_fee_confirmed && (
+                                <span style={{ fontSize: '0.78rem', color: '#15803d' }}>
+                                  (incluye ${order.delivery_fee} de envío + ${order.total - (order.delivery_fee ?? 0)} de productos)
+                                </span>
+                              )}
+                            </div>
+                            {/* ─────────────────────────────────────────────────────── */}
+
                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '10px' }}>
                               <span style={{ color: 'var(--color-text-muted)' }}>Banco:</span>
                               <strong style={{ color: 'var(--color-text-dark)', textAlign: 'right' }}>{bankConfig.bank_name}</strong>

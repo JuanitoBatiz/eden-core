@@ -41,10 +41,10 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
 
     const adminSupabase = createAdminClient();
 
-    // 2. Verify order exists and is a delivery order
+    // 2. Fetch order — necesitamos total y delivery_fee actual para recalcular
     const { data: order, error: fetchErr } = await adminSupabase
       .from('orders')
-      .select('id, service_type, status')
+      .select('id, service_type, status, total, delivery_fee')
       .eq('id', orderId)
       .single();
 
@@ -60,13 +60,20 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
       return NextResponse.json({ error: 'No se puede modificar una orden cancelada o entregada.' }, { status: 409 });
     }
 
-    // 3. Update delivery_fee and mark as confirmed
-    // Supabase Realtime will broadcast this UPDATE to any subscribed client
+    // 3. Recalcular el total para mantener coherencia:
+    //    nuevo_total = subtotal_actual + nueva_tarifa
+    //    donde subtotal_actual = total_actual - tarifa_anterior (o total_actual si no había tarifa)
+    const oldFee = Number(order.delivery_fee ?? 0);
+    const newTotal = Number(order.total) - oldFee + delivery_fee;
+
+    // 4. Actualizar delivery_fee, total, y marcar como confirmado.
+    //    Supabase Realtime notifica al cliente en tiempo real.
     const { error: updateErr } = await adminSupabase
       .from('orders')
       .update({
         delivery_fee: delivery_fee,
-        delivery_fee_confirmed: true
+        delivery_fee_confirmed: true,
+        total: newTotal          // ← FIX: mantener total sincronizado con la tarifa
       })
       .eq('id', orderId);
 
@@ -77,7 +84,8 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
     return NextResponse.json({
       success: true,
       delivery_fee,
-      message: `Tarifa de envío $${delivery_fee} confirmada para la orden ${orderId.slice(-4).toUpperCase()}.`
+      new_total: newTotal,
+      message: `Tarifa de envío $${delivery_fee} confirmada. Total actualizado a $${newTotal} para la orden ${orderId.slice(-4).toUpperCase()}.`
     });
 
   } catch (error: any) {

@@ -258,8 +258,12 @@ export async function createLoyverseReceipt(order: {
 
     const data = await res.json();
     console.log('✅ [LOYVERSE DIAGNOSTIC SUCCESS] Recibo creado exitosamente en Loyverse:', data);
+    // ⚠️ La API de Loyverse NO devuelve un campo "id" en el nivel raíz del recibo.
+    // El único identificador disponible es "receipt_number" (ej: "0031").
+    // Se usa receipt_number como receipt_id para que el guard en approve-payment
+    // y pay-physical detecte el recibo y actualice loyverse_receipt_id en la BD.
     return {
-      receipt_id: data.id || data.receipt_id || data.receipt_number,
+      receipt_id: data.receipt_number,
       receipt_number: data.receipt_number
     };
   } catch (error: any) {
