@@ -243,8 +243,8 @@ export default function DeliveryAddressSelector({
     // Servicios de Places para autocompletado programático.
     // AutocompleteService no necesita un input DOM — funciona aunque el input esté oculto.
     autocompleteServiceRef.current = new window.google.maps.places.AutocompleteService();
-    // PlacesService necesita un elemento DOM o el mapa para hacer getDetails.
-    placesServiceRef.current = new window.google.maps.places.PlacesService(mapDivRef.current!);
+    // PlacesService se asocia a la instancia del mapa para que maneje las atribuciones correctamente sin corromper el DOM.
+    placesServiceRef.current = new window.google.maps.places.PlacesService(map);
   }, [mapsReady, hasGoogleMaps, mapInitialized, scheduleReverseGeocode]);
 
   // ── Cargar direcciones guardadas ───────────────────────────────────────────
