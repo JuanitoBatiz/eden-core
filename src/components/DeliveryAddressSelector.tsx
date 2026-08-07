@@ -133,6 +133,8 @@ export default function DeliveryAddressSelector({
   const [searchFocused, setSearchFocused] = useState(false);
   const [fallbackInput, setFallbackInput] = useState('');
   const [showHint, setShowHint] = useState(true);
+  const [suggestions, setSuggestions] = useState<any[]>([]);
+  const [searchQuery, setSearchQuery] = useState('');
 
   const mapDivRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<any>(null);
@@ -140,6 +142,9 @@ export default function DeliveryAddressSelector({
   const autocompleteRef = useRef<any>(null);
   const geocoderRef = useRef<any>(null);
   const debounceRef = useRef<NodeJS.Timeout | null>(null);
+  const autocompleteServiceRef = useRef<any>(null);
+  const placesServiceRef = useRef<any>(null);
+  const suggestionDebounceRef = useRef<NodeJS.Timeout | null>(null);
 
   // ── Cargar CSS de animaciones ──────────────────────────────────────────────
   useEffect(() => {
@@ -235,29 +240,11 @@ export default function DeliveryAddressSelector({
       }
     });
 
-    // Autocomplete en el input flotante
-    if (inputRef.current) {
-      const ac = new window.google.maps.places.Autocomplete(inputRef.current, {
-        componentRestrictions: { country: 'mx' },
-        fields: ['geometry', 'formatted_address', 'name'],
-      });
-      ac.bindTo('bounds', map);
-      autocompleteRef.current = ac;
-      ac.addListener('place_changed', () => {
-        const place = ac.getPlace();
-        if (!place.geometry?.location) return;
-        const lat = place.geometry.location.lat();
-        const lng = place.geometry.location.lng();
-        const address = place.formatted_address || place.name || '';
-        setAddressLine(address);
-        setCoords({ lat, lng });
-        setQuoteError('');
-        map.panTo({ lat, lng });
-        map.setZoom(17);
-        setShowSearchInput(false);
-        setSearchFocused(false);
-      });
-    }
+    // Servicios de Places para autocompletado programático.
+    // AutocompleteService no necesita un input DOM — funciona aunque el input esté oculto.
+    autocompleteServiceRef.current = new window.google.maps.places.AutocompleteService();
+    // PlacesService necesita un elemento DOM o el mapa para hacer getDetails.
+    placesServiceRef.current = new window.google.maps.places.PlacesService(mapDivRef.current!);
   }, [mapsReady, hasGoogleMaps, mapInitialized, scheduleReverseGeocode]);
 
   // ── Cargar direcciones guardadas ───────────────────────────────────────────
@@ -404,6 +391,54 @@ export default function DeliveryAddressSelector({
     }
   };
 
+  // ── Buscar sugerencias con Places AutocompleteService ──────────────────────
+  const handleSearchChange = (query: string) => {
+    setSearchQuery(query);
+    if (suggestionDebounceRef.current) clearTimeout(suggestionDebounceRef.current);
+    if (!query.trim() || query.length < 2) { setSuggestions([]); return; }
+    if (!autocompleteServiceRef.current) return;
+    suggestionDebounceRef.current = setTimeout(() => {
+      autocompleteServiceRef.current.getPlacePredictions(
+        {
+          input: query,
+          componentRestrictions: { country: 'mx' },
+          location: new window.google.maps.LatLng(RESTAURANT.lat, RESTAURANT.lng),
+          radius: 50000, // 50 km de radio desde el restaurante
+        },
+        (predictions: any[], status: string) => {
+          if (status === window.google.maps.places.PlacesServiceStatus.OK && predictions) {
+            setSuggestions(predictions.slice(0, 3));
+          } else {
+            setSuggestions([]);
+          }
+        }
+      );
+    }, 300);
+  };
+
+  const handleSelectSuggestion = (placeId: string, description: string) => {
+    setSuggestions([]);
+    setSearchQuery('');
+    if (!placesServiceRef.current) return;
+    placesServiceRef.current.getDetails(
+      { placeId, fields: ['geometry', 'formatted_address', 'name'] },
+      (place: any, status: string) => {
+        if (status === window.google.maps.places.PlacesServiceStatus.OK && place?.geometry?.location) {
+          const lat = place.geometry.location.lat();
+          const lng = place.geometry.location.lng();
+          const address = place.formatted_address || place.name || description;
+          setAddressLine(address);
+          setCoords({ lat, lng });
+          setQuoteError('');
+          mapRef.current?.panTo({ lat, lng });
+          mapRef.current?.setZoom(17);
+          setShowSearchInput(false);
+          setSearchFocused(false);
+        }
+      }
+    );
+  };
+
   // ── Vista: Dirección ya confirmada (Extraída para reusar) ──
   const ConfirmedView = () => (
     <div className="das-fadeUp" style={{
@@ -501,20 +536,54 @@ export default function DeliveryAddressSelector({
         {mapsReady && (
           <div style={S.searchBar}>
             {showSearchInput ? (
-              <div style={S.searchInputWrap} className="das-fadeUp">
-                <Search size={16} color="#6b7a99" style={{ flexShrink: 0 }} />
-                <input
-                  ref={inputRef}
-                  type="text"
-                  autoFocus
-                  placeholder="Busca tu calle, colonia..."
-                  style={S.searchInput}
-                  onFocus={() => setSearchFocused(true)}
-                  onBlur={() => setTimeout(() => setSearchFocused(false), 200)}
-                />
-                <button onClick={() => setShowSearchInput(false)} style={S.searchClose} type="button">
-                  <X size={16} color="#1B3B2B" />
-                </button>
+              <div style={{ position: 'relative' }} className="das-fadeUp">
+                <div style={S.searchInputWrap}>
+                  <Search size={16} color="#6b7a99" style={{ flexShrink: 0 }} />
+                  <input
+                    ref={inputRef}
+                    type="text"
+                    autoFocus
+                    value={searchQuery}
+                    onChange={e => handleSearchChange(e.target.value)}
+                    placeholder="Busca tu calle, colonia o lugar..."
+                    style={S.searchInput}
+                    onFocus={() => setSearchFocused(true)}
+                    onBlur={() => setTimeout(() => setSearchFocused(false), 200)}
+                  />
+                  <button
+                    onClick={() => { setShowSearchInput(false); setSuggestions([]); setSearchQuery(''); }}
+                    style={S.searchClose}
+                    type="button"
+                  >
+                    <X size={16} color="#1B3B2B" />
+                  </button>
+                </div>
+
+                {/* ── Dropdown de sugerencias ── */}
+                {suggestions.length > 0 && (
+                  <div style={S.suggestionsWrap}>
+                    {suggestions.map((s: any) => (
+                      <button
+                        key={s.place_id}
+                        type="button"
+                        onMouseDown={() => handleSelectSuggestion(s.place_id, s.description)}
+                        style={S.suggestionItem}
+                      >
+                        <MapPin size={14} color="#d4a35f" style={{ flexShrink: 0, marginTop: 1 }} />
+                        <div style={{ textAlign: 'left', minWidth: 0, flex: 1 }}>
+                          <div style={{ fontWeight: 600, fontSize: '0.84rem', color: '#1B3B2B', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                            {s.structured_formatting?.main_text || s.description}
+                          </div>
+                          {s.structured_formatting?.secondary_text && (
+                            <div style={{ fontSize: '0.72rem', color: '#6b7a99', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                              {s.structured_formatting.secondary_text}
+                            </div>
+                          )}
+                        </div>
+                      </button>
+                    ))}
+                  </div>
+                )}
               </div>
             ) : (
               <div style={S.searchCollapsed} className="das-fadeUp">
@@ -1115,5 +1184,32 @@ const S: Record<string, React.CSSProperties> = {
     fontSize: '0.9rem',
     outline: 'none',
     boxSizing: 'border-box' as const,
+  },
+
+  // ── Sugerencias de búsqueda ──
+  suggestionsWrap: {
+    position: 'absolute' as const,
+    top: 'calc(100% + 6px)',
+    left: 0,
+    right: 0,
+    backgroundColor: '#ffffff',
+    borderRadius: 14,
+    boxShadow: '0 8px 24px rgba(0,0,0,0.12)',
+    border: '1px solid #e5e7eb',
+    overflow: 'hidden',
+    zIndex: 20,
+  },
+  suggestionItem: {
+    display: 'flex',
+    alignItems: 'flex-start',
+    gap: 10,
+    width: '100%',
+    padding: '11px 14px',
+    background: 'none',
+    border: 'none',
+    borderBottom: '1px solid #f3f4f6',
+    cursor: 'pointer',
+    textAlign: 'left' as const,
+    transition: 'background 0.15s ease',
   },
 };
