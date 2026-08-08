@@ -2,7 +2,6 @@ import { NextResponse } from 'next/server';
 import crypto from 'crypto';
 import { createAdminClient, isSupabaseConfigured, serverMockUsers } from '@/lib/supabase';
 import { generateAccessToken, generateRefreshToken } from '@/lib/auth';
-import { serialize } from 'cookie';
 import { createLoyverseCustomer } from '@/lib/loyverse';
 import { checkRateLimit, getClientIP } from '@/lib/rateLimit';
 import { VerifyOtpRequest } from '@/types/api-contracts';
@@ -38,20 +37,6 @@ async function backgroundLoyverseSync(userId: string, name: string, phone: strin
     }
   }
 }
-
-/**
- * Genera y serializa una cookie httpOnly para un token de autenticación.
- */
-function makeAuthCookie(name: string, value: string, maxAgeSeconds: number, isProduction: boolean): string {
-  return serialize(name, value, {
-    httpOnly: true,
-    secure: isProduction,
-    sameSite: 'lax',
-    maxAge: maxAgeSeconds,
-    path: '/'
-  });
-}
-
 // ─────────────────────────────────────────────────────────
 // POST /api/auth/verify-otp
 // ─────────────────────────────────────────────────────────
@@ -206,8 +191,21 @@ export async function POST(req: Request) {
       }
     });
 
-    response.headers.append('Set-Cookie', makeAuthCookie('access_token', accessToken, ACCESS_MAX_AGE, isProduction));
-    response.headers.append('Set-Cookie', makeAuthCookie('refresh_token', refreshToken, REFRESH_MAX_AGE, isProduction));
+    response.cookies.set('access_token', accessToken, {
+      httpOnly: true,
+      secure: isProduction,
+      sameSite: 'lax',
+      maxAge: ACCESS_MAX_AGE,
+      path: '/'
+    });
+
+    response.cookies.set('refresh_token', refreshToken, {
+      httpOnly: true,
+      secure: isProduction,
+      sameSite: 'lax',
+      maxAge: REFRESH_MAX_AGE,
+      path: '/'
+    });
 
     return response;
 

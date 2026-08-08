@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { serialize } from 'cookie';
+
 
 /**
  * POST /api/auth/logout
@@ -9,16 +9,8 @@ import { serialize } from 'cookie';
 export async function POST() {
   const response = NextResponse.json({ success: true, message: 'Sesión cerrada correctamente.' });
 
-  const expiredCookieOptions = {
-    httpOnly: true,
-    secure: process.env.NODE_ENV === 'production',
-    sameSite: 'lax' as const,
-    maxAge: 0,  // Expiración inmediata — el navegador borrará la cookie
-    path: '/'
-  };
-
-  response.headers.append('Set-Cookie', serialize('access_token', '', expiredCookieOptions));
-  response.headers.append('Set-Cookie', serialize('refresh_token', '', expiredCookieOptions));
+  response.cookies.delete('access_token');
+  response.cookies.delete('refresh_token');
 
   return response;
 }

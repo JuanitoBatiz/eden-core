@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { verifyRefreshToken, generateAccessToken, generateRefreshToken } from '@/lib/auth';
 import { createAdminClient, isSupabaseConfigured, serverMockUsers } from '@/lib/supabase';
-import { parse, serialize } from 'cookie';
+import { parse } from 'cookie';
 
 export async function POST(req: Request) {
   try {
@@ -70,21 +70,21 @@ export async function POST(req: Request) {
       // NOTA INTENCIONAL: access_token NO va en el body, viaja solo en cookie httpOnly
     });
 
-    response.headers.set('Set-Cookie', serialize('access_token', accessToken, {
+    response.cookies.set('access_token', accessToken, {
       httpOnly: true,
       secure: isProduction,
       sameSite: 'lax',
       maxAge: ACCESS_MAX_AGE,
       path: '/'
-    }));
+    });
 
-    response.headers.append('Set-Cookie', serialize('refresh_token', newRefreshToken, {
+    response.cookies.set('refresh_token', newRefreshToken, {
       httpOnly: true,
       secure: isProduction,
       sameSite: 'lax',
       maxAge: REFRESH_MAX_AGE,
       path: '/'
-    }));
+    });
 
     return response;
 
