@@ -342,7 +342,9 @@ export default function OrderStatusPage() {
       const data = await res.json();
       
       if (!res.ok) {
-        if (res.status === 401) {
+        if (res.status === 400 && data.error === 'La orden ya no está esperando pago.') {
+          fetchOrder();
+        } else if (res.status === 401) {
           setUploadError('Sesión caducada. Por favor recarga la página o vuelve a ingresar.');
         } else {
           setUploadError(data.error || 'Error al subir el comprobante.');
@@ -730,8 +732,11 @@ export default function OrderStatusPage() {
                       const res = await fetch(`/api/orders/${id}/pay-physical`, { method: 'PATCH', credentials: 'include' });
                       if (res.ok) {
                         fetchOrder();
+                      } else if (res.status === 400) {
+                        fetchOrder();
                       } else {
-                        alert('Error al actualizar el método de pago.');
+                        const errorData = await res.json().catch(() => ({}));
+                        alert(errorData.error || 'Error al actualizar el método de pago.');
                       }
                     } catch (e) {
                       alert('Error de conexión.');
