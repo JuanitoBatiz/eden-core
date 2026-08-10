@@ -36,6 +36,7 @@ export default function KanbanBoard({
   inTransitOrders = [],
   newOrderIds = new Set(),
   updateStatus,
+  resetPayment,
   setDeliveryFee,
   getWhatsAppCancelLink,
 }: KanbanBoardProps) {
@@ -117,8 +118,8 @@ export default function KanbanBoard({
       <div
         key={order.id}
         className={`kanban-card ${isAwaitingPayment ? 'kanban-card--waiting' : ''}`}
-        style={{ borderLeft: `4px solid ${colColor}`, cursor: isAwaitingPayment ? 'default' : 'pointer' }}
-        onClick={() => !isAwaitingPayment && setSelectedOrder(order)}
+        style={{ borderLeft: `4px solid ${colColor}`, cursor: 'pointer' }}
+        onClick={() => setSelectedOrder(order)}
       >
         {isNew && <span className="kanban-new-dot" style={{ backgroundColor: colColor }} />}
 

@@ -8,7 +8,7 @@ export async function PATCH(req: Request, context: { params: Promise<{ id: strin
     
     // 1. Verificar permisos (solo admin o cashier)
     try {
-      await requireRole(req, ['admin', 'cashier']);
+      await requireRole(req, 'cashier');
     } catch (authErr: any) {
       if (authErr.message.includes('403')) {
         return NextResponse.json({ error: 'insufficient_permissions' }, { status: 403 });
