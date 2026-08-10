@@ -460,6 +460,27 @@ export default function AdminPage() {
     }
   };
 
+  // Reset payment via PATCH API
+  const resetPayment = async (id: string) => {
+    try {
+      const res = await fetch(`/api/orders/${id}/reset-payment`, {
+        method: 'PATCH',
+        credentials: 'include'
+      });
+
+      if (res.ok) {
+        alert('Se ha destrabado el pago. El cliente ahora verá la pantalla de pago nuevamente.');
+        fetchOrders(); // Refresh to update the board
+      } else {
+        const errorData = await res.json();
+        alert(errorData.error || 'Error al destrabar el pago.');
+      }
+    } catch (error) {
+      console.error('Error resetting payment:', error);
+      alert('Error de red al destrabar el pago.');
+    }
+  };
+
   // Confirm delivery fee (cashier/admin quotes shipping cost manually)
   const handleSetDeliveryFee = async (orderId: string, fee: number): Promise<void> => {
     try {
@@ -716,6 +737,7 @@ export default function AdminPage() {
                 inTransitOrders={inTransitOrders}
                 newOrderIds={newOrderIds}
                 updateStatus={updateStatus}
+                resetPayment={resetPayment}
                 setDeliveryFee={handleSetDeliveryFee}
                 getWhatsAppCancelLink={getWhatsAppCancelLink}
               />

@@ -15,6 +15,7 @@ interface KanbanBoardProps {
   inTransitOrders?: Order[];
   newOrderIds?: Set<string>;
   updateStatus: (id: string, newStatus: string) => void;
+  resetPayment: (id: string) => void;
   setDeliveryFee: (orderId: string, fee: number) => Promise<void>;
   getWhatsAppCancelLink: (order: Order) => string;
 }
@@ -434,6 +435,21 @@ export default function KanbanBoard({
                   <MessageCircle size={15} />
                 </a>
               </>
+            )}
+            
+            {order.status === 'awaiting_payment' && (
+              <button
+                className="admin-btn admin-btn-cancel"
+                style={{ padding: '13px 16px', fontSize: '0.85rem', borderRadius: '10px', fontWeight: 700, backgroundColor: '#f59e0b', color: '#fff', border: 'none' }}
+                onClick={() => { 
+                  if (confirm('¿Quieres destrabar el pago para que el cliente vuelva a elegir su método?')) {
+                    resetPayment(order.id);
+                    setSelectedOrder(null);
+                  }
+                }}
+              >
+                Destrabar Pago
+              </button>
             )}
           </div>
 
