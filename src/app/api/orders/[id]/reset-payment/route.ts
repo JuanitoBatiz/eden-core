@@ -2,8 +2,10 @@ import { NextResponse } from 'next/server';
 import { requireRole } from '@/lib/auth';
 import { createClient } from '@supabase/supabase-js';
 
-export async function PATCH(req: Request, { params }: { params: { id: string } }) {
+export async function PATCH(req: Request, context: { params: Promise<{ id: string }> }) {
   try {
+    const params = await context.params;
+    
     // 1. Verificar permisos (solo admin o cashier)
     try {
       await requireRole(req, ['admin', 'cashier']);
