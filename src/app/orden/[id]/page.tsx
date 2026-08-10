@@ -717,7 +717,7 @@ export default function OrderStatusPage() {
                     <span style={{ color: '#b91c1c', fontSize: '0.875rem', lineHeight: '1.4' }}>
                       Motivo: {order.rejection_reason}
                     </span>
-                    <p style={{ color: '#991b1b', fontSize: '0.8rem', margin: '6px 0 0 0' }}>Por favor sube un nuevo comprobante corregido.</p>
+
                   </div>
                 </div>
               )}
