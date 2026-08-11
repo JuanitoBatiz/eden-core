@@ -63,6 +63,32 @@ async function getCashPaymentTypeId(): Promise<string | null> {
   }
 }
 
+let cachedTransferPaymentTypeId: string | null = null;
+
+async function getTransferPaymentTypeId(): Promise<string | null> {
+  if (cachedTransferPaymentTypeId) return cachedTransferPaymentTypeId;
+  if (!isLoyverseConfigured) return null;
+  
+  try {
+    const res = await fetch(`${LOYVERSE_API_URL}/payment_types`, {
+      headers: { 'Authorization': `Bearer ${LOYVERSE_ACCESS_TOKEN}` }
+    });
+
+    if (!res.ok) return null;
+
+    const data = await res.json();
+    const transferPT = data.payment_types?.find((p: any) => p.name && p.name.toLowerCase() === 'transferencia');
+    if (transferPT) {
+      cachedTransferPaymentTypeId = transferPT.id;
+      return transferPT.id;
+    }
+    return null;
+  } catch (err) {
+    console.error('Failed to get transfer payment type ID from Loyverse:', err);
+    return null;
+  }
+}
+
 /**
  * Creates a receipt in Loyverse POS.
  * Since this is paid at the counter, it records the order as unpaid/pending payment
@@ -215,8 +241,13 @@ export async function createLoyverseReceipt(order: {
   try {
     let payments: any[] = [];
     if (order.payment_method === 'transferencia' || order.payment_method === 'spei' || order.payment_status === 'payment_approved') {
-      // Para transferencias / SPEI ya pagados, registramos como OTHER para no descuadrar el corte de caja física de efectivo en Loyverse
-      payments = [{ type: 'OTHER' as const, amount: order.total }];
+      const transferTypeId = await getTransferPaymentTypeId();
+      if (transferTypeId) {
+        payments = [{ payment_type_id: transferTypeId, amount: order.total }];
+      } else {
+        // Fallback genérico por si lo borran o le cambian el nombre en Loyverse
+        payments = [{ type: 'OTHER' as const, amount: order.total }];
+      }
     } else if (order.payment_method === 'tarjeta') {
       payments = [{ type: 'CARD' as const, amount: order.total }];
     } else {
