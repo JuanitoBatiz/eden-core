@@ -122,6 +122,66 @@ const getOrderProgressSteps = (order: Order): ProgressStep[] => {
   return steps;
 };
 
+// Algoritmo matemático de compresión de imágenes
+const compressImage = (file: File): Promise<File> => {
+  return new Promise((resolve) => {
+    // Solo comprimimos imágenes (ej. ignorar PDFs)
+    if (!file.type.startsWith('image/')) {
+      return resolve(file);
+    }
+
+    const reader = new FileReader();
+    reader.readAsDataURL(file);
+    reader.onload = (event) => {
+      const img = new Image();
+      img.src = event.target?.result as string;
+      img.onload = () => {
+        const MAX_SIZE = 1024;
+        let width = img.width;
+        let height = img.height;
+
+        // Mantener relación de aspecto matemática
+        if (width > height) {
+          if (width > MAX_SIZE) {
+            height *= MAX_SIZE / width;
+            width = MAX_SIZE;
+          }
+        } else {
+          if (height > MAX_SIZE) {
+            width *= MAX_SIZE / height;
+            height = MAX_SIZE;
+          }
+        }
+
+        const canvas = document.createElement('canvas');
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext('2d');
+        ctx?.drawImage(img, 0, 0, width, height);
+
+        // Exportar como JPEG al 70% de calidad
+        canvas.toBlob(
+          (blob) => {
+            if (blob) {
+              const newFile = new File([blob], file.name.replace(/\.[^/.]+$/, ".jpg"), {
+                type: 'image/jpeg',
+                lastModified: Date.now(),
+              });
+              resolve(newFile);
+            } else {
+              resolve(file); // fallback de seguridad
+            }
+          },
+          'image/jpeg',
+          0.7
+        );
+      };
+      img.onerror = () => resolve(file); // fallback si no puede leer la imagen
+    };
+    reader.onerror = () => resolve(file);
+  });
+};
+
 export default function OrderStatusPage() {
   const params = useParams();
   const router = useRouter();
@@ -330,8 +390,10 @@ export default function OrderStatusPage() {
       // Renovar cookie de access_token por si expiró durante los minutos de transferencia
       await fetch('/api/auth/refresh', { method: 'POST', credentials: 'include' });
 
+      // Comprimir la imagen antes de meterla al FormData (reducción de red masiva)
+      const compressedFile = await compressImage(selectedFile);
       const formData = new FormData();
-      formData.append('file', selectedFile);
+      formData.append('file', compressedFile);
 
       const res = await fetch(`/api/orders/${id}/proof`, {
         method: 'POST',
