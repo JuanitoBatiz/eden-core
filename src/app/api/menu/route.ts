@@ -140,7 +140,11 @@ export async function GET() {
       p.modifier_groups?.forEach((g: any) => {
         g.modifiers?.forEach((m: any) => {
           // Usamos slugify para mantener compatibilidad con hardcoded UI logic
-          const opt = { id: slugify(m.name), name: m.name };
+          let opt: any = { id: slugify(m.name), name: m.name };
+          if (opt.id === 'mango' && (g.name === 'Toppings' || g.name === 'Frutas (Toppings)')) {
+            opt.name = 'Mango (Agotado)';
+            opt.disabled = true;
+          }
           if (g.name === 'Proteínas' && !SALAD_OPTIONS.proteins.find(x => x.name === opt.name)) {
             SALAD_OPTIONS.proteins.push(opt);
           } else if ((g.name === 'Toppings' || g.name === 'Frutas (Toppings)') && !SALAD_OPTIONS.toppings.find(x => x.name === opt.name)) {
