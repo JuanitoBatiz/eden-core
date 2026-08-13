@@ -40,7 +40,7 @@ export const SALAD_OPTIONS = {
   toppings: [
     { id: 'aguacate', name: 'Aguacate' },
     { id: 'granos-de-elote', name: 'Granos de Elote' },
-    { id: 'mango', name: 'Mango' },
+    { id: 'mango', name: 'Mango (Agotado)', disabled: true },
     { id: 'uva', name: 'Uva' },
     { id: 'crutones', name: 'Crutones' },
     { id: 'fresa', name: 'Fresa' },

@@ -1304,12 +1304,13 @@ export default function MenuPage() {
                       {SALAD_OPTIONS.toppings
                         .filter((t: any) => t.id !== 'platano' && t.name?.toLowerCase() !== 'plátano' && t.name?.toLowerCase() !== 'platano')
                         .map((topping: any) => (
-                          <label key={topping.id} className="option-card-label">
+                          <label key={topping.id} className="option-card-label" style={{ opacity: topping.disabled ? 0.5 : 1, cursor: topping.disabled ? 'not-allowed' : 'pointer' }}>
                             <input
                               type="checkbox"
                               className="option-card-input"
                               checked={selectedToppings.includes(topping.id)}
                               onChange={() => toggleOption(topping.id, selectedToppings, setSelectedToppings, constraints.toppings)}
+                              disabled={topping.disabled}
                             />
                             <div className="option-card-content">
                               <span>{topping.name}</span>
@@ -1391,11 +1392,12 @@ export default function MenuPage() {
                     </div>
                     <div className="option-grid">
                       {SALAD_OPTIONS.toppings.filter((t: any) => ['mango', 'fresa', 'platano', 'uva', 'kiwi', 'pina', 'blueberry', 'frambuesa'].includes(t.id)).map((topping: any) => (
-                        <label key={topping.id} className="option-card-label">
+                        <label key={topping.id} className="option-card-label" style={{ opacity: topping.disabled ? 0.5 : 1, cursor: topping.disabled ? 'not-allowed' : 'pointer' }}>
                           <input
                             type="checkbox"
                             className="option-card-input"
                             checked={selectedToppings.includes(topping.id)}
+                            disabled={topping.disabled}
                             onChange={() => {
                               if (selectedToppings.includes(topping.id)) {
                                 setSelectedToppings(selectedToppings.filter((x: any) => x !== topping.id));
