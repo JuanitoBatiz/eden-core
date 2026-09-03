@@ -149,7 +149,7 @@ export const MENU_ITEMS: MenuItem[] = [
   {
     id: 'infusiones-premium',
     name: 'Infusión Premium',
-    description: 'Tés helados y mezclas herbales preparadas artesanalmente. Refrescantes, aromáticas y el maridaje perfecto para tus alimentos.',
+    description: 'Tés y mezclas herbales preparadas artesanalmente. Refrescantes, aromáticas y el maridaje perfecto para tus alimentos.',
     price: 55,
     prices: { 'Chico': 55, 'Grande': 65 },
     image: '/images/infusion.webp',
@@ -229,6 +229,17 @@ export const MENU_ITEMS: MenuItem[] = [
     image_orientation: 'horizontal',
     category: 'burritos-sandwiches',
     customizable: true
+  },
+
+  {
+    id: 'wrap-alambre-res',
+    name: 'Wrap de Alambre de Res',
+    description: 'Jugoso alambre de res con guacamole cremoso, queso fundido, lechuga fresca y frijoles. Todo envuelto artesanalmente en tortilla suave.',
+    price: 99,
+    image: '/images/wrap_alambre.webp',
+    image_orientation: 'horizontal',
+    category: 'burritos-sandwiches',
+    customizable: false
   },
 
   // --- BOWLS Y POSTRES ---

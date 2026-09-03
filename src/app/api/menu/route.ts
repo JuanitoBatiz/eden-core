@@ -76,6 +76,7 @@ export async function GET() {
       else if (lowerName.includes('cóctel') || lowerName.includes('coctel')) resolvedImage = '/images/coctel.webp';
       else if (lowerName.includes('yogurt')) resolvedImage = '/images/yogurt.webp';
       else if (lowerName.includes('burrito')) resolvedImage = '/images/burrito.webp';
+      else if (lowerName.includes('alambre')) resolvedImage = '/images/wrap_alambre.webp';
       else if (lowerName.includes('pollo') && lowerName.includes('rollito')) resolvedImage = '/images/rollito1.webp';
       else if (lowerName.includes('tsurimi') && lowerName.includes('rollito')) resolvedImage = '/images/rollito2.webp';
       else if (lowerName.includes('mixto') && lowerName.includes('rollito')) resolvedImage = '/images/rollito3.webp';
