@@ -206,13 +206,12 @@ export default function AdminPage() {
   };
 
   // Setup Polling
+  // POLL_INTERVAL: 25s base + jitter ±1s para evitar thundering herd
+  // cuando múltiples admins abren el panel simultáneamente.
+  const POLL_INTERVAL_MS = 25_000;
+
   useEffect(() => {
     if (!authChecked) return;
-    
-    fetchOrders();
-    fetchPendingPayments();
-    fetchAuditOrders();
-    cleanupOldProofs();
 
     let isMounted = true;
     let timerId: NodeJS.Timeout;
@@ -223,17 +222,21 @@ export default function AdminPage() {
         await Promise.all([
           fetchOrders(),
           fetchPendingPayments(),
-          fetchAuditOrders()
+          fetchAuditOrders(),
+          cleanupOldProofs(), // Limpieza periódica de comprobantes expirados
         ]);
       } catch (error) {
         console.error('Error during polling:', error);
       } finally {
         if (isMounted) {
-          timerId = setTimeout(poll, 4000);
+          // Jitter ±1s para distribuir carga cuando hay múltiples instancias activas
+          const jitter = Math.random() * 1_000;
+          timerId = setTimeout(poll, POLL_INTERVAL_MS + jitter);
         }
       }
     };
 
+    // Una sola llamada inicial — sin double-fire
     poll();
 
     return () => {

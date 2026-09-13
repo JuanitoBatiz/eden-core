@@ -1,6 +1,6 @@
 'use client';
 
-import React, { createContext, useContext, useEffect, useState } from 'react';
+import React, { createContext, useContext, useEffect, useState, useCallback } from 'react';
 import type { Capability } from '@/lib/permissions';
 
 interface PermissionsContextType {
@@ -68,10 +68,10 @@ export function PermissionsProvider({ children }: { children: React.ReactNode })
     fetchPermissions();
   }, []);
 
-  const can = (capability: Capability): boolean => {
+  const can = useCallback((capability: Capability): boolean => {
     if (loading) return false;
     return !!capabilities[capability];
-  };
+  }, [loading, capabilities]);
 
   return (
     <PermissionsContext.Provider value={{ role, capabilities, loading, can }}>
