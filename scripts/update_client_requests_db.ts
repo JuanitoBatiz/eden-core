@@ -209,7 +209,7 @@ async function run() {
     { name: 'Sin mayonesa', price_modifier: 0 },
     { name: 'Sin frijoles', price_modifier: 0 },
     { name: 'Sin jitomate', price_modifier: 0 },
-    { name: 'Sin col', price_modifier: 0 },
+    { name: 'Sin lechuga', price_modifier: 0 },
     { name: 'Sin chile', price_modifier: 0 }
   ];
 

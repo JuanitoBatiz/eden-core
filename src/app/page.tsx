@@ -1655,7 +1655,7 @@ export default function MenuPage() {
                 } else if (selectedProduct.id === 'ciabatta' || selectedProduct.name?.includes('Ciabatta')) {
                   omissions = ['Sin espinaca', 'Sin guacamole', 'Sin queso', 'Sin mayonesa', 'Sin huevo', 'Sin jamón', 'Sin pepino'];
                 } else if (selectedProduct.id === 'sandwich' || selectedProduct.id === 'torta' || selectedProduct.id === 'sandwich-pavo' || selectedProduct.id === 'sandwich-pollo' || selectedProduct.name?.includes('Sándwich') || selectedProduct.name?.includes('Torta')) {
-                  omissions = ['Sin cebolla', 'Sin aguacate', 'Sin mayonesa', 'Sin frijoles', 'Sin jitomate', 'Sin col', 'Sin chile'];
+                  omissions = ['Sin cebolla', 'Sin aguacate', 'Sin mayonesa', 'Sin frijoles', 'Sin jitomate', 'Sin lechuga', 'Sin chile'];
                 } else if (selectedProduct.id?.includes('rollito') || selectedProduct.name?.includes('Rollito') || selectedProduct.name?.includes('Rollo')) {
                   omissions = ['Sin aguacate', 'Sin espinaca', 'Sin pepino', 'Sin zanahoria'];
                 }

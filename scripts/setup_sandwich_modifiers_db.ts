@@ -43,8 +43,8 @@ async function run() {
   const targetProducts = [
     { prod: burritoPollo, panes: null, omitir: ['Sin aderezo', 'Sin zanahoria', 'Sin pepino', 'Sin frijoles', 'Sin chile', 'Sin aguacate'] },
     { prod: ciabatta, panes: null, omitir: ['Sin espinaca', 'Sin guacamole', 'Sin queso', 'Sin mayonesa', 'Sin huevo', 'Sin jamón', 'Sin pepino'] },
-    { prod: sandwichPavo, panes: ['Pan Blanco', 'Centeno', 'Multigrano'], omitir: ['Sin cebolla', 'Sin aguacate', 'Sin mayonesa', 'Sin frijoles', 'Sin jitomate', 'Sin col', 'Sin chile'] },
-    { prod: sandwichPollo, panes: ['Pan Blanco', 'Centeno', 'Multigrano'], omitir: ['Sin cebolla', 'Sin aguacate', 'Sin mayonesa', 'Sin frijoles', 'Sin jitomate', 'Sin col', 'Sin chile'] }
+    { prod: sandwichPavo, panes: ['Pan Blanco', 'Centeno', 'Multigrano'], omitir: ['Sin cebolla', 'Sin aguacate', 'Sin mayonesa', 'Sin frijoles', 'Sin jitomate', 'Sin lechuga', 'Sin chile'] },
+    { prod: sandwichPollo, panes: ['Pan Blanco', 'Centeno', 'Multigrano'], omitir: ['Sin cebolla', 'Sin aguacate', 'Sin mayonesa', 'Sin frijoles', 'Sin jitomate', 'Sin lechuga', 'Sin chile'] }
   ];
 
   for (const target of targetProducts) {
