@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { PermissionsProvider } from "@/hooks/usePermissions";
+import EdenWelcomeSplash from "@/components/EdenWelcomeSplash";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -16,6 +17,7 @@ export default function RootLayout({
     <html lang="es">
       <body>
         <PermissionsProvider>
+          <EdenWelcomeSplash />
           {children}
         </PermissionsProvider>
       </body>

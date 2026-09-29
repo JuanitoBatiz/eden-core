@@ -86,7 +86,25 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
     }
     */
 
+    // RIFA: Registrar entrada si el total es >= $200 (1 oportunidad por ticket, sin importar el monto exacto)
+    // El upsert + UNIQUE constraint en DB hacen imposible duplicar entradas para el mismo pedido
+    if (order.total >= 200 && order.user_id) {
+      try {
+        await adminSupabase
+          .from('raffle_entries')
+          .upsert(
+            { user_id: order.user_id, order_id: order.id, order_total: order.total },
+            { onConflict: 'order_id', ignoreDuplicates: true }
+          );
+        console.log(`[RIFA] Entrada registrada para user=${order.user_id}, order=${order.id}, total=${order.total}`);
+      } catch (raffleErr: any) {
+        // No bloqueamos el flujo de aprobación si falla el registro de la rifa
+        console.error('[RIFA] Error al registrar entrada de rifa:', raffleErr?.message);
+      }
+    }
+
     let loyverseDiagnostic = { success: false, receipt_number: null as string | null, error: null as string | null };
+
 
     // 5. Send to Loyverse POS si no ha sido enviada previamente
     if (!order.loyverse_receipt_id) {

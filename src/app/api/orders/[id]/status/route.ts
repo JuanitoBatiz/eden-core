@@ -1,30 +1,22 @@
 import { NextResponse } from 'next/server';
 import { requireRole } from '@/lib/auth';
 import { createClient } from '@supabase/supabase-js';
-import { refundLoyverseReceipt } from '@/lib/loyverse';
+import { refundLoyverseReceipt, createLoyverseReceipt } from '@/lib/loyverse';
 
-// Valid state transitions
 const VALID_TRANSITIONS: Record<string, string[]> = {
   'received': ['awaiting_payment', 'in_preparation', 'cancelled'],
   'awaiting_payment': ['in_preparation', 'cancelled'],
-  // in_preparation goes to ready
   'in_preparation': ['ready', 'cancelled'],
-  // ready can go to in_transit (delivery) or delivered (pickup)
   'ready': ['in_transit', 'delivered', 'cancelled'],
-  // in_transit goes to delivered
   'in_transit': ['delivered', 'cancelled'],
-  // No transitions allowed out of 'delivered' or 'cancelled' in this basic state machine
   'delivered': [],
   'cancelled': []
 };
 
-// PATCH: Cambiar estado de la orden (Admin/Cashier)
 export async function PATCH(req: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
     const orderId = (await params).id;
-    if (!orderId) {
-      return NextResponse.json({ error: 'ID de orden no proporcionado.' }, { status: 400 });
-    }
+    if (!orderId) return NextResponse.json({ error: 'ID de orden no proporcionado.' }, { status: 400 });
 
     let tokenPayload;
     try {
@@ -40,66 +32,92 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
     const { status: newStatus } = body;
 
     if (!['received', 'awaiting_payment', 'in_preparation', 'ready', 'in_transit', 'delivered', 'cancelled'].includes(newStatus)) {
-      return NextResponse.json({ error: 'Estado inválido proporcionado.' }, { status: 400 });
+      return NextResponse.json({ error: 'Estado invalido proporcionado.' }, { status: 400 });
     }
 
     const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
     const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY || '';
-
-    if (!supabaseUrl || !serviceRoleKey) {
-      return NextResponse.json({ error: 'Configuración DB ausente' }, { status: 500 });
-    }
+    if (!supabaseUrl || !serviceRoleKey) return NextResponse.json({ error: 'Configuracion DB ausente' }, { status: 500 });
 
     const adminSupabase = createClient(supabaseUrl, serviceRoleKey);
 
-    // 2. Fetch current status to validate transition
     const { data: order, error: orderErr } = await adminSupabase
       .from('orders')
-      .select('status, payment_status, loyverse_receipt_id')
+      .select('*, users(loyverse_customer_id)')
       .eq('id', orderId)
       .single();
 
-    if (orderErr || !order) {
-      return NextResponse.json({ error: 'Orden no encontrada.' }, { status: 404 });
-    }
+    if (orderErr || !order) return NextResponse.json({ error: 'Orden no encontrada.' }, { status: 404 });
 
     const currentStatus = order.status;
+    if (currentStatus === newStatus) return NextResponse.json({ success: true, status: newStatus });
 
-    // Same status, do nothing but return success
-    if (currentStatus === newStatus) {
-      return NextResponse.json({ success: true, status: newStatus });
-    }
-
-    // Validate transition
     const allowedNextStates = VALID_TRANSITIONS[currentStatus] || [];
     if (!allowedNextStates.includes(newStatus)) {
-      return NextResponse.json(
-        { 
-          error: `Transición inválida. No se puede pasar de '${currentStatus}' a '${newStatus}'.`,
-          allowed_transitions: allowedNextStates
-        }, 
-        { status: 400 }
-      );
+      return NextResponse.json({ error: "Transicion invalida de '" + currentStatus + "' a '" + newStatus + "'.", allowed_transitions: allowedNextStates }, { status: 400 });
     }
 
-    // 3. Update Status
     const updateData: any = { status: newStatus };
-    
-    // Si se cancela una orden que ya estaba pagada, requiere reembolso
+
     if (newStatus === 'cancelled') {
-      if (order.payment_status === 'payment_approved') {
-        updateData.refund_status = 'pending';
-      }
-      
-      // Si la orden ya había sido enviada a Loyverse (usualmente al aprobar el pago),
-      // debemos enviar el comando de devolución/cancelación al POS.
+      if (order.payment_status === 'payment_approved') updateData.refund_status = 'pending';
       if (order.loyverse_receipt_id) {
         try {
           await refundLoyverseReceipt(order.loyverse_receipt_id);
         } catch (err: any) {
           console.error('Failed to void receipt in Loyverse POS:', err);
-          return NextResponse.json({ error: 'No se pudo cancelar en la caja Loyverse. Intenta de nuevo. ' + err.message }, { status: 500 });
+          return NextResponse.json({ error: 'No se pudo cancelar en la caja Loyverse. ' + err.message }, { status: 500 });
         }
+      }
+    }
+
+    // FIX ROOT CAUSE: admin avanza awaiting_payment -> in_preparation sin que el cliente
+    // haya elegido metodo de pago. payment_status y payment_method estaban incorrectos,
+    // haciendo que createLoyverseReceipt fallara silenciosamente.
+    if (newStatus === 'in_preparation' && currentStatus === 'awaiting_payment') {
+      if (order.payment_status !== 'payment_approved') updateData.payment_status = 'payment_approved';
+      if (!order.payment_method) updateData.payment_method = 'efectivo';
+    }
+
+    let loyverseDiagnostic: { success: boolean; receipt_number: string | null; error: string | null } =
+      { success: false, receipt_number: null, error: null };
+
+    if (newStatus === 'in_preparation' && !order.loyverse_receipt_id) {
+      try {
+        const loyverseCustomerId = (order as any).users?.loyverse_customer_id || undefined;
+        const effectivePaymentMethod = updateData.payment_method ?? order.payment_method ?? 'efectivo';
+        const effectivePaymentStatus  = updateData.payment_status  ?? order.payment_status  ?? 'payment_approved';
+
+        const loyverseResult = await createLoyverseReceipt({
+          id: order.id,
+          customer_id: loyverseCustomerId,
+          customer_name: order.customer_name,
+          customer_phone: order.customer_phone,
+          items: order.items,
+          total: order.total,
+          notes: order.notes || '',
+          service_type: order.service_type,
+          delivery_address: order.delivery_address,
+          payment_method: effectivePaymentMethod,
+          payment_status: effectivePaymentStatus,
+          delivery_fee: order.delivery_fee,
+          delivery_lat: order.delivery_lat,
+          delivery_lng: order.delivery_lng,
+          delivery_fee_confirmed: order.delivery_fee_confirmed,
+        });
+
+        if (loyverseResult?.receipt_id) {
+          updateData.loyverse_receipt_id     = loyverseResult.receipt_id;
+          updateData.loyverse_receipt_number = loyverseResult.receipt_number;
+          loyverseDiagnostic = { success: true, receipt_number: loyverseResult.receipt_number, error: null };
+          console.log('[STATUS] Recibo Loyverse creado: ' + loyverseResult.receipt_number);
+        } else {
+          loyverseDiagnostic = { success: false, receipt_number: null, error: 'Loyverse no devolvio receipt_id' };
+          console.error('[STATUS] Loyverse no devolvio receipt_id para orden:', order.id);
+        }
+      } catch (loyverseErr: any) {
+        loyverseDiagnostic = { success: false, receipt_number: null, error: loyverseErr.message };
+        console.error('[STATUS] No se pudo crear recibo en Loyverse:', loyverseErr.message);
       }
     }
 
@@ -110,15 +128,30 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
       .eq('status', currentStatus)
       .select();
 
-    if (updateErr) {
-      throw new Error(`DB Error: ${updateErr.message}`);
-    }
-
+    if (updateErr) throw new Error('DB Error: ' + updateErr.message);
     if (!updatedRows || updatedRows.length === 0) {
-      return NextResponse.json({ error: 'La orden fue modificada por otro usuario. Refresca la página.' }, { status: 409 });
+      return NextResponse.json({ error: 'La orden fue modificada por otro usuario. Refresca la pagina.' }, { status: 409 });
     }
 
-    return NextResponse.json({ success: true, status: newStatus });
+    // RIFA: Registrar entrada si el pago fue aprobado en esta transición y el total es >= $200
+    // Solo aplica cuando el admin avanza awaiting_payment → in_preparation (que fuerza payment_approved)
+    const paymentJustApproved = newStatus === 'in_preparation' && currentStatus === 'awaiting_payment';
+    if (paymentJustApproved && order.total >= 200 && order.user_id) {
+      try {
+        await adminSupabase
+          .from('raffle_entries')
+          .upsert(
+            { user_id: order.user_id, order_id: order.id, order_total: order.total },
+            { onConflict: 'order_id', ignoreDuplicates: true }
+          );
+        console.log(`[RIFA] Entrada registrada para user=${order.user_id}, order=${order.id}, total=${order.total}`);
+      } catch (raffleErr: any) {
+        // No bloqueamos el flujo si falla el registro de la rifa
+        console.error('[RIFA] Error al registrar entrada de rifa:', raffleErr?.message);
+      }
+    }
+
+    return NextResponse.json({ success: true, status: newStatus, loyverse_diagnostic: loyverseDiagnostic });
 
   } catch (error: any) {
     console.error('Update order status error:', error);

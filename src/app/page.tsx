@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import Image from 'next/image';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import {
   ShoppingBag,
   Plus,
@@ -29,13 +29,16 @@ import {
   Store,
   Bike,
   Utensils,
-  QrCode
+  QrCode,
+  Maximize2
 } from 'lucide-react';
 import { MenuItem, MenuCategory, CATEGORIES as fallbackCategories, MENU_ITEMS as fallbackMenuItems, SALAD_OPTIONS as fallbackSaladOptions } from '@/lib/menuData';
 import { SmsRequest, VerifyOtpRequest, OrderCreateRequest, DeliveryQuote } from '@/types/api-contracts';
 import ProductImage from '@/components/ProductImage';
 import DeliveryAddressSelector from '@/components/DeliveryAddressSelector';
 import ScrollRevealItem from '@/components/ScrollRevealItem';
+import EdenVideoModal from '@/components/EdenVideoModal';
+import BalloonIcon from '@/components/BalloonIcon';
 
 // Helper local icon
 function getCategoryIcon(name: string) {
@@ -97,6 +100,9 @@ const getProductNotesPlaceholder = (product: MenuItem | null, categories: MenuCa
 export default function MenuPage() {
   const router = useRouter();
 
+  // Modal Video Promocional
+  const [isVideoModalOpen, setIsVideoModalOpen] = useState(false);
+
   // Menu Data State
   const [menuData, setMenuData] = useState<{ CATEGORIES: MenuCategory[], MENU_ITEMS: MenuItem[], SALAD_OPTIONS: any } | null>(null);
   const [menuError, setMenuError] = useState(false);
@@ -146,6 +152,14 @@ export default function MenuPage() {
     }
     return () => clearTimeout(timer);
   }, [resendCooldown]);
+
+  // Abrir modal de login si la URL incluye ?login=1 (e.g., redireccionado desde /rifa)
+  const searchParams = useSearchParams();
+  useEffect(() => {
+    if (searchParams.get('login') === '1') {
+      setIsAuthOpen(true);
+    }
+  }, [searchParams]);
 
   // Service Type State
   const [serviceType, setServiceType] = useState<'pickup' | 'delivery' | 'dine_in'>('pickup');
@@ -826,28 +840,100 @@ export default function MenuPage() {
         </nav>
       </div>
 
-      {/* FULL-BLEED INMERSIVE HERO (100% DE LA PANTALLA, SIN MÁRGENES) */}
+      {/* FULL-BLEED INMERSIVE HERO — DUAL VIDEO BLUR EFFECT */}
       <section className="hero-fullscreen-v1">
-        <picture className="hero-v1-bg">
-          <source media="(max-width: 768px)" srcSet="/images/hero_celular.webp" />
-          <img src="/images/hero_desktop.webp" alt="Santuario Edén" />
-        </picture>
-        <div className="hero-v1-overlay"></div>
-        <div className="hero-v1-content">
-          <h1 className="hero-v1-title">Deliciosa barra de ensaladas y jugos naturales</h1>
-          <p className="hero-v1-desc">
-            Sabor natural y servicio ágil. Arma tu pedido en línea, acumula puntos con EdenPass y disfruta tu comida en sucursal o recíbela en la puerta de tu casa.
-          </p>
-          <button
-            className="hero-cta-btn"
-            onClick={() => {
-              const el = document.querySelector('.menu-section');
-              if (el) el.scrollIntoView({ behavior: 'smooth' });
-            }}
-          >
-            <span>Explorar el menú</span>
-            <ArrowRight size={18} />
-          </button>
+        {/* VIDEO DE FONDO: Escalado y difuminado para rellenar vacíos con luz ambiental */}
+        <video 
+          className="hero-v1-bg hero-v1-bg--blur" 
+          autoPlay 
+          muted 
+          loop 
+          playsInline 
+        >
+          <source src="/EdenPromo_Final.mp4" type="video/mp4" />
+        </video>
+
+        {/* Capa de oscurecimiento sutil para el fondo difuminado */}
+        <div className="hero-v1-ambient-dim"></div>
+
+        {/* VIDEO FRONTAL: Contenido original sin recortes (contain) */}
+        <video 
+          className="hero-v1-bg hero-v1-bg--sharp" 
+          autoPlay 
+          muted 
+          loop 
+          playsInline 
+        >
+          <source src="/EdenPromo_Final.mp4" type="video/mp4" />
+        </video>
+
+        {/* Gradiente sutil solo en la parte inferior para que los botones sean legibles */}
+        <div className="hero-v1-bottom-fade" />
+
+        {/* Botón CTA — discreto, centrado abajo */}
+        <button
+          className="hero-cta-btn hero-cta-btn--bottom"
+          onClick={() => {
+            const el = document.querySelector('.menu-section');
+            if (el) el.scrollIntoView({ behavior: 'smooth' });
+          }}
+        >
+          <span>Explorar el menú</span>
+          <ArrowRight size={18} />
+        </button>
+
+        {/* Botón ampliar — esquina inferior derecha */}
+        <button
+          onClick={() => setIsVideoModalOpen(true)}
+          style={{
+            position: 'absolute',
+            bottom: '20px',
+            right: '20px',
+            width: '36px',
+            height: '36px',
+            borderRadius: '50%',
+            backgroundColor: 'rgba(0,0,0,0.5)',
+            border: '1px solid rgba(255,255,255,0.2)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            cursor: 'pointer',
+            opacity: 0.6,
+            transition: 'opacity 0.2s',
+            zIndex: 10,
+            color: '#fff'
+          }}
+          onMouseOver={e => e.currentTarget.style.opacity = '1'}
+          onMouseOut={e => e.currentTarget.style.opacity = '0.6'}
+          title="Ver video promocional"
+        >
+          <Maximize2 size={16} />
+        </button>
+      </section>
+
+      {/* ════════════════════════════════════════════════════
+          BANNER RIFA — VUELOS EN GLOBO
+          ════════════════════════════════════════════════════ */}
+      <section
+        className="raffle-banner-section"
+        onClick={() => router.push('/rifa')}
+        onKeyDown={(e) => (e.key === 'Enter' || e.key === ' ') && router.push('/rifa')}
+        role="button"
+        tabIndex={0}
+        aria-label="Ver dinámica de la rifa de vuelos en globo"
+      >
+        <div className="raffle-banner-inner">
+          <div className="raffle-banner-balloon-wrap">
+            <BalloonIcon size={48} />
+          </div>
+          <div className="raffle-banner-text">
+            <span className="raffle-banner-label">Dinámica especial</span>
+            <h2 className="raffle-banner-title">Gana dos vuelos en globo</h2>
+            <p className="raffle-banner-sub">Compra $200 o más en un pedido = 1 oportunidad para ganar</p>
+          </div>
+          <span className="raffle-banner-cta">
+            Ver más <ArrowRight size={16} />
+          </span>
         </div>
       </section>
 
@@ -2162,6 +2248,9 @@ export default function MenuPage() {
           <ChevronRight size={18} />
         </div>
       )}
+
+      {/* Video Modal Bajo Demanda */}
+      <EdenVideoModal isOpen={isVideoModalOpen} onClose={() => setIsVideoModalOpen(false)} />
     </>
   );
 }

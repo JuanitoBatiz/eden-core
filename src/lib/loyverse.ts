@@ -77,12 +77,25 @@ async function getTransferPaymentTypeId(): Promise<string | null> {
     if (!res.ok) return null;
 
     const data = await res.json();
-    const transferPT = data.payment_types?.find((p: any) => p.name && p.name.toLowerCase() === 'transferencia');
+    const transferPT = data.payment_types?.find((p: any) =>
+      p.name &&
+      (
+        p.name.toLowerCase().includes('transferencia') ||
+        p.name.toLowerCase().includes('spei') ||
+        p.name.toLowerCase().includes('transfer')
+      )
+    );
     if (transferPT) {
       cachedTransferPaymentTypeId = transferPT.id;
       return transferPT.id;
     }
-    return null;
+    // Fallback: si no hay un tipo con nombre de transferencia, usar el primer tipo no-CASH
+    const fallbackPT = data.payment_types?.find((p: any) => p.type !== 'CASH' && p.type !== 'CARD');
+    if (fallbackPT) {
+      console.warn('[LOYVERSE] No se encontró tipo de pago "transferencia" por nombre. Usando fallback:', fallbackPT.name, '(' + fallbackPT.type + ')');
+      cachedTransferPaymentTypeId = fallbackPT.id;
+      return fallbackPT.id;
+    }
   } catch (err) {
     console.error('Failed to get transfer payment type ID from Loyverse:', err);
     return null;
@@ -196,8 +209,10 @@ export async function createLoyverseReceipt(order: {
   }
 
   // Formatear el Método de Pago para el Ticket de Cocina / POS de Loyverse
+  // Solo se basa en payment_method — NO en payment_status — para no confundir
+  // pedidos de efectivo aprobados con transferencias en el ticket de cocina.
   let paymentText = '[COBRAR EN CAJA / EFECTIVO]';
-  if (order.payment_method === 'transferencia' || order.payment_status === 'payment_approved') {
+  if (order.payment_method === 'transferencia' || order.payment_method === 'spei') {
     paymentText = '[YA PAGADO WEB / SPEI]';
   }
 
@@ -240,7 +255,9 @@ export async function createLoyverseReceipt(order: {
 
   try {
     let payments: any[] = [];
-    if (order.payment_method === 'transferencia' || order.payment_method === 'spei' || order.payment_status === 'payment_approved') {
+    // El tipo de pago se determina EXCLUSIVAMENTE por payment_method.
+    // Nunca por payment_status — un pago 'payment_approved' puede ser efectivo o transferencia.
+    if (order.payment_method === 'transferencia' || order.payment_method === 'spei') {
       const transferTypeId = await getTransferPaymentTypeId();
       if (transferTypeId) {
         payments = [{ payment_type_id: transferTypeId, amount: order.total }];
@@ -251,6 +268,7 @@ export async function createLoyverseReceipt(order: {
     } else if (order.payment_method === 'tarjeta') {
       payments = [{ type: 'CARD' as const, amount: order.total }];
     } else {
+      // Efectivo (default) — incluye pedidos sin payment_method definido
       const paymentTypeId = await getCashPaymentTypeId();
       payments = paymentTypeId
         ? [{ payment_type_id: paymentTypeId, amount: order.total }]

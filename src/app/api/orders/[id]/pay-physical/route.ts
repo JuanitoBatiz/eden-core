@@ -55,6 +55,23 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
       throw new Error(`DB Error: ${updateErr.message}`);
     }
 
+    // RIFA: Registrar entrada si el total es >= $200 (1 oportunidad por ticket, sin importar el monto exacto)
+    // El upsert + UNIQUE constraint en DB hacen imposible duplicar entradas para el mismo pedido
+    if (order.total >= 200 && order.user_id) {
+      try {
+        await adminSupabase
+          .from('raffle_entries')
+          .upsert(
+            { user_id: order.user_id, order_id: order.id, order_total: order.total },
+            { onConflict: 'order_id', ignoreDuplicates: true }
+          );
+        console.log(`[RIFA] Entrada registrada para user=${order.user_id}, order=${order.id}, total=${order.total}`);
+      } catch (raffleErr: any) {
+        // No bloqueamos el flujo si falla el registro de la rifa
+        console.error('[RIFA] Error al registrar entrada de rifa:', raffleErr?.message);
+      }
+    }
+
     let loyverseDiagnostic = { success: false, receipt_number: null as string | null, error: null as string | null };
 
     // Enviar orden a Loyverse POS inmediatamente para pagos en físico / efectivo / caja si no ha sido enviada previamente
@@ -77,7 +94,7 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
           service_type: order.service_type,
           delivery_address: order.delivery_address,
           payment_method: order.payment_method || 'efectivo',
-          payment_status: 'pending_payment',
+          payment_status: 'payment_approved',  // FIX: el cliente confirmó pago físico — el estado real es payment_approved
           delivery_fee: order.delivery_fee,
           delivery_lat: order.delivery_lat,
           delivery_lng: order.delivery_lng,

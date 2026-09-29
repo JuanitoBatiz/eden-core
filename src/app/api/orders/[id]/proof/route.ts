@@ -90,7 +90,8 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
       .from('orders')
       .update({
         payment_status: 'payment_submitted',
-        proof_url: uploadData.path
+        proof_url: uploadData.path,
+        payment_method: 'transferencia'  // FIX: persiste el método de pago para que Loyverse use el tipo correcto al aprobar
       })
       .eq('id', orderId);
 
