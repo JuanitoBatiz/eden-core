@@ -3233,20 +3233,16 @@ a {
   line-height: 1.4;
 }
 
-.raffle-banner-cta {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  flex-shrink: 0;
-  font-size: 0.9rem;
-  font-weight: 600;
+.raffle-banner-arrow {
   color: var(--color-green-dark);
-  white-space: nowrap;
-  transition: gap 0.2s ease;
+  opacity: 0.5;
+  flex-shrink: 0;
+  transition: transform 0.2s ease, opacity 0.2s ease;
 }
 
-.raffle-banner-section:hover .raffle-banner-cta {
-  gap: 10px;
+.raffle-banner-section:hover .raffle-banner-arrow {
+  transform: translateX(4px);
+  opacity: 1;
 }
 
 @media (max-width: 480px) {
@@ -3261,8 +3257,8 @@ a {
   .raffle-banner-title {
     font-size: 1.15rem;
   }
-  .raffle-banner-cta {
-    display: none;
+  .raffle-banner-arrow {
+    display: block;
   }
 }
 

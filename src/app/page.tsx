@@ -928,12 +928,10 @@ function MenuContent() {
           </div>
           <div className="raffle-banner-text">
             <span className="raffle-banner-label">Dinámica especial</span>
-            <h2 className="raffle-banner-title">Gana dos vuelos en globo</h2>
-            <p className="raffle-banner-sub">Compra $200 o más en un pedido = 1 oportunidad para ganar</p>
+            <h2 className="raffle-banner-title">Gana un vuelo en globo para dos personas</h2>
+            <p className="raffle-banner-sub">Compra $200 o más = 1 oportunidad para ganar</p>
           </div>
-          <span className="raffle-banner-cta">
-            Ver más <ArrowRight size={16} />
-          </span>
+          <ChevronRight className="raffle-banner-arrow" size={24} />
         </div>
       </section>
 
