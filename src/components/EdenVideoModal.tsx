@@ -12,7 +12,7 @@ interface EdenVideoModalProps {
 
 export default function EdenVideoModal({ isOpen, onClose, redirectToHomeOnClose = false }: EdenVideoModalProps) {
   const [isVideoPlaying, setIsVideoPlaying] = useState<boolean>(false);
-  const [isVideoReady, setIsVideoReady] = useState<boolean>(false);
+  const [isVideoReady, setIsVideoReady] = useState<boolean>(true);
   const [isPortraitMobile, setIsPortraitMobile] = useState<boolean>(false);
   const [isMobile, setIsMobile] = useState<boolean>(false);
   const [showSkip, setShowSkip] = useState<boolean>(false);
@@ -26,7 +26,6 @@ export default function EdenVideoModal({ isOpen, onClose, redirectToHomeOnClose 
   useEffect(() => {
     if (!isOpen) {
       setIsVideoPlaying(false);
-      setIsVideoReady(false);
       setShowSkip(false);
       setFadingOut(false);
       if (videoRef.current) {
@@ -367,7 +366,7 @@ export default function EdenVideoModal({ isOpen, onClose, redirectToHomeOnClose 
         {showRotateSignal && (
           <div className="evm-rotate-phone-overlay">
             <Smartphone className="evm-phone-icon" />
-            <p className="evm-rotate-text">Gira tu celular</p>
+            <p className="evm-rotate-text">Gira tu teléfono</p>
           </div>
         )}
       </div>
