@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import Image from 'next/image';
+import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import {
   ShoppingBag,
@@ -914,12 +915,10 @@ function MenuContent() {
       {/* ════════════════════════════════════════════════════
           BANNER RIFA — VUELOS EN GLOBO
           ════════════════════════════════════════════════════ */}
-      <section
+      <Link
+        href="/rifa"
         className="raffle-banner-section"
-        onClick={() => router.push('/rifa')}
-        onKeyDown={(e) => (e.key === 'Enter' || e.key === ' ') && router.push('/rifa')}
-        role="button"
-        tabIndex={0}
+        style={{ display: 'block', textDecoration: 'none' }}
         aria-label="Ver dinámica de la rifa de vuelos en globo"
       >
         <div className="raffle-banner-inner">
@@ -933,7 +932,7 @@ function MenuContent() {
           </div>
           <ChevronRight className="raffle-banner-arrow" size={24} />
         </div>
-      </section>
+      </Link>
 
       {/* MAIN CONTAINER FOR MENU SECTIONS */}
       <main className="container" style={{ paddingTop: '50px' }}>
