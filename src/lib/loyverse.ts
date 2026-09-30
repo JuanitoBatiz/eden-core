@@ -96,6 +96,7 @@ async function getTransferPaymentTypeId(): Promise<string | null> {
       cachedTransferPaymentTypeId = fallbackPT.id;
       return fallbackPT.id;
     }
+    return null;
   } catch (err) {
     console.error('Failed to get transfer payment type ID from Loyverse:', err);
     return null;

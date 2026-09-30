@@ -97,7 +97,7 @@ const getProductNotesPlaceholder = (product: MenuItem | null, categories: MenuCa
   return "Ej: indicaciones especiales para preparación o empaque...";
 };
 
-export default function MenuPage() {
+function MenuContent() {
   const router = useRouter();
 
   // Modal Video Promocional
@@ -2252,5 +2252,13 @@ export default function MenuPage() {
       {/* Video Modal Bajo Demanda */}
       <EdenVideoModal isOpen={isVideoModalOpen} onClose={() => setIsVideoModalOpen(false)} />
     </>
+  );
+}
+
+export default function MenuPage() {
+  return (
+    <React.Suspense fallback={<div className="flex items-center justify-center min-h-screen text-green-800">Cargando menú...</div>}>
+      <MenuContent />
+    </React.Suspense>
   );
 }

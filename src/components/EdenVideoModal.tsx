@@ -75,13 +75,13 @@ export default function EdenVideoModal({ isOpen, onClose, redirectToHomeOnClose 
 
   useEffect(() => {
     if (isOpen && videoRef.current) {
-      if (videoRef.current.readyState >= 3) {
+      if (videoRef.current.readyState >= 1) {
         setIsVideoReady(true);
       }
     }
   }, [isOpen]);
 
-  const handleCanPlayThrough = () => {
+  const handleLoadedData = () => {
     setIsVideoReady(true);
   };
 
@@ -321,7 +321,7 @@ export default function EdenVideoModal({ isOpen, onClose, redirectToHomeOnClose 
             controls={false}
             playsInline
             preload="auto"
-            onCanPlayThrough={handleCanPlayThrough}
+            onLoadedData={handleLoadedData}
             onEnded={handleClose}
           >
             <source src="/EdenPromo_Final.mp4" type="video/mp4" />
@@ -367,7 +367,7 @@ export default function EdenVideoModal({ isOpen, onClose, redirectToHomeOnClose 
         {showRotateSignal && (
           <div className="evm-rotate-phone-overlay">
             <Smartphone className="evm-phone-icon" />
-            <p className="evm-rotate-text">Gira tu teléfono<br />para ver la sorpresa</p>
+            <p className="evm-rotate-text">Gira tu celular</p>
           </div>
         )}
       </div>
