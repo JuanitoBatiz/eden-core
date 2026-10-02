@@ -35,6 +35,7 @@ export async function GET(req: Request) {
         order_id,
         order_total,
         created_at,
+        ticket_printed,
         user_id,
         users!raffle_entries_user_id_fkey (
           id,
@@ -56,7 +57,7 @@ export async function GET(req: Request) {
       phone: string;
       total_entries: number;
       last_entry_at: string;
-      entries: { order_id: string; order_total: number; created_at: string }[];
+      entries: { id: string; order_id: string; order_total: number; created_at: string; ticket_printed: boolean }[];
     }>();
 
     for (const entry of entries ?? []) {
@@ -78,9 +79,11 @@ export async function GET(req: Request) {
       const record = userMap.get(uid)!;
       record.total_entries += 1;
       record.entries.push({
+        id: entry.id,
         order_id: entry.order_id,
         order_total: entry.order_total,
         created_at: entry.created_at,
+        ticket_printed: entry.ticket_printed,
       });
       // Mantener la entrada más reciente como referencia
       if (entry.created_at > record.last_entry_at) {

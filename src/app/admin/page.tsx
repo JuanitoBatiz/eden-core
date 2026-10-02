@@ -4,6 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { usePermissions } from '@/hooks/usePermissions';
 import MenuManager from '@/components/admin/MenuManager';
 import UsersManager from '@/components/admin/UsersManager';
+import RaffleManager from '@/components/admin/RaffleManager';
 import BankConfigManager from '@/components/admin/BankConfigManager';
 import RefundsManager from '@/components/admin/RefundsManager';
 import DeliveryZonesManager from '@/components/admin/DeliveryZonesManager';
@@ -25,6 +26,7 @@ import {
   Landmark,
   Bike,
   MapPin,
+  Ticket,
   BellRing,
   BellOff
 } from 'lucide-react';
@@ -43,7 +45,7 @@ export default function AdminPage() {
   const { can, loading: permsLoading } = usePermissions();
 
   // Financial Tab State
-  const [activeTab, setActiveTab] = useState<'cocina' | 'finanzas' | 'reembolsos' | 'edenpass' | 'menu' | 'usuarios' | 'banco' | 'zonas'>('cocina');
+  const [activeTab, setActiveTab] = useState<'cocina' | 'finanzas' | 'reembolsos' | 'edenpass' | 'menu' | 'usuarios' | 'banco' | 'zonas' | 'rifa'>('cocina');
   const [pendingPayments, setPendingPayments] = useState<Order[]>([]);
   const [auditOrders, setAuditOrders] = useState<Order[]>([]);
   const [activeFinancialOrder, setActiveFinancialOrder] = useState<string | null>(null);
@@ -651,6 +653,15 @@ export default function AdminPage() {
 
         {/* TABS */}
         <div className="admin-tabs">
+          {can('can_manage_users') && (
+            <button 
+              onClick={() => setActiveTab('rifa')}
+              className={`admin-tab-btn ${activeTab === 'rifa' ? 'active active-usuarios' : ''}`}
+            >
+              <Ticket size={20} />
+              Sorteo
+            </button>
+          )}
           <button 
             onClick={() => setActiveTab('cocina')}
             className={`admin-tab-btn ${activeTab === 'cocina' ? 'active active-cocina' : ''}`}
@@ -786,6 +797,10 @@ export default function AdminPage() {
 
             {activeTab === 'usuarios' && (
               <UsersManager accessToken={''} />
+            )}
+            
+            {activeTab === 'rifa' && (
+              <RaffleManager />
             )}
             
             {activeTab === 'zonas' && can('can_manage_menu') && (
