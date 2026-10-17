@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { checkRateLimit, getClientIP } from '@/lib/rateLimit';
+import { createAdminClient, isSupabaseConfigured } from '@/lib/supabase';
 import { SmsRequest } from '@/types/api-contracts';
 
 const TWILIO_ACCOUNT_SID = process.env.TWILIO_ACCOUNT_SID || '';
@@ -11,12 +12,21 @@ const isTwilioConfigured = !!(TWILIO_ACCOUNT_SID && TWILIO_AUTH_TOKEN && TWILIO_
 // Mensaje genérico de rate limit
 const RATE_LIMIT_ERROR = 'Demasiadas solicitudes. Espera unos minutos antes de pedir un nuevo código.';
 
+// Ventana en la que un segundo pedido al mismo teléfono NO genera otro SMS
+const OTP_COOLDOWN_SECONDS = 45;
+// Tope global diario de SMS (freno de emergencia). Configurable por env.
+const parsedCap = parseInt(process.env.OTP_DAILY_CAP || '150', 10);
+const OTP_DAILY_CAP = Number.isFinite(parsedCap) && parsedCap > 0 ? parsedCap : 150;
+// Los clientes en el local comparten la IP pública del Wi-Fi, así que el límite por IP
+// debe ser holgado para no bloquear a clientes legítimos en hora pico.
+const OTP_IP_HOUR_MAX = 30;
+
 export async function POST(req: Request) {
   try {
     const body = await req.json();
     const { phone } = body as SmsRequest;
 
-    if (!phone || phone.length < 10) {
+    if (!phone || !/^\d{10}$/.test(phone)) {
       return NextResponse.json(
         { error: 'Por favor ingresa un número de celular válido de 10 dígitos.' },
         { status: 400 }
@@ -25,31 +35,60 @@ export async function POST(req: Request) {
 
     // ─────────────────────────────────────────────────────────
     // RATE LIMITING — debe ocurrir ANTES de cualquier operación
+    // Cada SMS a México cuesta ~US$0.18 + US$0.05 por verificación exitosa.
     // ─────────────────────────────────────────────────────────
     const ip = getClientIP(req);
+    const requestStartedAt = Date.now();
 
-    // Límite 1: máx 3 SMS por número de teléfono en 10 minutos
-    const phoneLimit = checkRateLimit(`sms:phone:${phone}`, 3, 600);
-    if (!phoneLimit.allowed) {
-      return NextResponse.json(
-        { error: RATE_LIMIT_ERROR },
-        {
-          status: 429,
-          headers: { 'Retry-After': String(phoneLimit.retryAfterSeconds) }
-        }
-      );
-    }
+    if (isTwilioConfigured) {
+      let decision: string | null = null;
 
-    // Límite 2: máx 10 SMS por IP en 10 minutos
-    const ipLimit = checkRateLimit(`sms:ip:${ip}`, 10, 600);
-    if (!ipLimit.allowed) {
-      return NextResponse.json(
-        { error: RATE_LIMIT_ERROR },
-        {
-          status: 429,
-          headers: { 'Retry-After': String(ipLimit.retryAfterSeconds) }
+      // Límite persistente y atómico en Supabase (funciona en Vercel serverless)
+      if (isSupabaseConfigured) {
+        try {
+          const { data, error } = await createAdminClient().rpc('otp_register_request', {
+            p_phone: phone,
+            p_ip: ip,
+            p_cooldown_s: OTP_COOLDOWN_SECONDS,
+            p_phone_hour_max: 3,
+            p_phone_day_max: 5,
+            p_ip_hour_max: OTP_IP_HOUR_MAX,
+            p_global_day_max: OTP_DAILY_CAP,
+          });
+          if (error) throw error;
+          decision = data as string;
+        } catch (rlError) {
+          // Falla abierta hacia un límite local para no bloquear a clientes legítimos
+          console.error('[SMS] Rate limit persistente no disponible, usando fallback local:', rlError);
         }
-      );
+      }
+
+      if (decision === null) {
+        const local = checkRateLimit(`sms:phone:${phone}`, 3, 3600);
+        decision = local.allowed ? 'ok' : 'phone_limit';
+      }
+
+      // Ya se envió un código hace instantes: NO se cobra otro SMS y el usuario
+      // no ve ningún error, simplemente continúa a capturar el código recibido.
+      if (decision === 'dedup') {
+        console.log(`[SMS] Reenvío evitado (cooldown) para la terminación **${phone.slice(-4)}`);
+        return NextResponse.json({ success: true, deduped: true, message: 'Código ya enviado.' });
+      }
+
+      if (decision === 'global_limit') {
+        console.error('[SMS][ALERTA] Tope diario global de OTP alcanzado.');
+        return NextResponse.json(
+          { error: 'El servicio de verificación está temporalmente saturado. Intenta más tarde.' },
+          { status: 429, headers: { 'Retry-After': '3600' } }
+        );
+      }
+
+      if (decision !== 'ok') {
+        return NextResponse.json(
+          { error: RATE_LIMIT_ERROR },
+          { status: 429, headers: { 'Retry-After': '600' } }
+        );
+      }
     }
 
     // ─────────────────────────────────────────────────────────
@@ -69,6 +108,21 @@ export async function POST(req: Request) {
         return NextResponse.json({ success: true, message: 'SMS enviado con éxito.' });
       } catch (smsError: any) {
         console.error('Error enviando SMS via Twilio Verify:', smsError);
+
+        // Reembolsar el cupo: si Twilio falló no se envió nada, y dejar el registro haría que
+        // un reintento inmediato respondiera 'dedup' ("ya enviado") sin que llegue ningún SMS.
+        if (isSupabaseConfigured) {
+          try {
+            await createAdminClient()
+              .from('otp_requests')
+              .delete()
+              .eq('phone', phone)
+              .gte('created_at', new Date(requestStartedAt - 2_000).toISOString());
+          } catch (refundErr) {
+            console.error('[SMS] No se pudo reembolsar el cupo de OTP:', refundErr);
+          }
+        }
+
         return NextResponse.json(
           { error: 'No se pudo enviar el SMS. Verifica el número e intenta de nuevo.' },
           { status: 503 }

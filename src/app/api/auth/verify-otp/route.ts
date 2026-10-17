@@ -74,9 +74,17 @@ export async function POST(req: Request) {
           .verificationChecks
           .create({ to: `+52${phone}`, code });
 
-        if (verificationCheck.status !== 'approved') {
+        if (verificationCheck.status === 'pending') {
+          // Código mal escrito: el código enviado sigue vigente, no hace falta otro SMS.
           return NextResponse.json(
-            { error: 'El código ingresado es incorrecto o ha expirado. Solicita un nuevo código.' },
+            { error: 'Código incorrecto. Revísalo con calma: el que te enviamos sigue vigente por unos minutos.', code: 'wrong_code' },
+            { status: 400 }
+          );
+        }
+        if (verificationCheck.status !== 'approved') {
+          // canceled / expired / otros: el código ya no sirve
+          return NextResponse.json(
+            { error: 'Este código ya no es válido. Solicita un nuevo código.', code: 'expired' },
             { status: 400 }
           );
         }
@@ -92,19 +100,19 @@ export async function POST(req: Request) {
 
         if (isExpiredOrUsed) {
           return NextResponse.json(
-            { error: 'El código ya fue usado o ha expirado. Por favor, solicita un nuevo código.' },
+            { error: 'El código ya fue usado o ha expirado. Por favor, solicita un nuevo código.', code: 'expired' },
             { status: 400 }
           );
         }
         if (isMaxAttempts) {
           return NextResponse.json(
-            { error: 'Demasiados intentos fallidos. Solicita un nuevo código.' },
+            { error: 'Demasiados intentos fallidos. Solicita un nuevo código.', code: 'max_attempts' },
             { status: 429 }
           );
         }
         // Error interno de Twilio (red, configuración, etc.)
         return NextResponse.json(
-          { error: 'No se pudo verificar el código en este momento. Intenta solicitar un nuevo código.' },
+          { error: 'No se pudo verificar el código en este momento. Intenta de nuevo en unos segundos; tu código sigue vigente.', code: 'verify_unavailable' },
           { status: 503 }
         );
       }

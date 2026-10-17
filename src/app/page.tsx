@@ -145,6 +145,9 @@ function MenuContent() {
   const [errorMsg, setErrorMsg] = useState('');
   const [resendCooldown, setResendCooldown] = useState(0);
   const [codeResentNotice, setCodeResentNotice] = useState(false);
+  const [isSendingSms, setIsSendingSms] = useState(false);
+  const [resendCount, setResendCount] = useState(0);
+
 
   useEffect(() => {
     let timer: any = null;
@@ -512,13 +515,34 @@ function MenuContent() {
     }
   };
 
+  const OTP_VALID_MS = 9 * 60 * 1000; // el código de Twilio Verify dura 10 min
+  const OTP_COOLDOWN_S = 45;
+  const MAX_RESENDS = 2;
+
   const handleSendSmsCode = async () => {
+    if (isSendingSms) return; // evita doble tap / doble envío
     setErrorMsg('');
     if (!customerName.trim() || !customerPhone.trim() || customerPhone.length !== 10) {
       setErrorMsg('Por favor ingresa tu nombre y un celular de 10 dígitos.');
       return;
     }
 
+    // Si ya se envió un código a ESTE mismo número hace poco (ej. "Corregir nombre" y volver),
+    // no se pide otro SMS: se regresa directo a la captura del código ya enviado.
+    try {
+      const raw = sessionStorage.getItem('eden_otp_sent');
+      if (raw) {
+        const last = JSON.parse(raw);
+        const age = Date.now() - (last.sentAt || 0);
+        if (last.phone === customerPhone && age < OTP_VALID_MS) {
+          setSmsSent(true);
+          setResendCooldown(Math.max(0, OTP_COOLDOWN_S - Math.floor(age / 1000)));
+          return;
+        }
+      }
+    } catch (e) { }
+
+    setIsSendingSms(true);
     try {
       // 1. Verificar si el celular ya existe con otro nombre
       const checkRes = await fetch('/api/auth/check-phone', {
@@ -560,6 +584,11 @@ function MenuContent() {
         return;
       }
 
+      try {
+        sessionStorage.setItem('eden_otp_sent', JSON.stringify({ phone: customerPhone, sentAt: Date.now() }));
+      } catch (e) { }
+      setResendCount(0);
+      setResendCooldown(OTP_COOLDOWN_S);
       setSmsSent(true);
       if (data.code) {
         // Developer simulation: save code to show banner
@@ -568,13 +597,20 @@ function MenuContent() {
     } catch (e) {
       console.error(e);
       setErrorMsg('Ocurrió un error de red. Intenta de nuevo.');
+    } finally {
+      setIsSendingSms(false);
     }
   };
 
   const handleResendSmsCode = async () => {
-    if (resendCooldown > 0) return;
+    if (resendCooldown > 0 || isSendingSms) return;
+    if (resendCount >= MAX_RESENDS) {
+      setErrorMsg('Ya reenviamos tu código. Revisa que tu número sea correcto o inténtalo de nuevo en unos minutos.');
+      return;
+    }
     setErrorMsg('');
     setCodeResentNotice(false);
+    setIsSendingSms(true);
 
     try {
       const payload: SmsRequest = { phone: customerPhone, name: customerName };
@@ -590,7 +626,17 @@ function MenuContent() {
         return;
       }
 
-      setResendCooldown(30);
+      if (data.deduped) {
+        // El servidor ya había enviado un código hace instantes: no se envió otro SMS.
+        setResendCooldown(OTP_COOLDOWN_S);
+        return;
+      }
+
+      try {
+        sessionStorage.setItem('eden_otp_sent', JSON.stringify({ phone: customerPhone, sentAt: Date.now() }));
+      } catch (e) { }
+      setResendCount(c => c + 1);
+      setResendCooldown(OTP_COOLDOWN_S);
       setCodeResentNotice(true);
       if (data.code) {
         setSentCode(data.code);
@@ -599,6 +645,8 @@ function MenuContent() {
     } catch (e) {
       console.error(e);
       setErrorMsg('Ocurrió un error de red al reenviar el código.');
+    } finally {
+      setIsSendingSms(false);
     }
   };
 
@@ -625,8 +673,20 @@ function MenuContent() {
       if (!res.ok) {
         setErrorMsg(data.error || 'Código incorrecto o expirado.');
         setIsVerifying(false);
+        if (data.code === 'wrong_code') {
+          setSmsCode(['', '', '', '', '', '']);
+          setTimeout(() => document.getElementById('otp-input-0')?.focus(), 0);
+        } else if (data.code === 'expired' || data.code === 'max_attempts') {
+          // El código ya no sirve: permitir pedir uno nuevo (el servidor aplica sus límites)
+          try { sessionStorage.removeItem('eden_otp_sent'); } catch (e) { }
+          setResendCount(0);
+          setResendCooldown(0);
+          setSmsCode(['', '', '', '', '', '']);
+        }
         return;
       }
+
+      try { sessionStorage.removeItem('eden_otp_sent'); } catch (e) { }
 
       // Éxito: guardar sesión híbrida por 30 días y enviar orden
       try {
@@ -2114,8 +2174,15 @@ function MenuContent() {
                     className="checkout-btn"
                     style={{ marginTop: '12px', width: '100%', borderRadius: '14px', padding: '15px', fontSize: '0.98rem', fontWeight: 600, boxShadow: '0 6px 18px rgba(34, 60, 43, 0.16)', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}
                     onClick={handleSendSmsCode}
+                    disabled={isSendingSms}
                   >
-                    <span>Continuar al SMS</span>
+                    <span>
+                      {isSendingSms
+                        ? 'Enviando código...'
+                        : customerPhone.length === 10
+                          ? `Enviar código a ${customerPhone.slice(0, 2)} ${customerPhone.slice(2, 6)} ${customerPhone.slice(6)}`
+                          : 'Continuar al SMS'}
+                    </span>
                     <ArrowRight size={18} />
                   </button>
                 </div>
@@ -2167,7 +2234,7 @@ function MenuContent() {
                   <div style={{ display: 'flex', justifyContent: 'center' }}>
                     <button
                       type="button"
-                      disabled={resendCooldown > 0}
+                      disabled={resendCooldown > 0 || isSendingSms || resendCount >= MAX_RESENDS}
                       onClick={handleResendSmsCode}
                       style={{
                         background: 'none',
@@ -2181,7 +2248,9 @@ function MenuContent() {
                     >
                       {resendCooldown > 0
                         ? `Reenviar código en ${resendCooldown}s`
-                        : '¿No te llegó? Volver a enviar SMS'}
+                        : resendCount >= MAX_RESENDS
+                          ? 'Revisa tu número o intenta en unos minutos'
+                          : '¿No te llegó? Volver a enviar SMS'}
                     </button>
                   </div>
 
