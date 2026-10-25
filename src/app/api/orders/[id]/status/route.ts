@@ -44,7 +44,7 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
 
     const { data: order, error: orderErr } = await adminSupabase
       .from('orders')
-      .select('*, users(loyverse_customer_id)')
+      .select('*, users!orders_user_id_fkey(loyverse_customer_id)')
       .eq('id', orderId)
       .single();
 
