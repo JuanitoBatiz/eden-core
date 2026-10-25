@@ -58,7 +58,7 @@ export async function ensureLoyverseReceipt(
 
   const { data: order, error: fetchErr } = await admin
     .from('orders')
-    .select('*, users(loyverse_customer_id)')
+    .select('*, users!orders_user_id_fkey(loyverse_customer_id)')
     .eq('id', orderId)
     .maybeSingle();
 
