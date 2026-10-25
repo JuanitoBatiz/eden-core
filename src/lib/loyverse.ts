@@ -332,6 +332,21 @@ export async function createLoyverseReceipt(order: {
 }
 
 /**
+ * Lee UN recibo de Loyverse por su número (ej. "0146"). SOLO LECTURA.
+ * Devuelve null si no existe (404). Lanza error ante cualquier otro fallo (para no asumir nada).
+ */
+export async function getLoyverseReceipt(receiptNumber: string): Promise<any | null> {
+  if (!isLoyverseConfigured) return null;
+  const res = await fetch(`${LOYVERSE_API_URL}/receipts/${encodeURIComponent(receiptNumber)}`, {
+    headers: { 'Authorization': `Bearer ${LOYVERSE_ACCESS_TOKEN}` },
+    signal: AbortSignal.timeout(10000),
+  });
+  if (res.status === 404) return null;
+  if (!res.ok) throw new Error(`Loyverse API error leyendo recibo ${receiptNumber} [HTTP ${res.status}]`);
+  return res.json();
+}
+
+/**
  * Busca en Loyverse un recibo que ya corresponda a este pedido (la nota lleva el id completo).
  * SOLO LECTURA. Se usa antes de reintentar la creación para no duplicar ventas.
  * Si la consulta falla LANZA error (no asumir "no existe").

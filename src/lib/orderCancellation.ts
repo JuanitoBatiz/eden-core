@@ -68,6 +68,7 @@ const REASON_LABELS: Record<string, string> = {
   ...STAFF_CANCEL_REASONS,
   ...CUSTOMER_CANCEL_REASONS,
   modified: 'Pedido modificado por el cliente',
+  anulado_en_pos: 'Anulado en la caja (Loyverse)',
 };
 
 /** Texto legible de orders.cancel_reason ("clave" o "clave: nota"), para mostrar en pantalla. */
