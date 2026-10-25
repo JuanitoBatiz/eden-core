@@ -1,7 +1,8 @@
 import { NextResponse } from 'next/server';
 import { requireRole } from '@/lib/auth';
 import { createClient } from '@supabase/supabase-js';
-import { refundLoyverseReceipt, createLoyverseReceipt } from '@/lib/loyverse';
+import { refundLoyverseReceipt } from '@/lib/loyverse';
+import { ensureLoyverseReceipt } from '@/lib/loyverseReceiptSync';
 import { buildCancelReason, isStaffCancelReason } from '@/lib/orderCancellation';
 
 const VALID_TRANSITIONS: Record<string, string[]> = {
@@ -102,42 +103,16 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
       { success: false, receipt_number: null, error: null };
 
     if (newStatus === 'in_preparation' && !order.loyverse_receipt_id) {
-      try {
-        const loyverseCustomerId = (order as any).users?.loyverse_customer_id || undefined;
-        const effectivePaymentMethod = updateData.payment_method ?? order.payment_method ?? 'efectivo';
-        const effectivePaymentStatus  = updateData.payment_status  ?? order.payment_status  ?? 'payment_approved';
-
-        const loyverseResult = await createLoyverseReceipt({
-          id: order.id,
-          customer_id: loyverseCustomerId,
-          customer_name: order.customer_name,
-          customer_phone: order.customer_phone,
-          items: order.items,
-          total: order.total,
-          notes: order.notes || '',
-          service_type: order.service_type,
-          delivery_address: order.delivery_address,
-          payment_method: effectivePaymentMethod,
-          payment_status: effectivePaymentStatus,
-          delivery_fee: order.delivery_fee,
-          delivery_lat: order.delivery_lat,
-          delivery_lng: order.delivery_lng,
-          delivery_fee_confirmed: order.delivery_fee_confirmed,
-        });
-
-        if (loyverseResult?.receipt_id) {
-          updateData.loyverse_receipt_id     = loyverseResult.receipt_id;
-          updateData.loyverse_receipt_number = loyverseResult.receipt_number;
-          loyverseDiagnostic = { success: true, receipt_number: loyverseResult.receipt_number, error: null };
-          console.log('[STATUS] Recibo Loyverse creado: ' + loyverseResult.receipt_number);
-        } else {
-          loyverseDiagnostic = { success: false, receipt_number: null, error: 'Loyverse no devolvio receipt_id' };
-          console.error('[STATUS] Loyverse no devolvio receipt_id para orden:', order.id);
-        }
-      } catch (loyverseErr: any) {
-        loyverseDiagnostic = { success: false, receipt_number: null, error: loyverseErr.message };
-        console.error('[STATUS] No se pudo crear recibo en Loyverse:', loyverseErr.message);
-      }
+      // Recibo en Loyverse: idempotente y con reintento automático si Loyverse falla
+      const receiptSync = await ensureLoyverseReceipt(adminSupabase, orderId, {
+        paymentMethod: updateData.payment_method ?? order.payment_method ?? 'efectivo',
+        paymentStatus: updateData.payment_status ?? order.payment_status ?? 'payment_approved',
+      });
+      loyverseDiagnostic = {
+        success: receiptSync.success,
+        receipt_number: receiptSync.receipt_number,
+        error: receiptSync.error,
+      };
     }
 
     const { data: updatedRows, error: updateErr } = await adminSupabase

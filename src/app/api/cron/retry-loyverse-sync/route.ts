@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
-import { createLoyverseCustomer, findLoyverseCustomerByPhone } from '@/lib/loyverse';
+import { createLoyverseCustomer, findLoyverseCustomerByPhone, findLoyverseReceiptByOrderId } from '@/lib/loyverse';
+import { ensureLoyverseReceipt } from '@/lib/loyverseReceiptSync';
 
 // Un trabajo en 'processing' por más de este tiempo se considera atascado (la ejecución murió) y se reintenta
 const STALE_PROCESSING_MS = 10 * 60 * 1000;
@@ -51,6 +52,13 @@ export async function GET(req: Request) {
     if (dryRun) {
       for (const job of pendingJobs) {
         try {
+          if (job.entity_type === 'receipt_create') {
+            const { data: o } = await adminSupabase.from('orders').select('created_at, loyverse_receipt_id, status').eq('id', job.entity_id).maybeSingle();
+            const found = o && !o.loyverse_receipt_id && o.status !== 'cancelled' ? await findLoyverseReceiptByOrderId(job.entity_id, o.created_at) : null;
+            const would = !o ? 'order_missing' : o.loyverse_receipt_id ? 'already_synced' : o.status === 'cancelled' ? 'skip_cancelled' : found ? 'link_existing_receipt' : 'create_receipt';
+            results.push({ id: job.id, entity_type: job.entity_type, would });
+            continue;
+          }
           const existing = job.entity_type === 'customer_create' ? await findLoyverseCustomerByPhone(job.payload?.phone) : null;
           results.push({ id: job.id, entity_type: job.entity_type, would: existing ? 'link_existing' : 'create' });
         } catch (e: any) {
@@ -82,6 +90,19 @@ export async function GET(req: Request) {
           }).eq('id', job.id);
           
           results.push({ id: job.id, status: 'completed' });
+        } else if (job.entity_type === 'receipt_create') {
+          const sync = await ensureLoyverseReceipt(adminSupabase, job.entity_id, {
+            paymentMethod: job.payload?.payment_method ?? 'efectivo',
+            lookupFirst: true,          // antes de crear, comprobar que no exista ya en Loyverse
+            enqueueOnFailure: false,    // el reintento lo gestiona este mismo trabajo
+          });
+          if (!sync.success) throw new Error(sync.error || 'No se pudo crear el recibo');
+
+          await adminSupabase.from('loyverse_sync_queue').update({
+            status: 'completed',
+            last_error: null
+          }).eq('id', job.id);
+          results.push({ id: job.id, status: 'completed', receipt_number: sync.receipt_number, skipped: sync.skipped ?? null });
         }
       } catch (error: any) {
         // Fallo: Calcular backoff y actualizar

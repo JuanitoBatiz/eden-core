@@ -217,11 +217,19 @@ export async function createLoyverseReceipt(order: {
     paymentText = '[YA PAGADO WEB / SPEI]';
   }
 
-  let fullNoteText = `${serviceTypeText} | ${paymentText}\nPedido Web #${order.id.slice(-4).toUpperCase()} | Cliente: ${order.customer_name} (${order.customer_phone})\nNotas: ${order.notes || 'Ninguna'}`;
+  // La nota lleva el id COMPLETO del pedido para poder conciliar a mano y para que un reintento
+  // pueda encontrar un recibo ya creado (ver findLoyverseReceiptByOrderId) en lugar de duplicarlo.
+  const noteHead = `${serviceTypeText} | ${paymentText}\nPedido Web #${order.id.slice(-4).toUpperCase()} | Cliente: ${order.customer_name} (${order.customer_phone}) | ID ${order.id}`;
+  const notesLine = `\nNotas: ${order.notes || 'Ninguna'}`;
+  let fullNoteText = noteHead + notesLine;
 
-  // Seguridad por límite de API Loyverse (máximo 255 caracteres en la nota general del recibo)
+  // Límite de la API de Loyverse: 255 caracteres en la nota general. Si no cabe, se recortan las
+  // NOTAS libres (nunca el id del pedido).
   if (fullNoteText.length > 255) {
-    fullNoteText = fullNoteText.slice(0, 252) + '...';
+    const room = 255 - noteHead.length - 3;
+    fullNoteText = room > 12
+      ? noteHead + notesLine.slice(0, room) + '...'
+      : fullNoteText.slice(0, 252) + '...';
   }
 
   if (!isLoyverseConfigured) {
@@ -321,6 +329,41 @@ export async function createLoyverseReceipt(order: {
     // If the API call fails in production, log it but return mock or let the system proceed
     throw error;
   }
+}
+
+/**
+ * Busca en Loyverse un recibo que ya corresponda a este pedido (la nota lleva el id completo).
+ * SOLO LECTURA. Se usa antes de reintentar la creación para no duplicar ventas.
+ * Si la consulta falla LANZA error (no asumir "no existe").
+ */
+export async function findLoyverseReceiptByOrderId(
+  orderId: string,
+  sinceIso: string
+): Promise<{ receipt_number: string } | null> {
+  if (!isLoyverseConfigured) return null;
+  // Margen de 1 h antes de la creación del pedido
+  const since = new Date(new Date(sinceIso).getTime() - 60 * 60 * 1000).toISOString();
+
+  let cursor: string | null = null;
+  let pages = 0;
+  do {
+    const res: Response = await fetch(
+      `${LOYVERSE_API_URL}/receipts?created_at_min=${encodeURIComponent(since)}&limit=250${cursor ? `&cursor=${cursor}` : ''}`,
+      { headers: { 'Authorization': `Bearer ${LOYVERSE_ACCESS_TOKEN}` }, signal: AbortSignal.timeout(15000) }
+    );
+    if (!res.ok) {
+      throw new Error(`Loyverse API error buscando recibo del pedido [HTTP ${res.status}]`);
+    }
+    const data = await res.json();
+    const match = (data.receipts || []).find((r: any) =>
+      typeof r.note === 'string' && r.note.includes(orderId) && !r.refund_for && !r.cancelled_at
+    );
+    if (match) return { receipt_number: match.receipt_number as string };
+    cursor = data.cursor || null;
+    pages++;
+  } while (cursor && pages < 10);
+
+  return null;
 }
 
 /**

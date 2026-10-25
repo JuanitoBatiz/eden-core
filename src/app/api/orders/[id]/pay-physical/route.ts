@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { verifyAccessToken } from '@/lib/auth';
 import { createAdminClient } from '@/lib/supabase';
-import { createLoyverseReceipt } from '@/lib/loyverse';
+import { ensureLoyverseReceipt } from '@/lib/loyverseReceiptSync';
 
 // PATCH: Pagar en físico
 export async function PATCH(req: Request, { params }: { params: Promise<{ id: string }> }) {
@@ -72,53 +72,16 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
       }
     }
 
-    let loyverseDiagnostic = { success: false, receipt_number: null as string | null, error: null as string | null };
-
-    // Enviar orden a Loyverse POS inmediatamente para pagos en físico / efectivo / caja si no ha sido enviada previamente
-    if (!order.loyverse_receipt_id) {
-      try {
-        const { data: dbUser } = await adminSupabase
-          .from('users')
-          .select('loyverse_customer_id')
-          .eq('id', order.user_id)
-          .single();
-
-        const loyverseResult = await createLoyverseReceipt({
-          id: order.id,
-          customer_id: dbUser?.loyverse_customer_id || undefined,
-          customer_name: order.customer_name,
-          customer_phone: order.customer_phone,
-          items: order.items,
-          total: order.total,
-          notes: order.notes || '',
-          service_type: order.service_type,
-          delivery_address: order.delivery_address,
-          payment_method: order.payment_method || 'efectivo',
-          payment_status: 'payment_approved',  // FIX: el cliente confirmó pago físico — el estado real es payment_approved
-          delivery_fee: order.delivery_fee,
-          delivery_lat: order.delivery_lat,
-          delivery_lng: order.delivery_lng,
-          delivery_fee_confirmed: order.delivery_fee_confirmed,
-        });
-
-        if (loyverseResult?.receipt_id) {
-          await adminSupabase
-            .from('orders')
-            .update({
-              loyverse_receipt_id: loyverseResult.receipt_id,
-              loyverse_receipt_number: loyverseResult.receipt_number
-            })
-            .eq('id', orderId);
-          
-          loyverseDiagnostic = { success: true, receipt_number: loyverseResult.receipt_number, error: null };
-        }
-      } catch (err: any) {
-        console.error('❌ [LOYVERSE DIAGNOSTIC in pay-physical]: Error synchronizing with Loyverse POS:', err);
-        loyverseDiagnostic = { success: false, receipt_number: null, error: err?.message || String(err) };
-      }
-    } else {
-      loyverseDiagnostic = { success: true, receipt_number: order.loyverse_receipt_number, error: 'Orden ya sincronizada previamente con Loyverse' };
-    }
+    // Recibo en Loyverse: idempotente y con reintento automático si Loyverse falla
+    const receiptSync = await ensureLoyverseReceipt(adminSupabase, orderId, {
+      paymentMethod: 'efectivo',
+      paymentStatus: 'payment_approved', // el cliente confirmó pago físico
+    });
+    const loyverseDiagnostic = {
+      success: receiptSync.success,
+      receipt_number: receiptSync.receipt_number,
+      error: receiptSync.error,
+    };
 
     return NextResponse.json({ success: true, status: 'in_preparation', loyverse_diagnostic: loyverseDiagnostic });
 
