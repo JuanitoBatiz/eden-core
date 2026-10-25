@@ -67,6 +67,8 @@ export default function AdminPage() {
   // Estado previo de cada pedido: detecta cancelaciones hechas por el cliente entre un poll y otro
   const prevStatusRef = React.useRef<Map<string, string>>(new Map());
   const [cancelNotices, setCancelNotices] = useState<{ id: string; reason: string | null }[]>([]);
+  // Estado de la sincronización con Loyverse (recibos sin registrar, reintentos atascados)
+  const [loyverseHealth, setLoyverseHealth] = useState<{ attention: boolean; orders_without_receipt: number; receipts_failed: number; receipts_stuck: number } | null>(null);
   
   // Audio notification state
   const [soundEnabled, setSoundEnabled] = useState(false);
@@ -190,6 +192,18 @@ export default function AdminPage() {
     }
   };
 
+  const fetchLoyverseHealth = async () => {
+    try {
+      const res = await fetch('/api/admin/loyverse-health', { credentials: 'include' });
+      if (res.ok) {
+        const data = await res.json();
+        if (data.success) setLoyverseHealth(data);
+      }
+    } catch (e) {
+      console.error('Error fetching Loyverse health:', e);
+    }
+  };
+
   const fetchPendingPayments = async () => {
     try {
       const res = await fetch('/api/orders/pending-payment', { credentials: 'include' });
@@ -241,6 +255,7 @@ export default function AdminPage() {
         await Promise.all([
           fetchOrders(),
           fetchPendingPayments(),
+          fetchLoyverseHealth(),
           fetchAuditOrders(),
           cleanupOldProofs(), // Limpieza periódica de comprobantes expirados
         ]);
@@ -643,6 +658,20 @@ export default function AdminPage() {
       </header>
 
       <main className="container" style={{ paddingTop: '40px', paddingBottom: '60px' }}>
+        {loyverseHealth?.attention && (
+          <div role="alert" style={{ display: 'flex', alignItems: 'flex-start', gap: '12px', backgroundColor: '#fffbeb', border: '1px solid #fcd34d', borderRadius: '12px', padding: '12px 16px', color: '#92400e', marginBottom: '20px' }}>
+            <AlertCircle size={20} style={{ flexShrink: 0, marginTop: '2px' }} />
+            <div style={{ fontSize: '0.92rem', lineHeight: 1.4 }}>
+              <strong>
+                {loyverseHealth.orders_without_receipt > 0
+                  ? `${loyverseHealth.orders_without_receipt} pedido(s) en cocina o entregados no tienen recibo en Loyverse.`
+                  : 'Hay recibos de Loyverse pendientes de registrar.'}
+              </strong>
+              {' '}El sistema los reintenta automáticamente. Si este aviso sigue más de una hora, avisa al dueño: la venta no estaría en la caja.
+            </div>
+          </div>
+        )}
+
         {cancelNotices.length > 0 && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '20px' }}>
             {cancelNotices.map(n => {

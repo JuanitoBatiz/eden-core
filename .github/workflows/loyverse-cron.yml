@@ -1,0 +1,29 @@
+# Dispara los reintentos de sincronización con Loyverse cada 15 minutos.
+# Vercel Hobby solo permite crons diarios (ver vercel.json); este workflow cubre el resto.
+# Requiere el secreto de repositorio CRON_SECRET (el mismo CRON_SECRET que usa la app en Vercel).
+name: Reintentos Loyverse (cron)
+
+on:
+  schedule:
+    - cron: '*/15 * * * *'
+  workflow_dispatch:
+
+jobs:
+  retry-loyverse-sync:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - name: Llamar al endpoint de reintentos
+        env:
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+        run: |
+          if [ -z "${CRON_SECRET}" ]; then
+            echo "CRON_SECRET no está configurado en los secretos del repositorio: se omite (agrégalo en Settings > Secrets and variables > Actions)."
+            exit 0
+          fi
+          code=$(curl -sS -m 90 -o response.json -w '%{http_code}' \
+            -H "Authorization: Bearer ${CRON_SECRET}" \
+            "https://www.eden-ensaladas.com/api/cron/retry-loyverse-sync")
+          echo "HTTP ${code}"
+          cat response.json
+          test "${code}" = "200"
