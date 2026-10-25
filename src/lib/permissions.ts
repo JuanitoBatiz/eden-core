@@ -53,6 +53,7 @@ export const ROUTE_PERMISSIONS: Record<string, MinimumRole> = {
   'PATCH /api/orders/:id/reject-payment': 'cashier',
   'GET /api/orders/:id/proof': 'cashier',
   'PATCH /api/orders/:id/status': 'cashier',
+  'POST /api/orders/:id/cancel': 'customer', // El cliente cancela su propio pedido (solo antes de preparación)
 };
 
 // Mapeo lógico de "Capacidades de UI" a "Rutas de Backend" reales

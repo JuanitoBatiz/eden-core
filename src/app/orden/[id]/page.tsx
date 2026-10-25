@@ -26,6 +26,11 @@ import {
   Crown
 } from 'lucide-react';
 import { supabase, isSupabaseConfigured } from '@/lib/supabase';
+import {
+  CUSTOMER_CANCEL_REASONS,
+  CustomerCancelReason,
+  isCustomerCancellable,
+} from '@/lib/orderCancellation';
 
 interface Order {
   id: string;
@@ -46,6 +51,8 @@ interface Order {
   payment_status?: string;
   payment_method?: string;
   rejection_reason?: string;
+  cancelled_by?: string | null;
+  cancel_reason?: string | null;
 }
 
 interface ProgressStep {
@@ -206,6 +213,11 @@ export default function OrderStatusPage() {
   const [showThankYou, setShowThankYou] = useState(false);
   const [confirmingReceipt, setConfirmingReceipt] = useState(false);
   const [dynamicStep, setDynamicStep] = useState(0);
+  const [showCancelModal, setShowCancelModal] = useState(false);
+  const [cancelReason, setCancelReason] = useState<CustomerCancelReason>('equivocacion');
+  const [cancelNote, setCancelNote] = useState('');
+  const [cancelling, setCancelling] = useState(false);
+  const [cancelError, setCancelError] = useState('');
 
   // Helper universal de copiado (funciona en HTTP LAN móvil y dispara vibración háptica)
   const handleCopyClabe = (text: string) => {
@@ -285,6 +297,39 @@ export default function OrderStatusPage() {
       console.error('Error fetching order:', e);
       setError('Error al conectar con el servidor.');
       setLoading(false);
+    }
+  };
+
+  const handleCancelOrder = async () => {
+    setCancelling(true);
+    setCancelError('');
+    try {
+      await fetch('/api/auth/refresh', { method: 'POST', credentials: 'include' });
+      const res = await fetch(`/api/orders/${id}/cancel`, {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ reason: cancelReason, note: cancelNote.trim() || undefined })
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        if (res.status === 409) {
+          // El pedido cambió (ya está en preparación o se envió comprobante): actualizar y avisar
+          setShowCancelModal(false);
+          alert(data.error || 'Este pedido ya no se puede cancelar desde la web.');
+          fetchOrder();
+        } else {
+          setCancelError(data.error || 'No se pudo cancelar el pedido. Intenta de nuevo.');
+        }
+        return;
+      }
+      setShowCancelModal(false);
+      setCancelNote('');
+      await fetchOrder();
+    } catch (e) {
+      setCancelError('Error de conexión. Intenta de nuevo.');
+    } finally {
+      setCancelling(false);
     }
   };
 
@@ -557,7 +602,9 @@ export default function OrderStatusPage() {
       default:
         return {
           titleText: 'Pedido Cancelado',
-          description: 'Tuvimos que anular tu pedido. Te contactaremos por WhatsApp para ofrecerte una alternativa.',
+          description: order.cancelled_by === 'customer'
+            ? 'Cancelaste este pedido. Si fue un error, puedes hacer uno nuevo cuando quieras.'
+            : 'Tuvimos que anular tu pedido. Te contactaremos por WhatsApp para ofrecerte una alternativa.',
           colorClass: 'cancelado',
           icon: <XCircle size={48} color="#c62828" />,
           animationClass: ''
@@ -750,7 +797,18 @@ export default function OrderStatusPage() {
               </div>
             )}
 
-          {order.status === 'cancelled' && (
+          {order.status === 'cancelled' && order.cancelled_by === 'customer' && (
+            <button
+              onClick={() => router.push('/')}
+              className="whatsapp-btn"
+              style={{ border: 'none', cursor: 'pointer', width: '100%' }}
+            >
+              <ShoppingBag size={20} />
+              <span>Hacer un nuevo pedido</span>
+            </button>
+          )}
+
+          {order.status === 'cancelled' && order.cancelled_by !== 'customer' && (
             <a 
               href={`https://wa.me/525635830014?text=Hola,%20tuve%20un%20inconveniente%20con%20mi%20pedido%20Ed%C3%A9n%20#${order.id.slice(-4).toUpperCase()}`}
               target="_blank"
@@ -941,6 +999,35 @@ export default function OrderStatusPage() {
             </div>
           )}
 
+          {/* CANCELAR PEDIDO — solo antes de preparación */}
+          {isCustomerCancellable(order) && (
+            <div style={{ marginTop: '24px', padding: '18px 20px', backgroundColor: '#fff', border: '1px solid rgba(0,0,0,0.08)', borderRadius: '16px', textAlign: 'center' }}>
+              <p style={{ margin: '0 0 12px 0', fontSize: '0.9rem', color: 'var(--color-text-muted)', lineHeight: 1.4 }}>
+                ¿Te equivocaste o ya no lo quieres? Puedes cancelar tu pedido antes de que empiece a prepararse.
+              </p>
+              <button
+                onClick={() => { setCancelError(''); setShowCancelModal(true); }}
+                style={{ padding: '12px 20px', backgroundColor: 'transparent', color: '#b91c1c', border: '1.5px solid #fca5a5', borderRadius: '10px', fontWeight: 700, fontSize: '0.9rem', cursor: 'pointer' }}
+              >
+                Cancelar pedido
+              </button>
+            </div>
+          )}
+
+          {order.payment_status === 'payment_submitted' && ['received', 'awaiting_payment'].includes(order.status) && (
+            <p style={{ marginTop: '14px', fontSize: '0.82rem', color: 'var(--color-text-muted)', textAlign: 'center' }}>
+              ¿Necesitas cambiar o cancelar tu pedido?{' '}
+              <a
+                href={`https://wa.me/525635830014?text=Hola,%20necesito%20cambiar%20o%20cancelar%20mi%20pedido%20Ed%C3%A9n%20#${order.id.slice(-4).toUpperCase()}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                style={{ color: 'var(--color-terracotta)', fontWeight: 700 }}
+              >
+                Escríbenos por WhatsApp
+              </a>
+            </p>
+          )}
+
           {order.payment_status === 'payment_submitted' && order.status !== 'cancelled' && (
             <div style={{ marginTop: '25px', padding: '15px', border: '1px solid #bbf7d0', backgroundColor: '#f0fdf4', borderRadius: '15px', textAlign: 'left', display: 'flex', gap: '10px' }}>
               <CheckCircle color="#16a34a" style={{ flexShrink: 0 }} />
@@ -1123,6 +1210,85 @@ export default function OrderStatusPage() {
           </div>
         </div>
       </main>
+
+      {/* MODAL: CANCELAR PEDIDO */}
+      {showCancelModal && isCustomerCancellable(order) && (
+        <div
+          onClick={() => !cancelling && setShowCancelModal(false)}
+          style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px', zIndex: 1000 }}
+        >
+          <div
+            onClick={e => e.stopPropagation()}
+            role="dialog"
+            aria-modal="true"
+            aria-label="Cancelar pedido"
+            style={{ backgroundColor: '#fff', borderRadius: '18px', padding: '24px 22px', width: '100%', maxWidth: '420px', boxShadow: '0 20px 50px rgba(0,0,0,0.25)', boxSizing: 'border-box' }}
+          >
+            <h3 style={{ margin: '0 0 6px 0', fontFamily: 'var(--font-serif)', fontSize: '1.35rem', color: 'var(--color-green-dark)' }}>
+              ¿Cancelar tu pedido?
+            </h3>
+            <p style={{ margin: '0 0 16px 0', fontSize: '0.9rem', color: 'var(--color-text-muted)', lineHeight: 1.4 }}>
+              Aún no empezamos a prepararlo, así que no se te cobrará nada. Cuéntanos qué pasó:
+            </p>
+
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginBottom: '14px' }}>
+              {(Object.entries(CUSTOMER_CANCEL_REASONS) as [CustomerCancelReason, string][]).map(([key, label]) => (
+                <button
+                  key={key}
+                  type="button"
+                  disabled={cancelling}
+                  onClick={() => setCancelReason(key)}
+                  style={{
+                    padding: '9px 14px', borderRadius: '999px', fontSize: '0.85rem', fontWeight: 600, cursor: 'pointer',
+                    border: cancelReason === key ? '1.5px solid var(--color-green-dark)' : '1.5px solid #d1d5db',
+                    backgroundColor: cancelReason === key ? 'var(--color-green-dark)' : '#fff',
+                    color: cancelReason === key ? '#fff' : '#374151'
+                  }}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+
+            {cancelReason === 'otro' && (
+              <textarea
+                value={cancelNote}
+                onChange={e => setCancelNote(e.target.value)}
+                maxLength={200}
+                rows={2}
+                placeholder="Cuéntanos brevemente (opcional)"
+                disabled={cancelling}
+                style={{ width: '100%', boxSizing: 'border-box', padding: '10px 12px', border: '1.5px solid #d1d5db', borderRadius: '10px', fontSize: '0.9rem', fontFamily: 'inherit', marginBottom: '14px', resize: 'none' }}
+              />
+            )}
+
+            {cancelError && (
+              <div style={{ fontSize: '0.85rem', color: '#b91c1c', backgroundColor: '#fef2f2', padding: '10px 12px', borderRadius: '8px', marginBottom: '14px', fontWeight: 600 }}>
+                {cancelError}
+              </div>
+            )}
+
+            <div style={{ display: 'flex', gap: '10px' }}>
+              <button
+                type="button"
+                onClick={() => setShowCancelModal(false)}
+                disabled={cancelling}
+                style={{ flex: 1, padding: '13px', backgroundColor: '#e5e7eb', color: '#374151', border: 'none', borderRadius: '10px', fontWeight: 700, cursor: cancelling ? 'not-allowed' : 'pointer' }}
+              >
+                Volver
+              </button>
+              <button
+                type="button"
+                onClick={handleCancelOrder}
+                disabled={cancelling}
+                style={{ flex: 1.4, padding: '13px', backgroundColor: '#b91c1c', color: '#fff', border: 'none', borderRadius: '10px', fontWeight: 700, cursor: cancelling ? 'not-allowed' : 'pointer', opacity: cancelling ? 0.7 : 1 }}
+              >
+                {cancelling ? 'Cancelando...' : 'Sí, cancelar pedido'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </>
   );
 }

@@ -6,6 +6,12 @@ import {
   ExternalLink, Navigation, RotateCcw
 } from 'lucide-react';
 import { Order } from '@/types/api-contracts';
+import {
+  STAFF_CANCEL_REASONS,
+  StaffCancelReason,
+  CANCELLED_BY_LABELS,
+  describeCancelReason,
+} from '@/lib/orderCancellation';
 
 interface KanbanBoardProps {
   pendingOrders: Order[];
@@ -13,8 +19,9 @@ interface KanbanBoardProps {
   preparingOrders: Order[];
   readyOrders?: Order[];
   inTransitOrders?: Order[];
+  cancelledOrders?: Order[];
   newOrderIds?: Set<string>;
-  updateStatus: (id: string, newStatus: string) => void;
+  updateStatus: (id: string, newStatus: string, reason?: string, note?: string) => void;
   resetPayment: (id: string) => void;
   setDeliveryFee: (orderId: string, fee: number) => Promise<void>;
   getWhatsAppCancelLink: (order: Order) => string;
@@ -34,6 +41,7 @@ export default function KanbanBoard({
   preparingOrders,
   readyOrders = [],
   inTransitOrders = [],
+  cancelledOrders = [],
   newOrderIds = new Set(),
   updateStatus,
   resetPayment,
@@ -44,6 +52,26 @@ export default function KanbanBoard({
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
   const [deliveryFeeInputs, setDeliveryFeeInputs] = useState<Record<string, string>>({});
   const [deliveryFeeLoading, setDeliveryFeeLoading] = useState<Record<string, boolean>>({});
+  // Cancelación por el personal: diálogo con motivo obligatorio
+  const [cancelTarget, setCancelTarget] = useState<Order | null>(null);
+  const [cancelReasonKey, setCancelReasonKey] = useState<StaffCancelReason | ''>('');
+  const [cancelNote, setCancelNote] = useState('');
+  const [showCancelled, setShowCancelled] = useState(false);
+
+  const openCancelDialog = (order: Order) => {
+    setCancelReasonKey('');
+    setCancelNote('');
+    setCancelTarget(order);
+  };
+
+  const confirmCancel = () => {
+    if (!cancelTarget || !cancelReasonKey) return;
+    updateStatus(cancelTarget.id, 'cancelled', cancelReasonKey, cancelNote.trim() || undefined);
+    setCancelTarget(null);
+    setSelectedOrder(null);
+  };
+
+  const CANCELLABLE_STATUSES = ['received', 'awaiting_payment', 'in_preparation', 'ready', 'in_transit'];
 
   const ordersByColumn: Record<string, Order[]> = {
     received:         pendingOrders,
@@ -419,15 +447,17 @@ export default function KanbanBoard({
                 {getStatusButtonText(order)}
               </button>
             )}
+            {CANCELLABLE_STATUSES.includes(order.status) && (
+              <button
+                className="admin-btn admin-btn-cancel"
+                style={{ padding: '13px 16px', fontSize: '0.85rem', borderRadius: '10px', fontWeight: 700 }}
+                onClick={() => openCancelDialog(order)}
+              >
+                Cancelar pedido
+              </button>
+            )}
             {isPending && (
               <>
-                <button
-                  className="admin-btn admin-btn-cancel"
-                  style={{ padding: '13px 16px', fontSize: '0.85rem', borderRadius: '10px', fontWeight: 700 }}
-                  onClick={() => { updateStatus(order.id, 'cancelled'); setSelectedOrder(null); }}
-                >
-                  Rechazar
-                </button>
                 <a
                   href={getWhatsAppCancelLink(order)}
                   target="_blank" rel="noopener noreferrer"
@@ -460,9 +490,110 @@ export default function KanbanBoard({
   };
 
   // ── KANBAN COLUMNS ──────────────────────────────────────────────────────────
+  // ── DIÁLOGO DE CANCELACIÓN ──────────────────────────────────────────────────
+  const renderCancelDialog = () => {
+    if (!cancelTarget) return null;
+    const o = cancelTarget;
+    const hasReceipt = !!o.loyverse_receipt_id;
+    return (
+      <div
+        onClick={e => { if (e.target === e.currentTarget) setCancelTarget(null); }}
+        style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.55)', zIndex: 9500, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px' }}
+      >
+        <div role="dialog" aria-modal="true" aria-label="Cancelar pedido" style={{ backgroundColor: '#fff', borderRadius: '16px', padding: '22px', width: '100%', maxWidth: '440px', boxSizing: 'border-box', boxShadow: '0 20px 50px rgba(0,0,0,0.3)' }}>
+          <h3 style={{ margin: '0 0 4px 0', fontFamily: 'var(--font-serif)', fontSize: '1.3rem', color: 'var(--color-green-dark)' }}>
+            Cancelar pedido #{o.id.slice(-4).toUpperCase()}
+          </h3>
+          <p style={{ margin: '0 0 14px 0', fontSize: '0.88rem', color: '#6b7280' }}>{o.customer_name} · ${o.total}</p>
+
+          {hasReceipt && (
+            <div style={{ display: 'flex', gap: '8px', alignItems: 'flex-start', backgroundColor: '#fffbeb', border: '1px solid #fcd34d', color: '#92400e', borderRadius: '10px', padding: '10px 12px', fontSize: '0.84rem', marginBottom: '14px' }}>
+              <AlertCircle size={16} style={{ flexShrink: 0, marginTop: '1px' }} />
+              <span>Este pedido ya tiene el recibo <strong>{o.loyverse_receipt_number || o.loyverse_receipt_id}</strong> en Loyverse. Al cancelar se <strong>anulará (reembolsará) ese recibo</strong> en la caja.</span>
+            </div>
+          )}
+          {o.payment_status === 'payment_approved' && (
+            <div style={{ fontSize: '0.84rem', color: '#92400e', marginBottom: '14px' }}>
+              El pago estaba aprobado: el pedido quedará pendiente en la pestaña <strong>Reembolsos</strong>.
+            </div>
+          )}
+
+          <div style={{ fontSize: '0.8rem', fontWeight: 700, color: '#374151', marginBottom: '8px' }}>Motivo (obligatorio)</div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', marginBottom: '12px' }}>
+            {(Object.entries(STAFF_CANCEL_REASONS) as [StaffCancelReason, string][]).map(([key, label]) => (
+              <label key={key} style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '9px 12px', border: cancelReasonKey === key ? '1.5px solid var(--color-green-dark)' : '1.5px solid #e5e7eb', borderRadius: '10px', cursor: 'pointer', fontSize: '0.9rem', backgroundColor: cancelReasonKey === key ? '#f0fdf4' : '#fff' }}>
+                <input type="radio" name="staff-cancel-reason" checked={cancelReasonKey === key} onChange={() => setCancelReasonKey(key)} />
+                {label}
+              </label>
+            ))}
+          </div>
+          <textarea
+            value={cancelNote}
+            onChange={e => setCancelNote(e.target.value)}
+            maxLength={200}
+            rows={2}
+            placeholder="Nota (opcional)"
+            style={{ width: '100%', boxSizing: 'border-box', padding: '9px 12px', border: '1.5px solid #e5e7eb', borderRadius: '10px', fontSize: '0.88rem', fontFamily: 'inherit', resize: 'none', marginBottom: '14px' }}
+          />
+
+          <div style={{ display: 'flex', gap: '10px' }}>
+            <button onClick={() => setCancelTarget(null)} style={{ flex: 1, padding: '12px', backgroundColor: '#e5e7eb', color: '#374151', border: 'none', borderRadius: '10px', fontWeight: 700, cursor: 'pointer' }}>
+              Volver
+            </button>
+            <button
+              onClick={confirmCancel}
+              disabled={!cancelReasonKey}
+              style={{ flex: 1.4, padding: '12px', backgroundColor: '#b91c1c', color: '#fff', border: 'none', borderRadius: '10px', fontWeight: 700, cursor: cancelReasonKey ? 'pointer' : 'not-allowed', opacity: cancelReasonKey ? 1 : 0.5 }}
+            >
+              Sí, cancelar pedido
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
+  // ── CANCELADOS RECIENTES (trazabilidad: quién, cuándo y por qué) ─────────────
+  const renderCancelledList = () => {
+    if (cancelledOrders.length === 0) return null;
+    return (
+      <div style={{ marginTop: '24px', backgroundColor: '#fff', border: '1px solid #e5e7eb', borderRadius: '14px', overflow: 'hidden' }}>
+        <button
+          onClick={() => setShowCancelled(v => !v)}
+          aria-expanded={showCancelled}
+          style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 18px', background: 'none', border: 'none', cursor: 'pointer', fontWeight: 800, fontSize: '0.92rem', color: '#991b1b' }}
+        >
+          <span>Cancelados en las últimas 24 h ({cancelledOrders.length})</span>
+          <ChevronRight size={18} style={{ transform: showCancelled ? 'rotate(90deg)' : 'none', transition: 'transform 0.2s' }} />
+        </button>
+        {showCancelled && (
+          <div style={{ borderTop: '1px solid #f3f4f6' }}>
+            {[...cancelledOrders]
+              .sort((a, b) => new Date(b.cancelled_at || b.created_at).getTime() - new Date(a.cancelled_at || a.created_at).getTime())
+              .map(o => (
+                <div key={o.id} style={{ display: 'flex', flexWrap: 'wrap', gap: '4px 14px', alignItems: 'baseline', padding: '10px 18px', borderBottom: '1px solid #f9fafb', fontSize: '0.85rem' }}>
+                  <strong style={{ color: 'var(--color-green-dark)' }}>#{o.id.slice(-4).toUpperCase()}</strong>
+                  <span>{o.customer_name}</span>
+                  <span style={{ color: '#6b7280' }}>${o.total}</span>
+                  <span style={{ color: '#6b7280' }}>
+                    {new Date(o.cancelled_at || o.created_at).toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit' })}
+                  </span>
+                  <span style={{ fontWeight: 700, color: '#991b1b' }}>
+                    {o.cancelled_by ? CANCELLED_BY_LABELS[o.cancelled_by] : 'Sin registro'}
+                  </span>
+                  <span style={{ color: '#374151' }}>{describeCancelReason(o.cancel_reason)}</span>
+                </div>
+              ))}
+          </div>
+        )}
+      </div>
+    );
+  };
+
   return (
     <>
       {renderModal()}
+      {renderCancelDialog()}
       <div className="kanban-board">
         {COLUMN_CONFIGS.map(col => {
           const colOrders = ordersByColumn[col.key] ?? [];
@@ -492,6 +623,7 @@ export default function KanbanBoard({
           );
         })}
       </div>
+      {renderCancelledList()}
     </>
   );
 }

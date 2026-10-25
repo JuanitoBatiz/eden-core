@@ -35,6 +35,7 @@ import FinanceApproval from '@/components/admin/FinanceApproval';
 import EdenPassScanner from '@/components/admin/EdenPassScanner';
 import Image from 'next/image';
 import { Html5QrcodeScanner } from 'html5-qrcode';
+import { describeCancelReason } from '@/lib/orderCancellation';
 import { QrValidateRequest, RedeemBenefitRequest, OrderRejectPaymentRequest, OrderStatusUpdateRequest, Order } from '@/types/api-contracts';
 
 export default function AdminPage() {
@@ -63,6 +64,9 @@ export default function AdminPage() {
   // New-order notification state — IDs that arrived since last poll
   const [newOrderIds, setNewOrderIds] = useState<Set<string>>(new Set());
   const prevOrderIdsRef = React.useRef<Set<string>>(new Set());
+  // Estado previo de cada pedido: detecta cancelaciones hechas por el cliente entre un poll y otro
+  const prevStatusRef = React.useRef<Map<string, string>>(new Map());
+  const [cancelNotices, setCancelNotices] = useState<{ id: string; reason: string | null }[]>([]);
   
   // Audio notification state
   const [soundEnabled, setSoundEnabled] = useState(false);
@@ -153,6 +157,19 @@ export default function AdminPage() {
           if (!prevOrderIdsRef.current.has(id)) freshIds.add(id);
         });
         prevOrderIdsRef.current = incomingIds;
+
+        // Aviso cuando un pedido que el cajero ya veía fue cancelado por el cliente
+        const newlyCancelled = incoming
+          .filter((o: Order) => {
+            const prev = prevStatusRef.current.get(o.id);
+            return !!prev && prev !== 'cancelled' && o.status === 'cancelled' && o.cancelled_by === 'customer';
+          })
+          .map((o: Order) => ({ id: o.id, reason: o.cancel_reason ?? null }));
+        prevStatusRef.current = new Map(incoming.map((o: Order) => [o.id, o.status]));
+        if (newlyCancelled.length > 0) {
+          setCancelNotices(prev => [...prev, ...newlyCancelled.filter((n: { id: string }) => !prev.some(p => p.id === n.id))]);
+          if (soundEnabledRef.current) playChime();
+        }
 
         if (freshIds.size > 0) {
           setNewOrderIds(prev => new Set([...prev, ...freshIds]));
@@ -441,9 +458,13 @@ export default function AdminPage() {
   };
 
   // Update order status via PATCH API
-  const updateStatus = async (id: string, newStatus: string) => {
+  const updateStatus = async (id: string, newStatus: string, reason?: string, note?: string) => {
     try {
       const payload: OrderStatusUpdateRequest = { status: newStatus as any };
+      if (newStatus === 'cancelled') {
+        payload.reason = reason;
+        payload.note = note;
+      }
       const res = await fetch(`/api/orders/${id}/status`, {
         method: 'PATCH',
         headers: { 
@@ -455,10 +476,13 @@ export default function AdminPage() {
 
       if (res.ok) {
         // Optimistic UI update
-        setOrders(prev => prev.map((o: any) => o.id === id ? { ...o, status: newStatus } : o).filter((o: any) => o.status !== 'delivered' && o.status !== 'cancelled'));
+        setOrders(prev => prev.map((o: any) => o.id === id ? { ...o, status: newStatus } : o).filter((o: any) => o.status !== 'delivered'));
+        // Traer la auditoría (quién/motivo) de las cancelaciones y reflejar cualquier otro cambio
+        fetchOrders();
       } else {
         const errorData = await res.json();
         alert(errorData.error || 'Error al actualizar el estado.');
+        if (res.status === 409 || res.status === 400) fetchOrders(); // el pedido cambió (p. ej. el cliente lo canceló)
       }
     } catch (error) {
       console.error('Error updating order status:', error);
@@ -545,6 +569,7 @@ export default function AdminPage() {
   const preparingOrders = orders.filter((o: any) => o.status === 'in_preparation');
   const readyOrders = orders.filter((o: any) => o.status === 'ready');
   const inTransitOrders = orders.filter((o: any) => o.status === 'in_transit');
+  const cancelledOrders = orders.filter((o: any) => o.status === 'cancelled');
 
   return (
     <>
@@ -618,6 +643,30 @@ export default function AdminPage() {
       </header>
 
       <main className="container" style={{ paddingTop: '40px', paddingBottom: '60px' }}>
+        {cancelNotices.length > 0 && (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '20px' }}>
+            {cancelNotices.map(n => {
+              const o = orders.find((x: Order) => x.id === n.id);
+              return (
+                <div key={n.id} role="alert" style={{ display: 'flex', alignItems: 'center', gap: '12px', backgroundColor: '#fef2f2', border: '1px solid #fecaca', borderRadius: '12px', padding: '12px 16px', color: '#991b1b' }}>
+                  <AlertCircle size={20} style={{ flexShrink: 0 }} />
+                  <div style={{ flex: 1, fontSize: '0.92rem' }}>
+                    <strong>El cliente canceló el pedido #{n.id.slice(-4).toUpperCase()}</strong>
+                    {o ? ` (${o.customer_name})` : ''} — {describeCancelReason(n.reason)}
+                  </div>
+                  <button
+                    onClick={() => setCancelNotices(prev => prev.filter(p => p.id !== n.id))}
+                    aria-label="Descartar aviso"
+                    style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#991b1b', display: 'flex' }}
+                  >
+                    <X size={18} />
+                  </button>
+                </div>
+              );
+            })}
+          </div>
+        )}
+
         <div className="admin-header">
           <div>
             <h1 className="admin-page-title" style={{ fontFamily: 'var(--font-serif)', color: 'var(--color-green-dark)' }}>
@@ -749,6 +798,7 @@ export default function AdminPage() {
                 preparingOrders={preparingOrders}
                 readyOrders={readyOrders}
                 inTransitOrders={inTransitOrders}
+                cancelledOrders={cancelledOrders}
                 newOrderIds={newOrderIds}
                 updateStatus={updateStatus}
                 resetPayment={resetPayment}

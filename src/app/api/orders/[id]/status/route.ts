@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { requireRole } from '@/lib/auth';
 import { createClient } from '@supabase/supabase-js';
 import { refundLoyverseReceipt, createLoyverseReceipt } from '@/lib/loyverse';
+import { buildCancelReason, isStaffCancelReason } from '@/lib/orderCancellation';
 
 const VALID_TRANSITIONS: Record<string, string[]> = {
   'received': ['awaiting_payment', 'in_preparation', 'cancelled'],
@@ -29,7 +30,7 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
     }
 
     const body = await req.json();
-    const { status: newStatus } = body;
+    const { status: newStatus, reason, note } = body;
 
     if (!['received', 'awaiting_payment', 'in_preparation', 'ready', 'in_transit', 'delivered', 'cancelled'].includes(newStatus)) {
       return NextResponse.json({ error: 'Estado invalido proporcionado.' }, { status: 400 });
@@ -52,6 +53,16 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
     const currentStatus = order.status;
     if (currentStatus === newStatus) return NextResponse.json({ success: true, status: newStatus });
 
+    // El cliente pudo cancelar justo antes de que el cajero actuara: avisar con claridad
+    if (currentStatus === 'cancelled') {
+      return NextResponse.json({
+        error: order.cancelled_by === 'customer'
+          ? 'El cliente canceló este pedido. Refresca el tablero.'
+          : 'Este pedido ya fue cancelado. Refresca el tablero.',
+        cancelled_by: order.cancelled_by ?? null
+      }, { status: 409 });
+    }
+
     const allowedNextStates = VALID_TRANSITIONS[currentStatus] || [];
     if (!allowedNextStates.includes(newStatus)) {
       return NextResponse.json({ error: "Transicion invalida de '" + currentStatus + "' a '" + newStatus + "'.", allowed_transitions: allowedNextStates }, { status: 400 });
@@ -60,6 +71,14 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
     const updateData: any = { status: newStatus };
 
     if (newStatus === 'cancelled') {
+      // Auditoría: quién, cuándo y por qué (motivo desconocido o ausente = 'otro')
+      updateData.cancelled_at = new Date().toISOString();
+      updateData.cancelled_by = 'staff';
+      updateData.cancelled_by_user_id = tokenPayload.user_id;
+      updateData.cancel_reason = buildCancelReason(
+        isStaffCancelReason(reason) ? reason : 'otro',
+        typeof note === 'string' ? note : undefined
+      );
       if (order.payment_status === 'payment_approved') updateData.refund_status = 'pending';
       if (order.loyverse_receipt_id) {
         try {

@@ -61,6 +61,10 @@ export interface QrValidateRequest {
 
 export interface OrderStatusUpdateRequest {
   status: 'received' | 'in_preparation' | 'ready' | 'in_transit' | 'delivered' | 'cancelled' | 'awaiting_payment';
+  /** Solo al cancelar: clave del motivo (agotado, cliente_pidio, error_captura, no_show, otro) */
+  reason?: string;
+  /** Solo al cancelar: nota libre opcional (máx. 200 caracteres) */
+  note?: string;
 }
 
 export interface OrderRejectPaymentRequest {
@@ -131,6 +135,10 @@ export interface Order {
   rejection_reason?: string;
   refund_status?: 'none' | 'pending' | 'completed';
   refund_proof_url?: string;
+  /** Auditoría de cancelación (null si el pedido no fue cancelado) */
+  cancelled_at?: string | null;
+  cancelled_by?: 'customer' | 'staff' | 'pos' | 'system' | null;
+  cancel_reason?: string | null;
   loyverse_receipt_id?: string;
   loyverse_receipt_number?: string;
 }
@@ -192,4 +200,9 @@ export interface LoyaltyBenefit {
   type: string;
   value?: number;
   is_active: boolean;
+}
+
+export interface OrderCancelRequest {
+  reason?: 'equivocacion' | 'ya_no_lo_quiero' | 'tardanza' | 'otro';
+  note?: string;
 }
