@@ -1,6 +1,9 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
-import { createLoyverseCustomer } from '@/lib/loyverse';
+import { createLoyverseCustomer, findLoyverseCustomerByPhone } from '@/lib/loyverse';
+
+// Un trabajo en 'processing' por más de este tiempo se considera atascado (la ejecución murió) y se reintenta
+const STALE_PROCESSING_MS = 10 * 60 * 1000;
 
 // GET: Worker para reintentar sincronizaciones pendientes con Loyverse
 export async function GET(req: Request) {
@@ -25,12 +28,16 @@ export async function GET(req: Request) {
 
     const adminSupabase = createClient(supabaseUrl, serviceRoleKey);
 
-    // 1. Obtener los trabajos pendientes que ya pueden ser reintentados
+    // ?dry_run=1 → solo informa qué haría (enlazar / crear) sin escribir nada ni crear clientes
+    const dryRun = new URL(req.url).searchParams.get('dry_run') === '1';
+    const nowIso = new Date().toISOString();
+    const staleIso = new Date(Date.now() - STALE_PROCESSING_MS).toISOString();
+
+    // 1. Trabajos pendientes listos para reintentar + trabajos atascados en 'processing'
     const { data: pendingJobs, error: fetchErr } = await adminSupabase
       .from('loyverse_sync_queue')
       .select('*')
-      .eq('status', 'pending')
-      .lte('next_retry_at', new Date().toISOString())
+      .or(`and(status.eq.pending,next_retry_at.lte.${nowIso}),and(status.eq.processing,updated_at.lt.${staleIso})`)
       .limit(10); // Límite por batch para no hacer timeout en serverless
 
     if (fetchErr) throw new Error(`Error fetching jobs: ${fetchErr.message}`);
@@ -41,11 +48,25 @@ export async function GET(req: Request) {
 
     const results = [];
 
+    if (dryRun) {
+      for (const job of pendingJobs) {
+        try {
+          const existing = job.entity_type === 'customer_create' ? await findLoyverseCustomerByPhone(job.payload?.phone) : null;
+          results.push({ id: job.id, entity_type: job.entity_type, would: existing ? 'link_existing' : 'create' });
+        } catch (e: any) {
+          results.push({ id: job.id, entity_type: job.entity_type, would: 'error', error: e.message });
+        }
+      }
+      return NextResponse.json({ success: true, dry_run: true, jobs: results.length, results });
+    }
+
     // 2. Procesar cada trabajo
     for (const job of pendingJobs) {
       try {
-        // Marcar como processing
-        await adminSupabase.from('loyverse_sync_queue').update({ status: 'processing' }).eq('id', job.id);
+        // Marcar como processing (updated_at explícito: sirve para detectar trabajos atascados)
+        await adminSupabase.from('loyverse_sync_queue')
+          .update({ status: 'processing', updated_at: new Date().toISOString() })
+          .eq('id', job.id);
 
         if (job.entity_type === 'customer_create') {
           const { name, phone } = job.payload;

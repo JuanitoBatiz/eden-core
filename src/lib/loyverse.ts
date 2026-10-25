@@ -383,16 +383,50 @@ export async function refundLoyverseReceipt(receiptId: string) {
   }
 }
 
+const phoneKey = (p?: string | null): string => String(p ?? '').replace(/\D/g, '').slice(-10);
+
 /**
- * Creates a customer in Loyverse POS.
- * WARNING: The Loyverse API does not guarantee uniqueness by phone natively when creating via POST.
- * If duplicate prevention is strictly needed, a GET request to search by phone should be done first,
- * but currently the specification is to blindly attempt creation.
+ * Busca en Loyverse un cliente que ya tenga este teléfono (compara los últimos 10 dígitos).
+ * SOLO LECTURA. Devuelve su id o null si no existe. Si la consulta falla LANZA error a propósito:
+ * es mejor reintentar luego que crear un cliente duplicado a ciegas.
+ */
+export async function findLoyverseCustomerByPhone(phone: string): Promise<string | null> {
+  if (!isLoyverseConfigured) return null;
+  const target = phoneKey(phone);
+  if (target.length < 10) return null;
+
+  let cursor: string | null = null;
+  do {
+    const res: Response = await fetch(
+      `${LOYVERSE_API_URL}/customers?limit=250${cursor ? `&cursor=${cursor}` : ''}`,
+      { headers: { 'Authorization': `Bearer ${LOYVERSE_ACCESS_TOKEN}` }, signal: AbortSignal.timeout(10000) }
+    );
+    if (!res.ok) {
+      throw new Error(`Loyverse API error buscando cliente por teléfono [HTTP ${res.status}]`);
+    }
+    const data = await res.json();
+    const match = (data.customers || []).find((c: any) => phoneKey(c.phone_number) === target);
+    if (match) return match.id as string;
+    cursor = data.cursor || null;
+  } while (cursor);
+
+  return null;
+}
+
+/**
+ * Obtiene el cliente de Loyverse para este teléfono: si ya existe lo REUTILIZA (no duplica);
+ * si no existe, lo crea. Devuelve el id de Loyverse.
  */
 export async function createLoyverseCustomer(name: string, phone: string): Promise<string> {
   if (!isLoyverseConfigured) {
     console.log(`[MOCK LOYVERSE] Creando cliente ${name} (${phone}) en Loyverse`);
     return `loyverse_cust_${Math.random().toString(36).substring(2, 11)}`;
+  }
+
+  const existingId = await findLoyverseCustomerByPhone(phone);
+  if (existingId) {
+    console.log(`🔗 [LOYVERSE] Cliente ya existía en Loyverse (teléfono ***${phoneKey(phone).slice(-4)}). Se enlaza sin crear duplicado.`);
+    return existingId;
   }
 
   const controller = new AbortController();
