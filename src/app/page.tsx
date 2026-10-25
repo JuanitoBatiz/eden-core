@@ -167,6 +167,8 @@ function MenuContent() {
 
   // Service Type State
   const [serviceType, setServiceType] = useState<'pickup' | 'delivery' | 'dine_in'>('pickup');
+  // Modo "Modificar pedido": el pedido nuevo reemplazará (y cancelará) a este al enviarse
+  const [editingOrder, setEditingOrder] = useState<{ id: string; short: string } | null>(null);
   // Delivery GPS State (solo activo cuando serviceType === 'delivery')
   const [deliveryAddress, setDeliveryAddress] = useState('');
   const [deliveryCoords, setDeliveryCoords] = useState<{ lat: number; lng: number } | null>(null);
@@ -346,6 +348,30 @@ function MenuContent() {
     window.addEventListener('scroll', handleScroll, { passive: true });
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
+
+  // Modificar pedido: /orden/[id] deja el carrito cargado y 'eden_edit_order' con los datos del original
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem('eden_edit_order');
+      if (!raw) return;
+      const edit = JSON.parse(raw);
+      if (!edit?.id || typeof edit.id !== 'string') { localStorage.removeItem('eden_edit_order'); return; }
+      setEditingOrder({ id: edit.id, short: String(edit.short || '') });
+      if (edit.service_type === 'delivery' || edit.service_type === 'dine_in' || edit.service_type === 'pickup') {
+        setServiceType(edit.service_type);
+      }
+      setIsCartOpen(true);
+    } catch (e) {
+      try { localStorage.removeItem('eden_edit_order'); } catch (e2) { }
+    }
+  }, []);
+
+  const discardOrderEdit = () => {
+    try { localStorage.removeItem('eden_edit_order'); } catch (e) { }
+    setEditingOrder(null);
+    saveCart([]);
+    setErrorMsg('');
+  };
 
   // Save cart to localStorage
   const saveCart = (newCart: CartItem[]) => {
@@ -734,6 +760,7 @@ function MenuContent() {
         customer_phone: customerPhone,
         items: cart,
         notes: finalNotes,
+        ...(editingOrder ? { replaces_order_id: editingOrder.id } : {}),
         service_type: serviceType === 'dine_in' ? 'pickup' : serviceType,
         delivery_address: serviceType === 'delivery' ? deliveryAddress : undefined,
         // Campos GPS — solo se envían para delivery
@@ -763,6 +790,18 @@ function MenuContent() {
         return;
       }
 
+      if (res.status === 409 && data.error === 'order_not_modifiable') {
+        // El pedido original ya no se puede modificar (entró a preparación o se envió comprobante).
+        // Se sale del modo edición para no reenviar con el mismo id; el carrito se conserva.
+        try { localStorage.removeItem('eden_edit_order'); } catch (e) { }
+        const blockedShort = editingOrder?.short;
+        setEditingOrder(null);
+        setErrorMsg(`${data.message || 'Tu pedido ya no se puede modificar.'} Tu pedido original #${blockedShort ?? ''} sigue vigente. Si envías este carrito ahora se creará un pedido NUEVO adicional.`);
+        setIsSubmittingOrder(false);
+        setIsVerifying(false);
+        return;
+      }
+
       if (res.status === 409) {
         let errorText = "ATENCIÓN - Cambios en disponibilidad:\n";
         data.conflicts.forEach((c: any) => {
@@ -783,6 +822,8 @@ function MenuContent() {
       }
 
       // Éxito: limpiar carrito y redirigir al estado de la orden
+      try { localStorage.removeItem('eden_edit_order'); } catch (e) { }
+      setEditingOrder(null);
       saveCart([]);
       setDeliveryCoords(null);
       setDeliveryQuote(null);
@@ -1919,6 +1960,20 @@ function MenuContent() {
                 <X size={20} />
               </button>
             </div>
+
+            {editingOrder && (
+              <div style={{ backgroundColor: '#fffbeb', borderBottom: '1px solid #fcd34d', padding: '12px 16px', fontSize: '0.85rem', color: '#92400e', display: 'flex', alignItems: 'center', gap: '10px' }}>
+                <div style={{ flex: 1, lineHeight: 1.35 }}>
+                  <strong>Estás modificando tu pedido #{editingOrder.short}.</strong> Al confirmarlo, reemplazará al anterior.
+                </div>
+                <button
+                  onClick={discardOrderEdit}
+                  style={{ background: 'none', border: '1px solid #f59e0b', color: '#92400e', borderRadius: '8px', padding: '6px 10px', fontWeight: 700, fontSize: '0.78rem', cursor: 'pointer', flexShrink: 0 }}
+                >
+                  Descartar cambios
+                </button>
+              </div>
+            )}
 
             <div className="cart-body">
               {cart.length === 0 ? (

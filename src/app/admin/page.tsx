@@ -651,8 +651,10 @@ export default function AdminPage() {
                 <div key={n.id} role="alert" style={{ display: 'flex', alignItems: 'center', gap: '12px', backgroundColor: '#fef2f2', border: '1px solid #fecaca', borderRadius: '12px', padding: '12px 16px', color: '#991b1b' }}>
                   <AlertCircle size={20} style={{ flexShrink: 0 }} />
                   <div style={{ flex: 1, fontSize: '0.92rem' }}>
-                    <strong>El cliente canceló el pedido #{n.id.slice(-4).toUpperCase()}</strong>
-                    {o ? ` (${o.customer_name})` : ''} — {describeCancelReason(n.reason)}
+                    {n.reason === 'modified'
+                      ? <strong>El cliente modificó el pedido #{n.id.slice(-4).toUpperCase()}</strong>
+                      : <strong>El cliente canceló el pedido #{n.id.slice(-4).toUpperCase()}</strong>}
+                    {o ? ` (${o.customer_name})` : ''} — {n.reason === 'modified' ? 'el pedido actualizado aparece en Recibidos' : describeCancelReason(n.reason)}
                   </div>
                   <button
                     onClick={() => setCancelNotices(prev => prev.filter(p => p.id !== n.id))}

@@ -53,6 +53,7 @@ interface Order {
   rejection_reason?: string;
   cancelled_by?: string | null;
   cancel_reason?: string | null;
+  replaced_by_order_id?: string | null;
 }
 
 interface ProgressStep {
@@ -333,6 +334,30 @@ export default function OrderStatusPage() {
     }
   };
 
+  // Modificar = reabrir los platillos en el carrito. El pedido original NO se cancela aquí:
+  // se reemplaza (y cancela) solo cuando el cliente envía el pedido nuevo.
+  const handleModifyOrder = () => {
+    if (!order) return;
+    try {
+      const cartItems = (order.items || []).map((item: Record<string, unknown>) =>
+        Object.fromEntries(Object.entries(item).filter(([k]) => k !== 'calculated_unit_price' && k !== 'final_subtotal'))
+      );
+      const serviceType = order.service_type === 'delivery'
+        ? 'delivery'
+        : order.notes?.includes('[COMER EN LOCAL]') ? 'dine_in' : 'pickup';
+      localStorage.setItem('eden_cart', JSON.stringify(cartItems));
+      localStorage.setItem('eden_edit_order', JSON.stringify({
+        id: order.id,
+        short: order.id.slice(-4).toUpperCase(),
+        service_type: serviceType
+      }));
+    } catch (e) {
+      alert('No pudimos abrir tu pedido para modificarlo. Intenta de nuevo.');
+      return;
+    }
+    router.push('/');
+  };
+
   const fetchBankConfig = async () => {
     try {
       const res = await fetch('/api/bank-config');
@@ -602,7 +627,9 @@ export default function OrderStatusPage() {
       default:
         return {
           titleText: 'Pedido Cancelado',
-          description: order.cancelled_by === 'customer'
+          description: order.cancel_reason === 'modified'
+            ? 'Modificaste este pedido. Tu pedido actualizado ya está en curso.'
+            : order.cancelled_by === 'customer'
             ? 'Cancelaste este pedido. Si fue un error, puedes hacer uno nuevo cuando quieras.'
             : 'Tuvimos que anular tu pedido. Te contactaremos por WhatsApp para ofrecerte una alternativa.',
           colorClass: 'cancelado',
@@ -799,12 +826,12 @@ export default function OrderStatusPage() {
 
           {order.status === 'cancelled' && order.cancelled_by === 'customer' && (
             <button
-              onClick={() => router.push('/')}
+              onClick={() => router.push(order.replaced_by_order_id ? `/orden/${order.replaced_by_order_id}` : '/')}
               className="whatsapp-btn"
               style={{ border: 'none', cursor: 'pointer', width: '100%' }}
             >
               <ShoppingBag size={20} />
-              <span>Hacer un nuevo pedido</span>
+              <span>{order.replaced_by_order_id ? 'Ver mi pedido actualizado' : 'Hacer un nuevo pedido'}</span>
             </button>
           )}
 
@@ -1003,14 +1030,22 @@ export default function OrderStatusPage() {
           {isCustomerCancellable(order) && (
             <div style={{ marginTop: '24px', padding: '18px 20px', backgroundColor: '#fff', border: '1px solid rgba(0,0,0,0.08)', borderRadius: '16px', textAlign: 'center' }}>
               <p style={{ margin: '0 0 12px 0', fontSize: '0.9rem', color: 'var(--color-text-muted)', lineHeight: 1.4 }}>
-                ¿Te equivocaste o ya no lo quieres? Puedes cancelar tu pedido antes de que empiece a prepararse.
+                ¿Te equivocaste? Puedes modificar o cancelar tu pedido antes de que empiece a prepararse.
               </p>
-              <button
-                onClick={() => { setCancelError(''); setShowCancelModal(true); }}
-                style={{ padding: '12px 20px', backgroundColor: 'transparent', color: '#b91c1c', border: '1.5px solid #fca5a5', borderRadius: '10px', fontWeight: 700, fontSize: '0.9rem', cursor: 'pointer' }}
-              >
-                Cancelar pedido
-              </button>
+              <div style={{ display: 'flex', gap: '10px', justifyContent: 'center', flexWrap: 'wrap' }}>
+                <button
+                  onClick={handleModifyOrder}
+                  style={{ padding: '12px 20px', backgroundColor: 'var(--color-green-dark)', color: '#fff', border: 'none', borderRadius: '10px', fontWeight: 700, fontSize: '0.9rem', cursor: 'pointer' }}
+                >
+                  Modificar pedido
+                </button>
+                <button
+                  onClick={() => { setCancelError(''); setShowCancelModal(true); }}
+                  style={{ padding: '12px 20px', backgroundColor: 'transparent', color: '#b91c1c', border: '1.5px solid #fca5a5', borderRadius: '10px', fontWeight: 700, fontSize: '0.9rem', cursor: 'pointer' }}
+                >
+                  Cancelar pedido
+                </button>
+              </div>
             </div>
           )}
 

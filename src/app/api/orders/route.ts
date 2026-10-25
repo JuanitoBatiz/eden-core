@@ -3,6 +3,13 @@ import { createAdminClient, isSupabaseConfigured } from '@/lib/supabase';
 import { requireRole, verifyAccessToken } from '@/lib/auth';
 import { OrderCreateRequest } from '@/types/api-contracts';
 import { calculateOrderTotal } from '@/lib/pricing';
+import {
+  CUSTOMER_CANCELLABLE_STATUSES,
+  customerCancelBlockedMessage,
+  isCustomerCancellable,
+} from '@/lib/orderCancellation';
+
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 // ── Haversine helper (mismo que en /api/delivery/quote) ────────────────────────
 function haversineDistanceKm(lat1: number, lng1: number, lat2: number, lng2: number): number {
@@ -104,7 +111,7 @@ export async function POST(req: Request) {
     const orderData = await req.json();
     const {
       customer_name, customer_phone, customer_email, items, notes, service_type,
-      delivery_address, delivery_lat, delivery_lng, delivery_zone_id
+      delivery_address, delivery_lat, delivery_lng, delivery_zone_id, replaces_order_id
     } = orderData as OrderCreateRequest;
 
     if (!customer_name || !items || items.length === 0) {
@@ -128,6 +135,33 @@ export async function POST(req: Request) {
           { status: 400 }
         );
       }
+    }
+
+    // 2b. Modificar pedido: validar ANTES de crear nada que el pedido original siga en la ventana permitida
+    let replacedOrderId: string | null = null;
+    if (replaces_order_id) {
+      if (typeof replaces_order_id !== 'string' || !UUID_RE.test(replaces_order_id)) {
+        return NextResponse.json({ error: 'El pedido a modificar es inválido.' }, { status: 400 });
+      }
+      const { data: oldOrder, error: oldErr } = await adminSupabase
+        .from('orders')
+        .select('id, user_id, status, payment_status')
+        .eq('id', replaces_order_id)
+        .maybeSingle();
+      if (oldErr) throw new Error(oldErr.message);
+      if (!oldOrder) {
+        return NextResponse.json({ error: 'El pedido a modificar no existe.' }, { status: 404 });
+      }
+      if (oldOrder.user_id !== tokenPayload.user_id) {
+        return NextResponse.json({ error: 'No tienes permiso sobre ese pedido.' }, { status: 403 });
+      }
+      if (!isCustomerCancellable(oldOrder)) {
+        return NextResponse.json(
+          { error: 'order_not_modifiable', message: customerCancelBlockedMessage(oldOrder, 'modificar') },
+          { status: 409 }
+        );
+      }
+      replacedOrderId = oldOrder.id;
     }
 
     // 3. Fetch all products referenced in the cart (requiere adminClient — tabla products tiene RLS)
@@ -239,6 +273,8 @@ export async function POST(req: Request) {
       newOrder.delivery_zone_id = resolvedZoneId;
     }
 
+    if (replacedOrderId) newOrder.replaces_order_id = replacedOrderId;
+
     const { data: createdOrder, error: insertErr } = await adminSupabase
       .from('orders')
       .insert([newOrder])
@@ -249,8 +285,46 @@ export async function POST(req: Request) {
       throw new Error(`Error al crear la orden: ${insertErr?.message}`);
     }
 
+    // 7. Modificar pedido: cancelar el original con un UPDATE atómico (solo si SIGUE en la ventana
+    //    permitida). Si el cajero lo pasó a preparación o el cliente subió comprobante entretanto,
+    //    se descarta el pedido recién creado (aún no tiene recibo, rifa ni pago) y se avisa.
+    if (replacedOrderId) {
+      const { data: cancelledRows, error: cancelErr } = await adminSupabase
+        .from('orders')
+        .update({
+          status: 'cancelled',
+          cancelled_at: new Date().toISOString(),
+          cancelled_by: 'customer',
+          cancelled_by_user_id: tokenPayload.user_id,
+          cancel_reason: 'modified',
+          replaced_by_order_id: createdOrder.id,
+        })
+        .eq('id', replacedOrderId)
+        .eq('user_id', tokenPayload.user_id)
+        .in('status', [...CUSTOMER_CANCELLABLE_STATUSES])
+        .eq('payment_status', 'pending_payment')
+        .select('id');
+
+      if (cancelErr || !cancelledRows || cancelledRows.length === 0) {
+        await adminSupabase
+          .from('orders')
+          .delete()
+          .eq('id', createdOrder.id)
+          .eq('user_id', tokenPayload.user_id)
+          .eq('status', 'received');
+        if (cancelErr) throw new Error(cancelErr.message);
+        const { data: fresh } = await adminSupabase
+          .from('orders').select('status, payment_status').eq('id', replacedOrderId).maybeSingle();
+        return NextResponse.json(
+          { error: 'order_not_modifiable', message: fresh ? customerCancelBlockedMessage(fresh, 'modificar') : 'No se pudo modificar el pedido.' },
+          { status: 409 }
+        );
+      }
+    }
+
     return NextResponse.json({
       success: true,
+      replaced_order_id: replacedOrderId,
       order: {
         id: createdOrder.id,
         total: createdOrder.total,

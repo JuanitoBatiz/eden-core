@@ -32,6 +32,8 @@ export interface OrderItemRequest {
 }
 
 export interface OrderCreateRequest {
+  /** Modificar pedido: id del pedido que este reemplaza (solo antes de preparación) */
+  replaces_order_id?: string;
   customer_name: string;
   customer_phone: string;
   customer_email?: string;

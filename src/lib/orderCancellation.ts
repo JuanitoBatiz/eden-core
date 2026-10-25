@@ -31,13 +31,16 @@ export function isCustomerCancellable(order: CancellableOrderState): boolean {
   );
 }
 
-/** Mensaje para el cliente cuando el pedido ya no se puede cancelar desde la web. */
-export function customerCancelBlockedMessage(order: CancellableOrderState): string {
+/** Mensaje para el cliente cuando el pedido ya no se puede cancelar/modificar desde la web. */
+export function customerCancelBlockedMessage(
+  order: CancellableOrderState,
+  action: 'cancelar' | 'modificar' = 'cancelar'
+): string {
   if (order.status === 'cancelled') return 'Este pedido ya estaba cancelado.';
   if (order.payment_status === 'payment_submitted') {
     return 'Ya enviaste tu comprobante de pago. Para cambiarlo o cancelarlo, contacta a caja por WhatsApp.';
   }
-  return 'Tu pedido ya está en preparación y no se puede cancelar desde la web. Contacta a caja por WhatsApp.';
+  return `Tu pedido ya está en preparación y no se puede ${action} desde la web. Contacta a caja por WhatsApp.`;
 }
 
 /** Motivos que el personal (cajero/owner) elige al cancelar desde el Kanban. */
