@@ -1282,3 +1282,8 @@ html.ed-seen .ed-intro { display: none; }
 .ed-card-media .ed-fig[data-img="yogurt"] img { translate: 0 -5%; }
 .ed-card-media .ed-fig[data-img="infusion"] img { height: 92%; }
 .ed-card-media .ed-fig { position: absolute; inset: 0; height: auto; }
+/* Logo del hero más grande en escritorio */
+@media (min-width: 961px) {
+  .ed-hero-grid { grid-template-columns: minmax(0, 1.25fr) minmax(0, .9fr); }
+  .ed-hero-title { width: min(106%, 900px); }
+}
