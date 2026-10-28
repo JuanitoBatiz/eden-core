@@ -163,6 +163,11 @@ export default function PerfilPage() {
             <LoginCard
               onSuccess={(u) => {
                 if (u.name) setMemberName(String(u.name).split(' ')[0]);
+                // Si llegó desde la rifa, regresa a la rifa ya con sesión
+                if (new URLSearchParams(window.location.search).get('next') === '/rifa') {
+                  window.location.href = '/rifa';
+                  return;
+                }
                 setIsAuthenticated(true);
                 window.scrollTo({ top: 0, behavior: 'smooth' });
               }}

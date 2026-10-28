@@ -120,7 +120,7 @@ export default function RifaPage() {
             <div className="rifa-guest-board">
               <LogIn size={24} className="rifa-guest-icon" />
               <p>Inicia sesión para ver tus oportunidades</p>
-              <button className="rifa-login-btn" onClick={() => { window.location.href = '/?login=1'; }}>
+              <button className="rifa-login-btn" onClick={() => { window.location.href = '/perfil?next=/rifa'; }}>
                 Iniciar sesión
               </button>
             </div>

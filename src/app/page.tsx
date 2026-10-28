@@ -996,7 +996,7 @@ function MenuContent() {
         <img src={cut} alt={product.name} loading={priority ? 'eager' : 'lazy'} />
       </div>
     ) : (
-      <div className="ed-fig ed-fig--photo">
+      <div className="ed-fig ed-fig--photo" data-img={(product.image || '').split('/').pop()?.split('.')[0]}>
         <ProductImage src={product.image} alt={product.name} className="product-img" priority={priority} />
       </div>
     );
