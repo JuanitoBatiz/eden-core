@@ -1267,14 +1267,18 @@ html.ed-seen .ed-intro { display: none; }
   .ed-favs { height: auto; }
 }
 
-/* Hoja a la izquierda del nombre: su borde derecho termina antes de la "E", nunca la cubre */
-.ed-title-leaf { position: absolute; right: calc(100% + 10px); top: 50%; width: 260px; height: 150px; transform: translateY(-50%); pointer-events: none; }
-.ed-title-leaf .ed-hleaf { position: absolute; left: 50%; top: 50%; width: 120px; margin: -104px 0 0 -60px; rotate: -75deg; transform: none; }
-@media (min-width: 961px) { .ed-hide-desk { display: none; } .ed-hero-copy { padding-left: clamp(40px, 6vw, 120px); } }
+/* Hoja superior izquierda: mismo ángulo, desplazada para no tapar la "E" */
+@media (min-width: 961px) {
+  .ed-hero-copy { padding-left: clamp(60px, 11.5vw, 220px); }
+}
 @media (max-width: 960px) { .ed-hleaf.hl1 { display: none; } }
-@media (max-width: 960px) { .ed-title-leaf { display: none; } }
-/* Bebidas en Favoritos: más arriba para no tapar el texto */
-.ed-fav .ed-fig { place-items: start center; }
-.ed-fav .ed-fig-disc { top: 0; }
-.ed-fav .ed-fig--cut img { max-height: 76%; translate: 0 -2%; }
-.ed-fav h3 { margin-top: 2px; }
+
+/* Imágenes recortadas: siempre completas dentro de su caja */
+.ed-fig--cut img { position: absolute; inset: 0; margin: auto; width: 84%; height: 84%; max-width: none; max-height: none; object-fit: contain; }
+.ed-card-media .ed-fig--cut img { width: 82%; height: 86%; }
+.ed-fav .ed-fig--cut img { width: 86%; height: 92%; max-height: none; translate: none; }
+/* Ajustes finos por foto */
+.ed-fav .ed-fig[data-img="torta"] img, .ed-fav .ed-fig[data-img="bowl_avena"] img, .ed-fav .ed-fig[data-img="ensalada"] img { translate: 0 10%; }
+.ed-card-media .ed-fig[data-img="yogurt"] img { translate: 0 -5%; }
+.ed-card-media .ed-fig[data-img="infusion"] img { height: 92%; }
+.ed-card-media .ed-fig { position: absolute; inset: 0; height: auto; }

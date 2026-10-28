@@ -991,7 +991,7 @@ function MenuContent() {
   const renderFigure = (product: any, priority = false) => {
     const cut = cutoutFor(product.image);
     return cut ? (
-      <div className="ed-fig ed-fig--cut">
+      <div className="ed-fig ed-fig--cut" data-img={cut.split('/').pop()?.replace('.webp', '')}>
         <span className="ed-fig-disc" />
         <img src={cut} alt={product.name} loading={priority ? 'eager' : 'lazy'} />
       </div>
@@ -1018,7 +1018,7 @@ function MenuContent() {
         <div className="ed-hero-bg" />
         <LeafShadows />
         <div className="ed-hero-leaves" aria-hidden="true">
-          <Monstera v={0} className="ed-hleaf hl1 ed-hide-desk" />
+          <Monstera v={0} className="ed-hleaf hl1" />
           <Monstera v={2} className="ed-hleaf hl2" />
           <Monstera v={1} className="ed-hleaf hl3" />
           <Monstera v={0} className="ed-hleaf hl4" />
@@ -1027,7 +1027,6 @@ function MenuContent() {
         <div className="ed-hero-grid">
           <div className="ed-hero-copy">
             <h1 className="ed-hero-title">
-              <span className="ed-title-leaf" aria-hidden="true"><Monstera v={0} className="ed-hleaf" /></span>
               <EdenMark animated />
             </h1>
             <div className="ed-in ed-hero-tagwrap" style={{ ['--d' as string]: '0.9s' } as React.CSSProperties}>

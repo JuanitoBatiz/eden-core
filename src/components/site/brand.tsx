@@ -82,7 +82,7 @@ export function Tagline({ className = '' }: { className?: string }) {
 /** Imagen recortada (sin fondo) si existe para la foto del producto. */
 const CUTOUTS = new Set([
   'bowl_avena', 'ciabatta', 'coctel', 'ensalada', 'hotcakes', 'infusion', 'jugo_mixto', 'jugo_natural',
-  'rafaello', 'rollito3', 'sandwich', 'smoothie_clasico', 'smoothie_deluxe', 'torta', 'wrap_alambre', 'yogurt',
+  'rafaello', 'rollito3', 'sandwich', 'smoothie_clasico', 'smoothie_deluxe', 'torta', 'yogurt',
 ]);
 
 export function cutoutFor(src?: string | null): string | null {

@@ -159,7 +159,7 @@ export default function PerfilPage() {
                 ))}
               </div>
               <div className="ed-pp-actions">
-                <button className="ed-btn ed-btn--gold" onClick={() => navigate('menu')}>
+                <button className="ed-btn ed-btn--gold" onClick={() => navigate('inicio')}>
                   <Sparkles size={18} /> <span>Activar mi Edén Pass</span>
                 </button>
               </div>
