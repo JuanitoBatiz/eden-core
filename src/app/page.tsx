@@ -1018,7 +1018,7 @@ function MenuContent() {
         <div className="ed-hero-bg" />
         <LeafShadows />
         <div className="ed-hero-leaves" aria-hidden="true">
-          <Monstera v={0} className="ed-hleaf hl1" />
+          <Monstera v={0} className="ed-hleaf hl1 ed-hide-desk" />
           <Monstera v={2} className="ed-hleaf hl2" />
           <Monstera v={1} className="ed-hleaf hl3" />
           <Monstera v={0} className="ed-hleaf hl4" />
@@ -1026,10 +1026,8 @@ function MenuContent() {
 
         <div className="ed-hero-grid">
           <div className="ed-hero-copy">
-            <div className="ed-eyebrow ed-hero-eyebrow ed-in" style={{ ['--d' as string]: '0.15s' } as React.CSSProperties}>
-              <span className="ed-dot" /> Barra de ensaladas y jugos · Otumba
-            </div>
             <h1 className="ed-hero-title">
+              <span className="ed-title-leaf" aria-hidden="true"><Monstera v={0} className="ed-hleaf" /></span>
               <EdenMark animated />
             </h1>
             <div className="ed-in ed-hero-tagwrap" style={{ ['--d' as string]: '0.9s' } as React.CSSProperties}>
@@ -1482,7 +1480,7 @@ function MenuContent() {
           <div className="ed-footer-base">
             <span>© 2026 Edén. Todos los derechos reservados.</span>
             <a href="https://hummingxbi.com" target="_blank" rel="noopener noreferrer" className="ed-credit">
-              <span>Produced by</span>
+              <span>Powered by</span>
               <img src="/images/logoclaro.webp" alt="HummingX BI" />
             </a>
           </div>
@@ -2597,6 +2595,11 @@ function MenuContent() {
 function EdenIntro() {
   return (
     <div className="ed-intro" aria-hidden="true">
+      <script
+        dangerouslySetInnerHTML={{
+          __html: "try{if(sessionStorage.getItem('eden_intro')){document.documentElement.classList.add('ed-seen')}else{sessionStorage.setItem('eden_intro','1')}}catch(e){}",
+        }}
+      />
       <EdenMark leaf={false} className="ed-intro-mark" />
       <span className="ed-intro-tag">Lo esencial es natural</span>
     </div>

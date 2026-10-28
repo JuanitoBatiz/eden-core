@@ -11,7 +11,6 @@ export const metadata: Metadata = {
 
 export const viewport: Viewport = {
   themeColor: "#1B3B2B",
-  viewportFit: "cover",
 };
 
 export default function RootLayout({
@@ -20,7 +19,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="es">
+    <html lang="es" suppressHydrationWarning>
       <body>
         <PermissionsProvider>
           <CurtainProvider>
