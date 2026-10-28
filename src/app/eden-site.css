@@ -1320,3 +1320,10 @@ html.ed-seen .ed-intro { display: none; }
 .ed-login-links button:disabled { opacity: .5; cursor: default; text-decoration: none; }
 .ed-card-media .ed-fig[data-img="rollito3"] img { translate: 0 -8%; }
 .ed-card-media .ed-fig--photo[data-img^="rollito"] .product-img { object-position: 50% 78%; }
+/* Nav en celular/tablet: fondo sólido para que nada se vea detrás del logo */
+@media (max-width: 1080px) {
+  .ed-nav.is-solid { background: var(--ed-paper); }
+  .ed-nav.is-open, .ed-nav.is-solid.is-open { background: transparent; box-shadow: none; }
+  .ed-nav-logo { position: relative; z-index: 1; }
+}
+.ed-nav.is-open .ed-cart-pill { background: rgba(245, 241, 231, .14); box-shadow: inset 0 0 0 1px rgba(245, 241, 231, .25); }
