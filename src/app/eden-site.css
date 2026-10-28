@@ -1269,7 +1269,7 @@ html.ed-seen .ed-intro { display: none; }
 
 /* Hoja superior izquierda: mismo ángulo, desplazada para no tapar la "E" */
 @media (min-width: 961px) {
-  .ed-hero-copy { padding-left: clamp(60px, 11.5vw, 220px); }
+  .ed-hero-copy { padding-left: clamp(40px, 9vw, 170px); }
 }
 @media (max-width: 960px) { .ed-hleaf.hl1 { display: none; } }
 
@@ -1285,7 +1285,8 @@ html.ed-seen .ed-intro { display: none; }
 /* Logo del hero más grande en escritorio */
 @media (min-width: 961px) {
   .ed-hero-grid { grid-template-columns: minmax(0, 1.3fr) minmax(0, .85fr); }
-  .ed-hero-title { width: min(118%, 980px); }
+  .ed-hero-title { width: min(104%, 900px); }
+  .ed-hleaf.hl1 { left: -7.5%; }
 }
 
 /* ── Inicio de sesión Edén Pass ── */
