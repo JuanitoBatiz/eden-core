@@ -1284,6 +1284,37 @@ html.ed-seen .ed-intro { display: none; }
 .ed-card-media .ed-fig { position: absolute; inset: 0; height: auto; }
 /* Logo del hero más grande en escritorio */
 @media (min-width: 961px) {
-  .ed-hero-grid { grid-template-columns: minmax(0, 1.25fr) minmax(0, .9fr); }
-  .ed-hero-title { width: min(106%, 900px); }
+  .ed-hero-grid { grid-template-columns: minmax(0, 1.3fr) minmax(0, .85fr); }
+  .ed-hero-title { width: min(118%, 980px); }
 }
+
+/* ── Inicio de sesión Edén Pass ── */
+.ed-login { width: 100%; max-width: 460px; justify-self: center; padding: clamp(24px, 3vw, 36px); border-radius: 30px; background: rgba(245, 241, 231, .06); border: 1px solid rgba(230, 203, 146, .28); backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px); box-shadow: 0 40px 80px -40px rgba(0, 0, 0, .7); color: var(--ed-cream); animation: edFadeUp .7s var(--ed-ease) both; }
+.ed-login-steps { display: flex; align-items: center; gap: 8px; margin-bottom: 22px; }
+.ed-login-steps span { width: 28px; height: 28px; border-radius: 50%; display: grid; place-items: center; font: 800 12px/1 var(--ed-sans); border: 1px solid rgba(245, 241, 231, .25); color: rgba(245, 241, 231, .6); transition: background .3s, color .3s; }
+.ed-login-steps span.is-on { background: var(--ed-gold); color: var(--ed-deep); border-color: var(--ed-gold); }
+.ed-login-steps span.is-done { background: rgba(230, 203, 146, .2); color: var(--ed-gold-2); border-color: transparent; }
+.ed-login-steps i { flex: 0 0 34px; height: 1px; background: rgba(245, 241, 231, .25); }
+.ed-login-form { display: flex; flex-direction: column; gap: 14px; animation: edFadeUp .45s var(--ed-ease) both; }
+.ed-login-ico { width: 48px; height: 48px; border-radius: 16px; display: grid; place-items: center; background: rgba(230, 203, 146, .16); color: var(--ed-gold-2); }
+.ed-login h2 { font: 500 clamp(26px, 2.6vw, 34px)/1.1 var(--ed-serif); color: var(--ed-cream); margin: 4px 0 0; }
+.ed-login p { margin: 0 0 6px; font-size: 14.5px; line-height: 1.55; color: rgba(245, 241, 231, .72); }
+.ed-login p b { color: var(--ed-cream); }
+.ed-field { display: flex; flex-direction: column; gap: 8px; }
+.ed-field > span { font: 700 11.5px/1 var(--ed-sans); letter-spacing: .14em; text-transform: uppercase; color: var(--ed-gold-2); }
+.ed-field input, .ed-field-row { width: 100%; height: 54px; border-radius: 16px; border: 1px solid rgba(245, 241, 231, .2); background: rgba(245, 241, 231, .08); color: var(--ed-cream); font: 600 17px/1 var(--ed-sans); padding: 0 16px; outline: none; transition: border-color .3s, background .3s; }
+.ed-field input::placeholder { color: rgba(245, 241, 231, .35); }
+.ed-field input:focus, .ed-field-row:focus-within { border-color: var(--ed-gold); background: rgba(245, 241, 231, .12); }
+.ed-field-row { display: flex; align-items: center; gap: 10px; padding: 0 0 0 16px; }
+.ed-field-row em { font-style: normal; color: rgba(245, 241, 231, .55); font-size: 15px; }
+.ed-field-row input { border: 0; background: transparent; height: 100%; padding: 0 16px 0 0; letter-spacing: .06em; }
+.ed-field-row input:focus { background: transparent; }
+.ed-field--new { animation: edFadeUp .4s var(--ed-ease) both; }
+.ed-code-input { text-align: center; letter-spacing: .6em !important; font-size: 24px !important; padding-left: calc(16px + .6em) !important; }
+.ed-login-error { padding: 10px 12px; border-radius: 12px; background: rgba(192, 90, 62, .18); border: 1px solid rgba(192, 90, 62, .4); color: #FFD9CF; font-size: 13.5px; font-weight: 600; }
+.ed-login-dev { padding: 10px 12px; border-radius: 12px; background: rgba(230, 203, 146, .12); color: var(--ed-gold-2); font-size: 13px; }
+.ed-login-btn { width: 100%; margin-top: 4px; }
+.ed-login-btn:disabled { opacity: .55; cursor: not-allowed; transform: none; box-shadow: none; }
+.ed-login-links { display: flex; justify-content: space-between; gap: 10px; flex-wrap: wrap; }
+.ed-login-links button { background: none; border: 0; padding: 6px 0; color: rgba(245, 241, 231, .75); font: 600 13.5px/1 var(--ed-sans); cursor: pointer; text-decoration: underline; text-underline-offset: 4px; }
+.ed-login-links button:disabled { opacity: .5; cursor: default; text-decoration: none; }

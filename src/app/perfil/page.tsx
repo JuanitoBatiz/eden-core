@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { LogOut, Sparkles, Crown, Gift, Lock, CheckCircle, ArrowRight } from 'lucide-react';
 import EdenPassQR from '@/components/loyalty/EdenPassQR';
+import LoginCard from '@/components/site/LoginCard';
 import SiteNav, { NavTarget } from '@/components/site/SiteNav';
 import { EdenMark, Monstera } from '@/components/site/brand';
 import { useCurtain } from '@/components/site/Curtain';
@@ -145,9 +146,9 @@ export default function PerfilPage() {
           <div className="ed-wrap ed-pp-grid">
             <div>
               <div className="ed-eyebrow ed-eyebrow--gold">Membresía · Edén Pass</div>
-              <h1 className="ed-pp-title">Únete a la <em>familia Edén</em></h1>
+              <h1 className="ed-pp-title">Tu <em>Edén Pass</em></h1>
               <p className="ed-pp-hello">
-                Haz tu primer pedido o inicia sesión para activar tu credencial <strong>Edén Pass</strong>, acumular puntos y canjear recompensas en mostrador.
+                Inicia sesión con tu número para ver tu QR de socio, tus puntos y tus premios. Cada pedido suma 3 puntos por cada $100 y los canjeas en mostrador.
               </p>
               <div className="ed-tiers" style={{ maxWidth: 560 }}>
                 {TIERS.map((t, i) => (
@@ -158,32 +159,14 @@ export default function PerfilPage() {
                   </div>
                 ))}
               </div>
-              <div className="ed-pp-actions">
-                <button className="ed-btn ed-btn--gold" onClick={() => navigate('inicio')}>
-                  <Sparkles size={18} /> <span>Activar mi Edén Pass</span>
-                </button>
-              </div>
             </div>
-            <div className="ed-pass-card-wrap is-in">
-              <div className="ed-pass-card">
-                <span className="ed-pass-sheen" />
-                <div className="ed-pass-card-top">
-                  <EdenMark leaf={false} className="ed-pass-mark" />
-                  <span className="ed-pass-chip"><Crown size={13} /> Club</span>
-                </div>
-                <div className="ed-pass-card-mid">
-                  <div>
-                    <small>Edén Pass</small>
-                    <b>Tu credencial de socio</b>
-                    <span>3 puntos por cada $100 de compra</span>
-                  </div>
-                </div>
-                <div className="ed-pass-card-foot">
-                  <span>Lo esencial es natural</span>
-                  <span>Otumba · Edo. Méx.</span>
-                </div>
-              </div>
-            </div>
+            <LoginCard
+              onSuccess={(u) => {
+                if (u.name) setMemberName(String(u.name).split(' ')[0]);
+                setIsAuthenticated(true);
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+              }}
+            />
           </div>
         </section>
         <footer className="ed-pp-footer">Restaurante Edén · Otumba, Estado de México</footer>
