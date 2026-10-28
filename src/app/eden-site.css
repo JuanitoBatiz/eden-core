@@ -1269,7 +1269,7 @@ html.ed-seen .ed-intro { display: none; }
 
 /* Hoja superior izquierda: mismo ángulo, desplazada para no tapar la "E" */
 @media (min-width: 961px) {
-  .ed-hero-copy { padding-left: clamp(40px, 9vw, 170px); }
+  .ed-hero-copy { padding-left: clamp(40px, 10.5vw, 200px); }
 }
 @media (max-width: 960px) { .ed-hleaf.hl1 { display: none; } }
 
@@ -1286,7 +1286,8 @@ html.ed-seen .ed-intro { display: none; }
 @media (min-width: 961px) {
   .ed-hero-grid { grid-template-columns: minmax(0, 1.3fr) minmax(0, .85fr); }
   .ed-hero-title { width: min(104%, 900px); }
-  .ed-hleaf.hl1 { left: -7.5%; }
+  .ed-hleaf.hl1 { left: -3%; top: 17%; width: clamp(130px, 14vw, 250px); rotate: -158deg; scale: -1 1; animation-name: edLeafInFlip; }
+  @keyframes edLeafInFlip { from { opacity: 0; translate: -40px 0; } to { opacity: 1; translate: 0 0; } }
 }
 
 /* ── Inicio de sesión Edén Pass ── */
