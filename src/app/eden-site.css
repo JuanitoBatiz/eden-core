@@ -1327,3 +1327,9 @@ html.ed-seen .ed-intro { display: none; }
 }
 .ed-nav.is-open .ed-cart-pill { background: rgba(245, 241, 231, .14); box-shadow: inset 0 0 0 1px rgba(245, 241, 231, .25); }
 .ed-nav.is-open, .ed-nav.is-solid.is-open { background: var(--ed-forest); box-shadow: 0 1px 0 rgba(245, 241, 231, .1); backdrop-filter: none; -webkit-backdrop-filter: none; transition: transform .5s var(--ed-ease), background .2s .25s; }
+/* Menú abierto: sin scroll innecesario ni barra de scroll visible */
+.ed-overlay { scrollbar-width: none; }
+.ed-overlay::-webkit-scrollbar { display: none; }
+.ed-overlay-mark { bottom: 2vh; }
+.ed-overlay-grid { min-height: 100svh; align-content: start; }
+.ed-overlay-leaf, .ed-overlay-mark { position: fixed; }
