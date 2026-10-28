@@ -1323,7 +1323,7 @@ html.ed-seen .ed-intro { display: none; }
 /* Nav en celular/tablet: fondo sólido para que nada se vea detrás del logo */
 @media (max-width: 1080px) {
   .ed-nav.is-solid { background: var(--ed-paper); }
-  .ed-nav.is-open, .ed-nav.is-solid.is-open { background: transparent; box-shadow: none; }
   .ed-nav-logo { position: relative; z-index: 1; }
 }
 .ed-nav.is-open .ed-cart-pill { background: rgba(245, 241, 231, .14); box-shadow: inset 0 0 0 1px rgba(245, 241, 231, .25); }
+.ed-nav.is-open, .ed-nav.is-solid.is-open { background: var(--ed-forest); box-shadow: 0 1px 0 rgba(245, 241, 231, .1); backdrop-filter: none; -webkit-backdrop-filter: none; transition: transform .5s var(--ed-ease), background .2s .25s; }
