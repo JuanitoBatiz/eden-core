@@ -1,6 +1,5 @@
 import type { Metadata, Viewport } from "next";
 import { PermissionsProvider } from "@/hooks/usePermissions";
-import EdenWelcomeSplash from "@/components/EdenWelcomeSplash";
 import { CurtainProvider } from "@/components/site/Curtain";
 import "./globals.css";
 import "./eden-site.css";
@@ -25,7 +24,6 @@ export default function RootLayout({
       <body>
         <PermissionsProvider>
           <CurtainProvider>
-            <EdenWelcomeSplash />
             {children}
           </CurtainProvider>
         </PermissionsProvider>

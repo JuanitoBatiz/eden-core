@@ -39,7 +39,6 @@ import ProductImage from '@/components/ProductImage';
 import { QRCodeSVG } from 'qrcode.react';
 import DeliveryAddressSelector from '@/components/DeliveryAddressSelector';
 import ScrollRevealItem from '@/components/ScrollRevealItem';
-import EdenVideoModal from '@/components/EdenVideoModal';
 import BalloonIcon from '@/components/BalloonIcon';
 import SiteNav, { NavTarget } from '@/components/site/SiteNav';
 import { EdenMark, Monstera, LeafShadows, Tagline, cutoutFor } from '@/components/site/brand';
@@ -107,8 +106,6 @@ const getProductNotesPlaceholder = (product: MenuItem | null, categories: MenuCa
 function MenuContent() {
   const router = useRouter();
 
-  // Modal Video Promocional
-  const [isVideoModalOpen, setIsVideoModalOpen] = useState(false);
 
   // Menu Data State
   const [menuData, setMenuData] = useState<{ CATEGORIES: MenuCategory[], MENU_ITEMS: MenuItem[], SALAD_OPTIONS: any } | null>(null);
@@ -1081,9 +1078,6 @@ function MenuContent() {
         <div className="ed-hero-foot">
           <button className="ed-scroll-cue" onClick={() => jumpTo('esencia', 0)}>
             <span className="ed-scroll-line" /> Desliza
-          </button>
-          <button className="ed-video-pill" onClick={() => setIsVideoModalOpen(true)}>
-            <span className="ed-play" /> Ver video
           </button>
         </div>
       </section>
@@ -2595,9 +2589,6 @@ function MenuContent() {
           <span className="ed-cartbar-total">${cartTotal}</span>
         </button>
       )}
-
-      {/* Video Modal Bajo Demanda */}
-      <EdenVideoModal isOpen={isVideoModalOpen} onClose={() => setIsVideoModalOpen(false)} />
     </div>
   );
 }
