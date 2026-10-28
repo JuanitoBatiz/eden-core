@@ -53,6 +53,8 @@ export function CurtainProvider({ children }: { children: React.ReactNode }) {
       }
       timers.current.forEach(clearTimeout);
       timers.current = [];
+      // Navegar con cortina = ya no repetir la intro de entrada
+      document.documentElement.classList.add('ed-seen');
       setWord(w);
       setPhase('in');
       later(() => {

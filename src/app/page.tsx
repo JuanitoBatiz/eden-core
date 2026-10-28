@@ -2592,6 +2592,14 @@ function MenuContent() {
 
 /** Intro de entrada (solo CSS: funciona desde el primer pintado y no bloquea la carga). */
 function EdenIntro() {
+  // Al terminar la intro (o al salir del inicio) se marca como vista para no repetirla
+  useEffect(() => {
+    const t = setTimeout(() => document.documentElement.classList.add('ed-seen'), 3400);
+    return () => {
+      clearTimeout(t);
+      document.documentElement.classList.add('ed-seen');
+    };
+  }, []);
   return (
     <div className="ed-intro" aria-hidden="true">
       <script
