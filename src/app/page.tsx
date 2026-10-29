@@ -36,10 +36,15 @@ import {
 import { MenuItem, MenuCategory, CATEGORIES as fallbackCategories, MENU_ITEMS as fallbackMenuItems, SALAD_OPTIONS as fallbackSaladOptions } from '@/lib/menuData';
 import { SmsRequest, VerifyOtpRequest, OrderCreateRequest, DeliveryQuote } from '@/types/api-contracts';
 import ProductImage from '@/components/ProductImage';
+import { QRCodeSVG } from 'qrcode.react';
 import DeliveryAddressSelector from '@/components/DeliveryAddressSelector';
 import ScrollRevealItem from '@/components/ScrollRevealItem';
-import EdenVideoModal from '@/components/EdenVideoModal';
 import BalloonIcon from '@/components/BalloonIcon';
+import SiteNav, { NavTarget } from '@/components/site/SiteNav';
+import { EdenMark, Monstera, LeafShadows, Tagline, cutoutFor } from '@/components/site/brand';
+import { MARK_LEAF } from '@/components/site/edenPaths';
+import { useCurtain } from '@/components/site/Curtain';
+import { useScrollFx } from '@/components/site/useScrollFx';
 
 // Helper local icon
 function getCategoryIcon(name: string) {
@@ -101,8 +106,6 @@ const getProductNotesPlaceholder = (product: MenuItem | null, categories: MenuCa
 function MenuContent() {
   const router = useRouter();
 
-  // Modal Video Promocional
-  const [isVideoModalOpen, setIsVideoModalOpen] = useState(false);
 
   // Menu Data State
   const [menuData, setMenuData] = useState<{ CATEGORIES: MenuCategory[], MENU_ITEMS: MenuItem[], SALAD_OPTIONS: any } | null>(null);
@@ -854,6 +857,79 @@ function MenuContent() {
 
   const constraints = getConstraints();
 
+  // ════════════════════════════════════════════════════
+  // CAPA VISUAL (rediseño): navegación con cortina, animaciones por scroll
+  // ════════════════════════════════════════════════════
+  const { go } = useCurtain();
+  const [activeNav, setActiveNav] = useState<NavTarget>('inicio');
+  useScrollFx([!!menuData]);
+
+  const jumpTo = (id: string, extraOffset = 0) => {
+    const el = document.getElementById(id);
+    if (!el) return;
+    const top = el.getBoundingClientRect().top + window.scrollY - extraOffset;
+    window.scrollTo({ top: Math.max(0, top), behavior: 'auto' });
+  };
+
+  const navigate = (target: NavTarget) => {
+    switch (target) {
+      case 'inicio':
+        go({ word: 'EDÉN', action: () => window.scrollTo({ top: 0, behavior: 'auto' }) });
+        break;
+      case 'menu':
+        go({ word: 'MENÚ', action: () => jumpTo('menu', 64) });
+        break;
+      case 'arma':
+        go({ word: 'TU ENSALADA', action: () => jumpTo('arma', 40) });
+        break;
+      case 'pass':
+        go({ word: 'EDÉN PASS', action: () => jumpTo('pass', 40) });
+        break;
+      case 'rifa':
+        go({ word: 'RIFA', route: true, action: () => router.push('/rifa') });
+        break;
+      case 'perfil':
+        go({ word: 'MI PERFIL', route: true, action: () => router.push('/perfil') });
+        break;
+    }
+  };
+
+  const goToCategory = (catId: string, withCurtain = true) => {
+    setActiveCategory(catId);
+    const doJump = () => jumpTo(`section-${catId}`, 150);
+    const cat = (menuData?.CATEGORIES || []).find((c: any) => c.id === catId);
+    if (withCurtain) go({ word: (cat?.name || 'MENÚ').toUpperCase(), action: doJump });
+    else {
+      const el = document.getElementById(`section-${catId}`);
+      if (el) window.scrollTo({ top: el.getBoundingClientRect().top + window.scrollY - 150, behavior: 'smooth' });
+    }
+  };
+
+  // Sección activa para resaltar el nav
+  useEffect(() => {
+    const ids: NavTarget[] = ['inicio', 'arma', 'menu', 'pass'];
+    const onScroll = () => {
+      let current: NavTarget = 'inicio';
+      for (const id of ids) {
+        const el = document.getElementById(id);
+        if (el && el.getBoundingClientRect().top <= window.innerHeight * 0.4) current = id;
+      }
+      setActiveNav(current);
+    };
+    onScroll();
+    window.addEventListener('scroll', onScroll, { passive: true });
+    return () => window.removeEventListener('scroll', onScroll);
+  }, [menuData]);
+
+  // Enlaces con #menu / #pass desde otras páginas o códigos QR
+  useEffect(() => {
+    if (!menuData) return;
+    const h = window.location.hash.replace('#', '');
+    if (h && ['menu', 'arma', 'pass', 'favoritos'].includes(h)) {
+      setTimeout(() => jumpTo(h, 64), 60);
+    }
+  }, [menuData]);
+
   if (menuError) {
     return (
       <div className="container" style={{ textAlign: 'center', padding: '100px 20px', minHeight: '100vh', display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center' }}>
@@ -864,17 +940,7 @@ function MenuContent() {
     );
   }
 
-  if (!menuData) {
-    return (
-      <div className="container" style={{ textAlign: 'center', padding: '100px 20px', minHeight: '100vh', display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center' }}>
-        <div style={{ width: '40px', height: '40px', border: '4px solid var(--color-green-light)', borderTopColor: 'var(--color-green-dark)', borderRadius: '50%', animation: 'spin 1s linear infinite' }}></div>
-        <p style={{ marginTop: '20px', color: 'var(--color-green-dark)', fontWeight: 600 }}>Cargando el menú fresco de hoy...</p>
-        <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
-      </div>
-    );
-  }
-
-  const { CATEGORIES, MENU_ITEMS, SALAD_OPTIONS } = menuData;
+  const { CATEGORIES, MENU_ITEMS, SALAD_OPTIONS } = menuData || { CATEGORIES: [] as MenuCategory[], MENU_ITEMS: [] as MenuItem[], SALAD_OPTIONS: null as any };
 
   if (SALAD_OPTIONS && SALAD_OPTIONS.toppings) {
     if (!SALAD_OPTIONS.toppings.some((t: any) => t.id === 'aguacate' || t.name?.toLowerCase() === 'aguacate')) {
@@ -885,383 +951,549 @@ function MenuContent() {
     }
   }
 
-  return (
-    <>
-      <div className={`sticky-header-container ${isNavVisible ? 'visible' : 'hidden'}`}>
-        {/* HEADER */}
-        <header className="header">
-          <div className="container header-content">
-            <div className="logo-container">
-              <img src="/images/logo.webp" alt="Edén Logo" className="logo-img" />
-              <div className="logo-text">EDÉN</div>
-            </div>
-            <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-              <button onClick={() => router.push('/perfil')} style={{ padding: '6px', borderRadius: '50%', border: 'none', background: 'var(--color-cream-light)', cursor: 'pointer', color: 'var(--color-green-dark)', display: 'flex', alignItems: 'center', justifyContent: 'center' }} title="Mi Perfil">
-                <UserCircle size={22} />
-              </button>
-              <button className="cart-icon-btn" onClick={() => setIsCartOpen(true)}>
-                <ShoppingBag size={20} />
-                <span>Carrito</span>
-                {cart.length > 0 && <span className="cart-count">{cart.reduce((s, i) => s + i.quantity, 0)}</span>}
-              </button>
-            </div>
-          </div>
-        </header>
+  // ── Datos derivados del menú real para la landing ──
+  const isSaladProduct = (p: any) => p?.category === 'ensaladas' || p?.category === '299824bb-ede2-47ed-bf0e-b5fd9548af73' || p?.name?.toLowerCase().includes('ensalada');
+  const saladProduct: any = MENU_ITEMS.find((p: any) => isSaladProduct(p)) || null;
+  const saladPrices: Record<string, number> = saladProduct?.prices || {};
+  const saladFrom = saladProduct
+    ? (Object.values(saladPrices).length ? Math.min(...(Object.values(saladPrices) as number[])) : saladProduct.price)
+    : 95;
+  const sizeEntries = Object.entries(saladPrices) as [string, number][];
+  const favorites: any[] = CATEGORIES.flatMap((c: any) => {
+    const its = MENU_ITEMS.filter((i: any) => i.category === c.id && i.image)
+      .sort((a: any, b: any) => (cutoutFor(b.image) ? 1 : 0) - (cutoutFor(a.image) ? 1 : 0));
+    return its.slice(0, isSaladProduct(its[0]) ? 1 : 2);
+  }).slice(0, 8);
+  const cartCount = cart.reduce((s, i) => s + i.quantity, 0);
+  const cartTotal = calculateSubtotal();
+  const estPoints = Math.floor(cartTotal * 0.03);
+  const imageFor = (id: string) => (MENU_ITEMS.find((m: any) => m.id === id) as any)?.image as string | undefined;
+  const bandWords: string[] = CATEGORIES.length
+    ? CATEGORIES.map((c: any) => c.name)
+    : ['Ensaladas', 'Jugos', 'Smoothies', 'Bowls', 'Wraps y Sándwiches'];
+  const TIERS = [
+    { name: 'Estándar', pts: 0 },
+    { name: 'Plata', pts: 40 },
+    { name: 'Oro', pts: 90 },
+    { name: 'Diamante', pts: 140 },
+  ];
 
-        {/* CATEGORY BAR */}
-        <nav className="category-nav">
-          <ul className="category-list">
+  const renderWords = (text: string, className = '') => (
+    <p className={className} data-words="" data-split="1">
+      {text.split(' ').map((w, i) => (
+        <React.Fragment key={i}>
+          <span className="ed-w">{w}</span>{' '}
+        </React.Fragment>
+      ))}
+    </p>
+  );
+
+  const renderFigure = (product: any, priority = false) => {
+    const cut = cutoutFor(product.image);
+    return cut ? (
+      <div className="ed-fig ed-fig--cut" data-img={cut.split('/').pop()?.replace('.webp', '')}>
+        <span className="ed-fig-disc" />
+        <img src={cut} alt={product.name} loading={priority ? 'eager' : 'lazy'} />
+      </div>
+    ) : (
+      <div className="ed-fig ed-fig--photo" data-img={(product.image || '').split('/').pop()?.split('.')[0]}>
+        <ProductImage src={product.image} alt={product.name} className="product-img" priority={priority} />
+      </div>
+    );
+  };
+
+  return (
+    <div className="ed-site">
+      <SiteNav
+        active={activeNav}
+        cartCount={cartCount}
+        onCart={() => setIsCartOpen(true)}
+        onNavigate={navigate}
+        categories={CATEGORIES.map((c: any) => ({ id: c.id, name: c.name }))}
+        onCategory={(id) => goToCategory(id)}
+      />
+
+      {/* ═════════════ HERO ═════════════ */}
+      <section id="inicio" className="ed-hero" data-progress="exit">
+        <div className="ed-hero-bg" />
+        <LeafShadows />
+        <div className="ed-hero-leaves" aria-hidden="true">
+          <Monstera v={0} className="ed-hleaf hl1" />
+          <Monstera v={2} className="ed-hleaf hl2" />
+          <Monstera v={1} className="ed-hleaf hl3" />
+          <Monstera v={0} className="ed-hleaf hl4" />
+        </div>
+
+        <div className="ed-hero-grid">
+          <div className="ed-hero-copy">
+            <h1 className="ed-hero-title">
+              <EdenMark animated />
+            </h1>
+            <div className="ed-in ed-hero-tagwrap" style={{ ['--d' as string]: '0.9s' } as React.CSSProperties}>
+              <Tagline className="ed-hero-tag" />
+            </div>
+            <p className="ed-hero-lead ed-in" style={{ ['--d' as string]: '1s' } as React.CSSProperties}>
+              Ensaladas que armas a tu gusto, jugos naturales y bowls para empezar bien el día. Pide en línea y recoge, come aquí o recíbelo en casa.
+            </p>
+            <div className="ed-hero-ctas ed-in" style={{ ['--d' as string]: '1.1s' } as React.CSSProperties}>
+              <button className="ed-btn ed-btn--solid" onClick={() => navigate('menu')}>
+                <span>Ordenar ahora</span>
+                <ArrowRight size={18} />
+              </button>
+              <button className="ed-btn ed-btn--ghost" onClick={() => navigate('arma')}>
+                <span>Arma tu ensalada</span>
+              </button>
+            </div>
+            <ul className="ed-hero-services ed-in" style={{ ['--d' as string]: '1.2s' } as React.CSSProperties}>
+              <li><ShoppingBag size={15} /> Recoger</li>
+              <li><Utensils size={15} /> Comer aquí</li>
+              <li><Bike size={15} /> Envío</li>
+            </ul>
+          </div>
+
+          <div className="ed-hero-stage">
+            <div className="ed-stage-disc" />
+            <svg className="ed-stage-ring" viewBox="0 0 200 200" aria-hidden="true">
+              <defs>
+                <path id="ed-ring-path" d="M100,100 m-86,0 a86,86 0 1,1 172,0 a86,86 0 1,1 -172,0" />
+              </defs>
+              <text>
+                <textPath href="#ed-ring-path">LO ESENCIAL ES NATURAL • EDÉN • LO ESENCIAL ES NATURAL • EDÉN •</textPath>
+              </text>
+            </svg>
+            <img className="ed-stage-main" src="/images/cut/ensalada.webp" alt="Ensalada Edén con pechuga empanizada, aguacate y jitomate cherry" />
+            <img className="ed-float f1" src="/images/cut/jugo_natural.webp" alt="" aria-hidden="true" />
+            <img className="ed-float f2" src="/images/cut/bowl_avena.webp" alt="" aria-hidden="true" />
+            <img className="ed-float f3" src="/images/cut/smoothie_clasico.webp" alt="" aria-hidden="true" />
+            <button className="ed-burst" onClick={() => saladProduct ? handleAddToCartClick(saladProduct) : navigate('menu')} aria-label={`Ensaladas desde $${saladFrom}`}>
+              <span>Desde</span>
+              <b>${saladFrom}</b>
+            </button>
+          </div>
+        </div>
+
+        <div className="ed-hero-foot">
+          <button className="ed-scroll-cue" onClick={() => jumpTo('esencia', 0)}>
+            <span className="ed-scroll-line" /> Desliza
+          </button>
+        </div>
+      </section>
+
+      {/* ═════════════ BANDAS ═════════════ */}
+      <div className="ed-bands" aria-hidden="true">
+        <div className="ed-band ed-band--a">
+          <div className="ed-band-track">
+            {[0, 1].map((k) => (
+              <div className="ed-band-seq" key={k}>
+                {bandWords.concat(bandWords).map((w, i) => (
+                  <span key={i}>{w} <i>✦</i></span>
+                ))}
+              </div>
+            ))}
+          </div>
+        </div>
+        <div className="ed-band ed-band--b">
+          <div className="ed-band-track">
+            {[0, 1].map((k) => (
+              <div className="ed-band-seq" key={k}>
+                {Array.from({ length: 6 }).map((_, i) => (
+                  <span key={i}>Lo esencial es natural <i>✦</i></span>
+                ))}
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      {/* ═════════════ ESENCIA ═════════════ */}
+      <section id="esencia" className="ed-essence" data-progress="">
+        <svg className="ed-essence-leaf" viewBox="520 450 690 660" aria-hidden="true">
+          <path d={MARK_LEAF} />
+        </svg>
+        <div className="ed-wrap">
+          <div className="ed-eyebrow" data-reveal="">Nuestra esencia</div>
+          {renderWords('En Edén comer bien no tiene que ser complicado: ingredientes frescos, recetas hechas al momento y un lugar con higiene, orden y sabor artesanal.', 'ed-essence-text')}
+          <div className="ed-pillars">
+            {[
+              { n: '01', t: 'A tu manera', d: 'Tú eliges proteína, toppings, semillas y aderezo. Nosotros la armamos al momento.', img: '/images/cut/ensalada.webp' },
+              { n: '02', t: 'Jugos naturales', d: 'Naranja, mandarina, sandía, verde y más. Combina dos frutas en un jugo mixto.', img: '/images/cut/jugo_mixto.webp' },
+              { n: '03', t: 'Para todo el día', d: 'Bowls de avena y yogurt, wraps, sándwiches y smoothies para cualquier antojo.', img: '/images/cut/hotcakes.webp' },
+            ].map((p, i) => (
+              <article key={p.n} className="ed-pillar" data-reveal="" style={{ ['--i' as string]: i } as React.CSSProperties}>
+                <span className="ed-pillar-n">{p.n}</span>
+                <h3>{p.t}</h3>
+                <p>{p.d}</p>
+                <img src={p.img} alt="" aria-hidden="true" loading="lazy" />
+              </article>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* ═════════════ ARMA TU ENSALADA ═════════════ */}
+      <section id="arma" className="ed-build">
+        <LeafShadows className="ed-shadows--soft" />
+        <div className="ed-wrap ed-build-grid">
+          <div className="ed-build-intro">
+            <div className="ed-eyebrow" data-reveal="">Tú ensalada, tú estilo</div>
+            <h2 className="ed-h2" data-reveal="">Arma tu<br /><em>ensalada</em></h2>
+            <p className="ed-lead" data-reveal="">Elige el tamaño y combina a tu gusto. Si quieres más, cada extra se suma al momento.</p>
+            <div className="ed-sizes" data-reveal="">
+              {(sizeEntries.length ? sizeEntries : [['Chica', 95], ['Grande', 150]] as [string, number][]).map(([size, price]) => {
+                const big = /grand/i.test(size);
+                return (
+                  <div key={size} className={`ed-size ${big ? 'is-big' : ''}`}>
+                    <div className="ed-size-top">
+                      <span className="ed-size-name">{size}</span>
+                      <span className="ed-size-price">${price}</span>
+                    </div>
+                    <ul>
+                      <li>{big ? '2 proteínas' : '1 proteína'}</li>
+                      <li>Base de lechuga</li>
+                      <li>{big ? '6 toppings' : '4 toppings'}</li>
+                      <li>{big ? '4 semillas o frutos secos' : '2 semillas o frutos secos'}</li>
+                      <li>Aderezo a elegir</li>
+                    </ul>
+                  </div>
+                );
+              })}
+            </div>
+            <div className="ed-extras" data-reveal="">
+              <span>Extras</span> Proteína +$30 · Topping +$15 · Aderezo +$15 · Frutos secos +$15
+            </div>
+            <button
+              className="ed-btn ed-btn--solid ed-build-cta"
+              data-reveal=""
+              onClick={() => (saladProduct ? handleAddToCartClick(saladProduct) : navigate('menu'))}
+            >
+              <span>Crear mi ensalada</span>
+              <ArrowRight size={18} />
+            </button>
+          </div>
+
+          <div className="ed-steps">
+            {[
+              { n: '01', t: 'Proteína', list: SALAD_OPTIONS?.proteins || [], img: '/images/cut/ensalada.webp' },
+              { n: '02', t: 'Toppings', list: (SALAD_OPTIONS?.toppings || []).filter((t: any) => !/pl[aá]tano/i.test(t.name)), img: '/images/cut/coctel.webp' },
+              { n: '03', t: 'Semillas y frutos secos', list: SALAD_OPTIONS?.seedsAndNuts || [], img: '/images/cut/yogurt.webp' },
+              { n: '04', t: 'Aderezo', list: SALAD_OPTIONS?.dressings || [], img: '/images/cut/rafaello.webp' },
+            ].map((s, i) => (
+              <article key={s.n} className="ed-step" style={{ ['--i' as string]: i } as React.CSSProperties}>
+                <div className="ed-step-head">
+                  <span className="ed-step-n">{s.n}</span>
+                  <h3>{s.t}</h3>
+                </div>
+                <div className="ed-step-chips">
+                  {s.list.length
+                    ? s.list.map((o: any) => (
+                        <span key={o.id} className={o.disabled ? 'is-off' : ''}>{o.name.replace(/\s*\(Agotado\)/i, '')}</span>
+                      ))
+                    : Array.from({ length: 6 }).map((_, k) => <span key={k} className="is-skel">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</span>)}
+                </div>
+                <img className="ed-step-img" src={s.img} alt="" aria-hidden="true" loading="lazy" />
+              </article>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* ═════════════ FAVORITOS (carrusel anclado) ═════════════ */}
+      {favorites.length > 0 && (
+        <section id="favoritos" className="ed-favs" data-progress="pin" style={{ ['--n' as string]: favorites.length } as React.CSSProperties}>
+          <div className="ed-favs-sticky">
+            <div className="ed-wrap ed-favs-head">
+              <h2 className="ed-h2 ed-h2--light">Favoritos<br /><em>de la casa</em></h2>
+              <p>Una probadita de cada categoría. Desliza y agrégalos directo a tu pedido.</p>
+            </div>
+            <div className="ed-rail">
+              {favorites.map((p: any, i: number) => {
+                const cat = CATEGORIES.find((c: any) => c.id === p.category);
+                const from = p.prices ? Math.min(...(Object.values(p.prices) as number[])) : p.price;
+                return (
+                  <article key={p.id} className="ed-fav" style={{ ['--i' as string]: i } as React.CSSProperties}>
+                    <span className="ed-fav-cat">{cat?.name}</span>
+                    {renderFigure(p)}
+                    <h3>{p.name}</h3>
+                    {p.description && <p>{p.description}</p>}
+                    <div className="ed-fav-foot">
+                      <span className="ed-fav-price">{p.prices ? <small>desde</small> : null}${from}</span>
+                      <button className="ed-add" onClick={() => handleAddToCartClick(p)} aria-label={`Agregar ${p.name}`}>
+                        <Plus size={18} />
+                      </button>
+                    </div>
+                  </article>
+                );
+              })}
+            </div>
+            <div className="ed-favs-progress"><span /></div>
+          </div>
+        </section>
+      )}
+
+      {/* ═════════════ CIFRAS (del menú real) ═════════════ */}
+      {menuData && (
+        <div className="ed-wrap">
+          <div className="ed-facts">
+            <div className="ed-fact" data-reveal=""><b data-count={MENU_ITEMS.length}>{MENU_ITEMS.length}</b><span>opciones en el menú</span></div>
+            <div className="ed-fact" data-reveal=""><b data-count={CATEGORIES.length}>{CATEGORIES.length}</b><span>categorías</span></div>
+            <div className="ed-fact" data-reveal=""><b data-count={SALAD_OPTIONS?.dressings?.length || 0}>{SALAD_OPTIONS?.dressings?.length || 0}</b><span>aderezos para tu ensalada</span></div>
+            <div className="ed-fact" data-reveal=""><b data-count={saladFrom} data-prefix="$">${saladFrom}</b><span>ensaladas desde</span></div>
+          </div>
+        </div>
+      )}
+
+      {/* ═════════════ MENÚ COMPLETO ═════════════ */}
+      <section id="menu" className="ed-menu">
+        <div className="ed-wrap ed-menu-head">
+          <div className="ed-eyebrow" data-reveal="">¿Ya se te antojó?</div>
+          <h2 className="ed-menu-title" data-progress="">
+            <span>Menú</span>
+          </h2>
+          <p className="ed-menu-note">
+            <Info size={15} /> Fotografías e imágenes de referencia y con fines ilustrativos.
+          </p>
+        </div>
+
+        {/* Barra de categorías fija */}
+        <nav className={`ed-cats ${isNavVisible ? '' : 'is-top'}`} aria-label="Categorías del menú">
+          <ul className="ed-cats-list">
             {CATEGORIES.map((category: any) => (
               <li key={category.id}>
                 <button
-                  className={`category-btn ${activeCategory === category.id ? 'active' : ''}`}
+                  className={`ed-cat ${activeCategory === category.id ? 'is-active' : ''}`}
                   data-category={category.id}
-                  onClick={() => {
-                    setActiveCategory(category.id);
-                    const el = document.getElementById(`section-${category.id}`);
-                    if (el) {
-                      const headerOffset = 185;
-                      const elementPosition = el.getBoundingClientRect().top;
-                      const offsetPosition = elementPosition + window.scrollY - headerOffset;
-
-                      window.scrollTo({
-                        top: offsetPosition,
-                        behavior: 'smooth'
-                      });
-                    }
-                  }}
+                  onClick={() => goToCategory(category.id, false)}
                 >
-                  <span className="category-icon-wrapper">
-                    {getCategoryIcon(category.name)}
-                  </span>
-                  <span className="category-btn-text">{category.name}</span>
+                  <span className="ed-cat-ico">{getCategoryIcon(category.name)}</span>
+                  <span>{category.name}</span>
                 </button>
               </li>
             ))}
           </ul>
         </nav>
-      </div>
 
-      {/* FULL-BLEED INMERSIVE HERO — DUAL VIDEO BLUR EFFECT */}
-      <section className="hero-fullscreen-v1">
-        {/* VIDEO DE FONDO: Escalado y difuminado para rellenar vacíos con luz ambiental */}
-        <video 
-          className="hero-v1-bg hero-v1-bg--blur" 
-          autoPlay 
-          muted 
-          loop 
-          playsInline 
-        >
-          <source src="/EdenPromo_Final.mp4" type="video/mp4" />
-        </video>
+        <div className="ed-wrap">
+          {!menuData && (
+            <div className="ed-grid">
+              {Array.from({ length: 6 }).map((_, i) => (
+                <div key={i} className="ed-card is-skel">
+                  <div className="ed-fig" />
+                  <div className="ed-card-body"><span /><span /><span /></div>
+                </div>
+              ))}
+            </div>
+          )}
 
-        {/* Capa de oscurecimiento sutil para el fondo difuminado */}
-        <div className="hero-v1-ambient-dim"></div>
+          {CATEGORIES.map((cat: any, catIdx: number) => {
+            const items = MENU_ITEMS.filter((item: any) => item.category === cat.id);
+            if (items.length === 0) return null;
+            const isBottled = cat.id === 'embotellada' || cat.name?.toLowerCase().includes('embotellad');
 
-        {/* VIDEO FRONTAL: Contenido original sin recortes (contain) */}
-        <video 
-          className="hero-v1-bg hero-v1-bg--sharp" 
-          autoPlay 
-          muted 
-          loop 
-          playsInline 
-        >
-          <source src="/EdenPromo_Final.mp4" type="video/mp4" />
-        </video>
+            return (
+              <section key={cat.id} id={`section-${cat.id}`} className="menu-section ed-msec">
+                <div className="ed-msec-head" data-reveal="">
+                  <span className="ed-msec-n">{String(catIdx + 1).padStart(2, '0')}</span>
+                  <h3 className="ed-msec-title">{cat.name}</h3>
+                  <span className="ed-msec-line" />
+                  <span className="ed-msec-count">{items.length} {items.length === 1 ? 'opción' : 'opciones'}</span>
+                </div>
 
-        {/* Gradiente sutil solo en la parte inferior para que los botones sean legibles */}
-        <div className="hero-v1-bottom-fade" />
-
-        {/* Botón CTA — discreto, centrado abajo */}
-        <button
-          className="hero-cta-btn hero-cta-btn--bottom"
-          onClick={() => {
-            const el = document.querySelector('.menu-section');
-            if (el) el.scrollIntoView({ behavior: 'smooth' });
-          }}
-        >
-          <span>Explorar el menú</span>
-          <ArrowRight size={18} />
-        </button>
-
-        {/* Botón ampliar — esquina inferior derecha */}
-        <button
-          onClick={() => setIsVideoModalOpen(true)}
-          style={{
-            position: 'absolute',
-            bottom: '20px',
-            right: '20px',
-            width: '36px',
-            height: '36px',
-            borderRadius: '50%',
-            backgroundColor: 'rgba(0,0,0,0.5)',
-            border: '1px solid rgba(255,255,255,0.2)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            cursor: 'pointer',
-            opacity: 0.6,
-            transition: 'opacity 0.2s',
-            zIndex: 10,
-            color: '#fff'
-          }}
-          onMouseOver={e => e.currentTarget.style.opacity = '1'}
-          onMouseOut={e => e.currentTarget.style.opacity = '0.6'}
-          title="Ver video promocional"
-        >
-          <Maximize2 size={16} />
-        </button>
-      </section>
-
-      {/* ════════════════════════════════════════════════════
-          BANNER RIFA — VUELOS EN GLOBO
-          ════════════════════════════════════════════════════ */}
-      <Link
-        href="/rifa"
-        className="raffle-banner-section"
-        style={{ display: 'block', textDecoration: 'none' }}
-        aria-label="Ver dinámica de la rifa de vuelos en globo"
-      >
-        <div className="raffle-banner-inner">
-          <div className="raffle-banner-balloon-wrap">
-            <BalloonIcon size={48} />
-          </div>
-          <div className="raffle-banner-text">
-            <span className="raffle-banner-label">Dinámica especial</span>
-            <h2 className="raffle-banner-title">Gana un vuelo en globo para dos personas</h2>
-            <p className="raffle-banner-sub">Compra $200 o más = 1 oportunidad para ganar</p>
-          </div>
-          <ChevronRight className="raffle-banner-arrow" size={24} />
-        </div>
-      </Link>
-
-      {/* MAIN CONTAINER FOR MENU SECTIONS */}
-      <main className="container" style={{ paddingTop: '50px' }}>
-        {/* DISCREET REFERENCE IMAGES NOTICE */}
-        <div style={{
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          gap: '8px',
-          padding: '10px 16px',
-          backgroundColor: 'rgba(212, 163, 115, 0.12)',
-          border: '1px solid rgba(212, 163, 115, 0.3)',
-          borderRadius: '12px',
-          color: 'var(--color-text-muted)',
-          fontSize: '0.85rem',
-          marginBottom: '35px',
-          textAlign: 'center',
-          maxWidth: '550px',
-          margin: '0 auto 35px auto'
-        }}>
-          <Info size={18} style={{ flexShrink: 0, color: 'var(--color-ochre)' }} />
-          <span><strong>Nota:</strong> Fotografías e imágenes de referencia y con fines ilustrativos.</span>
-        </div>
-
-        {/* MENU CATEGORIES SECTIONS */}
-        {CATEGORIES.map((cat: any) => {
-          const items = MENU_ITEMS.filter((item: any) => item.category === cat.id);
-          if (items.length === 0) return null;
-
-          return (
-            <section key={cat.id} id={`section-${cat.id}`} className="menu-section">
-              <div className="section-title-wrap">
-                <h2 className="section-title">{cat.name}</h2>
-                <div className="section-title-line"></div>
-              </div>
-
-              {cat.id === 'embotellada' || cat.name?.toLowerCase().includes('embotellad') ? (
-                <div className="bottled-grid">
-                  {items.map((product: any, idx: number) => (
-                    <ScrollRevealItem key={product.id} staggerIndex={idx}>
-                      <div className="bottled-card">
-                        <div className="bottled-info">
-                          <h3 className="bottled-name">{product.name}</h3>
-                          {product.description && <p className="bottled-desc">{product.description}</p>}
+                {isBottled ? (
+                  <div className="ed-bottled">
+                    {items.map((product: any, idx: number) => (
+                      <div key={product.id} className="ed-bottle" data-reveal="" style={{ ['--i' as string]: idx % 3 } as React.CSSProperties}>
+                        <div>
+                          <h4>{product.name}</h4>
+                          {product.description && <p>{product.description}</p>}
                         </div>
-                        <div className="bottled-action">
-                          <span className="bottled-price">${product.price}</span>
-                          <button className="bottled-add-btn" onClick={() => handleAddToCartClick(product)}>
-                            <Plus size={16} />
-                            <span>Agregar</span>
+                        <div className="ed-bottle-act">
+                          <span>${product.price}</span>
+                          <button className="ed-add" onClick={() => handleAddToCartClick(product)} aria-label={`Agregar ${product.name}`}>
+                            <Plus size={18} />
                           </button>
                         </div>
                       </div>
-                    </ScrollRevealItem>
-                  ))}
-                </div>
-              ) : (
-                <div className="editorial-bento-grid">
-                  {items.map((product: any, itemIdx: number) => {
-                    const isSaladItem = cat.id === 'ensaladas' || cat.id === '299824bb-ede2-47ed-bf0e-b5fd9548af73' || cat.name?.toLowerCase().includes('ensalada') || product.category === 'ensaladas' || product.category === '299824bb-ede2-47ed-bf0e-b5fd9548af73' || product.name?.toLowerCase().includes('ensalada');
+                    ))}
+                  </div>
+                ) : (
+                  <div className="ed-grid">
+                    {items.map((product: any, itemIdx: number) => {
+                      const isSaladItem = isSaladProduct(product) || cat.id === 'ensaladas' || cat.name?.toLowerCase().includes('ensalada');
+                      const lowerName = (product.name || '').toLowerCase();
+                      let badge: { text: string; icon: React.ReactNode } | null = null;
+                      if (lowerName.includes('edén') || lowerName.includes('eden')) badge = { text: 'Receta de la casa', icon: <Crown size={13} /> };
+                      else if (itemIdx === 0) badge = isSaladItem ? { text: 'Favorito del chef', icon: <ChefHat size={13} /> } : { text: 'Destacado Edén', icon: <Sparkles size={13} /> };
+                      else if (lowerName.includes('verde') || lowerName.includes('detox')) badge = { text: 'Detox natural', icon: <Leaf size={13} /> };
 
-                    // Asignación de roles editoriales y jerarquía para el Bento Grid
-                    let role = 'standard';
-                    let badgeInfo: { text: string; icon: React.ReactNode } | null = null;
-                    const lowerName = (product.name || '').toLowerCase();
-                    if (lowerName.includes('edén') || lowerName.includes('eden')) {
-                      badgeInfo = { text: 'Receta de la Casa', icon: <Crown size={14} className="badge-lucide-icon" /> };
-                    } else if (itemIdx === 0) {
-                      role = 'hero';
-                      badgeInfo = isSaladItem
-                        ? { text: 'Favorito del Chef', icon: <ChefHat size={14} className="badge-lucide-icon" /> }
-                        : { text: 'Destacado Edén', icon: <Sparkles size={14} className="badge-lucide-icon" /> };
-                    } else if (itemIdx === 1 && isSaladItem) {
-                      badgeInfo = { text: '100% Orgánico', icon: <Leaf size={14} className="badge-lucide-icon" /> };
-                    } else if (items.length >= 4 && (itemIdx === 3 || itemIdx === 6)) {
-                      role = 'wide';
-                      badgeInfo = { text: 'Selección de Temporada', icon: <Award size={14} className="badge-lucide-icon" /> };
-                    } else if (lowerName.includes('verde') || lowerName.includes('detox')) {
-                      badgeInfo = { text: 'Detox Natural', icon: <Leaf size={14} className="badge-lucide-icon" /> };
-                    } else if (lowerName.includes('antioxidante') || lowerName.includes('berry')) {
-                      badgeInfo = { text: 'Antioxidante Top', icon: <Sparkles size={14} className="badge-lucide-icon" /> };
-                    }
-
-                    return (
-                      <ScrollRevealItem key={product.id} staggerIndex={itemIdx} className={`editorial-card role-${role} ${badgeInfo ? 'shimmer-card' : ''}`}>
-                        <div className={`product-img-container orientation-${product.image_orientation || 'horizontal'}`}>
-                          <ProductImage src={product.image} alt={product.name} className="product-img" priority={itemIdx < 4} />
-                        </div>
-                        <div className="editorial-info">
-                          <div>
-                            {badgeInfo && (
-                              <span className="editorial-badge shimmer-badge">
-                                {badgeInfo.icon}
-                                <span>{badgeInfo.text}</span>
-                              </span>
+                      return (
+                        <article
+                          key={product.id}
+                          className={`ed-card ${itemIdx === 0 && items.length > 2 ? 'is-feature' : ''}`}
+                          data-reveal=""
+                          style={{ ['--i' as string]: itemIdx % 3 } as React.CSSProperties}
+                        >
+                          <button className="ed-card-media" onClick={() => handleAddToCartClick(product)} aria-label={`${isSaladItem ? 'Crear' : 'Agregar'} ${product.name}`}>
+                            {renderFigure(product, catIdx === 0 && itemIdx < 3)}
+                            {badge && (
+                              <span className="ed-badge">{badge.icon}<span>{badge.text}</span></span>
                             )}
-                            <h3 className="editorial-name">{product.name}</h3>
-                            {product.description && <p className="editorial-desc">{product.description}</p>}
+                          </button>
+                          <div className="ed-card-body">
+                            <h4 className="ed-card-name">{product.name}</h4>
+                            {product.description && <p className="ed-card-desc">{product.description}</p>}
+                            <div className="ed-card-foot">
+                              {product.prices ? (
+                                <div className="ed-prices">
+                                  {Object.entries(product.prices).map(([sizeName, priceVal]) => (
+                                    <span key={sizeName}><small>{sizeName}</small>${priceVal as number}</span>
+                                  ))}
+                                </div>
+                              ) : (
+                                <span className="ed-price">${product.price}</span>
+                              )}
+                              <button className="ed-btn ed-btn--sm" onClick={() => handleAddToCartClick(product)}>
+                                <Plus size={16} />
+                                <span>{isSaladItem ? 'Crear' : product.customizable ? 'Personalizar' : 'Agregar'}</span>
+                              </button>
+                            </div>
                           </div>
-                          <div className="editorial-footer">
-                            {product.prices ? (
-                              <div className="product-price-multi">
-                                {Object.entries(product.prices).map(([sizeName, priceVal], idx, arr) => (
-                                  <React.Fragment key={sizeName}>
-                                    <span className="price-option"><span className="price-label">{sizeName}</span> ${priceVal as number}</span>
-                                    {idx < arr.length - 1 && <span className="price-divider">|</span>}
-                                  </React.Fragment>
-                                ))}
-                              </div>
-                            ) : (
-                              <span className="editorial-price">${product.price}</span>
-                            )}
-                            <button className="add-btn" onClick={() => handleAddToCartClick(product)}>
-                              <Plus size={16} />
-                              <span>{isSaladItem ? 'Crea tu ensalada' : product.customizable ? 'Personalizar' : 'Agregar'}</span>
-                            </button>
-                          </div>
-                        </div>
-                      </ScrollRevealItem>
-                    );
-                  })}
-                </div>
-              )}
-            </section>
-          );
-        })}
+                        </article>
+                      );
+                    })}
+                  </div>
+                )}
+              </section>
+            );
+          })}
+        </div>
+      </section>
 
-        {/* AYUDA / WHATSAPP SUPPORT CARD */}
-        <section style={{ marginTop: '50px', padding: '28px 20px', backgroundColor: '#ffffff', borderRadius: '20px', border: '1px solid rgba(0,0,0,0.06)', boxShadow: '0 8px 30px rgba(0,0,0,0.05)', textAlign: 'center' }}>
-          <div style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: '56px', height: '56px', borderRadius: '50%', backgroundColor: '#25D366', color: '#fff', marginBottom: '14px', boxShadow: '0 4px 14px rgba(37, 211, 102, 0.35)' }}>
-            <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z" />
-            </svg>
+      {/* ═════════════ EDÉN PASS ═════════════ */}
+      <section id="pass" className="ed-pass" data-progress="">
+        <Monstera v={2} className="ed-pass-leaf" />
+        <div className="ed-wrap ed-pass-grid">
+          <div className="ed-pass-copy">
+            <div className="ed-eyebrow ed-eyebrow--gold" data-reveal="">Programa de lealtad</div>
+            <h2 className="ed-h2 ed-h2--light" data-reveal="">Edén <em>Pass</em></h2>
+            <p className="ed-lead ed-lead--light" data-reveal="">
+              Tu credencial de socio. Cada pedido suma puntos y los canjeas por recompensas mostrando tu QR en caja.
+            </p>
+            <ol className="ed-pass-how" data-reveal="">
+              <li><b>1</b><span>Pide en línea o en mostrador con tu número</span></li>
+              <li><b>2</b><span>Acumula 3 puntos por cada $100 de compra</span></li>
+              <li><b>3</b><span>Sube de nivel y desbloquea premios</span></li>
+            </ol>
+            <div className="ed-tiers" data-reveal="">
+              {TIERS.map((t, i) => (
+                <div key={t.name} className={`ed-tier t${i}`}>
+                  <span className="ed-tier-gem" />
+                  <b>{t.name}</b>
+                  <small>{t.pts === 0 ? 'Al unirte' : `${t.pts} pts`}</small>
+                </div>
+              ))}
+            </div>
+            <button className="ed-btn ed-btn--gold" data-reveal="" onClick={() => navigate('perfil')}>
+              <span>{isAuthenticated ? 'Ver mi Edén Pass' : 'Activar mi Edén Pass'}</span>
+              <ArrowRight size={18} />
+            </button>
           </div>
-          <h3 style={{ fontFamily: 'var(--font-serif)', fontSize: '1.5rem', color: 'var(--color-green-dark)', margin: '0 0 8px 0' }}>
-            ¿Tienes algún problema o duda con tu pedido?
-          </h3>
-          <p style={{ color: 'var(--color-text-muted)', fontSize: '0.95rem', maxWidth: '520px', margin: '0 auto 20px auto', lineHeight: 1.6 }}>
-            Estamos aquí para apoyarte en todo momento. Escríbenos directamente a WhatsApp y te atenderemos al instante con el mayor gusto.
-          </p>
-          <a
-            href="https://wa.me/525635830014"
-            target="_blank"
-            rel="noopener noreferrer"
-            style={{ display: 'inline-flex', alignItems: 'center', gap: '10px', padding: '14px 28px', backgroundColor: '#25D366', color: '#ffffff', fontWeight: 600, fontSize: '1rem', borderRadius: '35px', textDecoration: 'none', transition: 'all 0.2s ease', boxShadow: '0 6px 18px rgba(37, 211, 102, 0.3)' }}
-            onMouseOver={(e) => { e.currentTarget.style.transform = 'translateY(-2px)'; e.currentTarget.style.boxShadow = '0 8px 22px rgba(37, 211, 102, 0.45)'; }}
-            onMouseOut={(e) => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = '0 6px 18px rgba(37, 211, 102, 0.3)'; }}
-          >
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z" />
-            </svg>
+
+          <div className="ed-pass-card-wrap" data-reveal="">
+            <div
+              className="ed-pass-card"
+              onPointerMove={(e) => {
+                const r = e.currentTarget.getBoundingClientRect();
+                e.currentTarget.style.setProperty('--rx', `${((e.clientY - r.top) / r.height - 0.5) * -14}deg`);
+                e.currentTarget.style.setProperty('--ry', `${((e.clientX - r.left) / r.width - 0.5) * 18}deg`);
+              }}
+              onPointerLeave={(e) => {
+                e.currentTarget.style.setProperty('--rx', '0deg');
+                e.currentTarget.style.setProperty('--ry', '0deg');
+              }}
+            >
+              <span className="ed-pass-sheen" />
+              <div className="ed-pass-card-top">
+                <EdenMark leaf={false} className="ed-pass-mark" />
+                <span className="ed-pass-chip"><Crown size={13} /> Socio</span>
+              </div>
+              <div className="ed-pass-card-mid">
+                <div className="ed-pass-qr" aria-hidden="true">
+                  <QRCodeSVG value="Edén · Lo esencial es natural" size={120} level="L" bgColor="transparent" fgColor="#112217" style={{ width: '100%', height: '100%' }} />
+                </div>
+                <div>
+                  <small>Edén Pass</small>
+                  <b>{isAuthenticated && customerName ? customerName : 'Tu nombre aquí'}</b>
+                  <span>QR dinámico en tu perfil</span>
+                </div>
+              </div>
+              <div className="ed-pass-card-foot">
+                <span>Lo esencial es natural</span>
+                <span>Otumba · Edo. Méx.</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* ═════════════ RIFA ═════════════ */}
+      <div className="ed-wrap">
+        <Link href="/rifa" className="ed-raffle" data-reveal="" aria-label="Ver dinámica de la rifa de vuelos en globo"
+          onClick={(e) => { if (!e.metaKey && !e.ctrlKey) { e.preventDefault(); navigate('rifa'); } }}>
+          <div className="ed-raffle-balloon"><BalloonIcon size={64} /></div>
+          <div className="ed-raffle-text">
+            <span className="ed-eyebrow">Dinámica especial</span>
+            <h3>Gana un vuelo en globo para dos personas</h3>
+            <p>Compra $200 o más = 1 oportunidad para ganar</p>
+          </div>
+          <span className="ed-raffle-go"><ArrowRight size={22} /></span>
+        </Link>
+      </div>
+
+      {/* ═════════════ AYUDA ═════════════ */}
+      <div className="ed-wrap">
+        <section className="ed-help" data-reveal="">
+          <div>
+            <h3>¿Tienes algún problema o duda con tu pedido?</h3>
+            <p>Escríbenos directamente a WhatsApp y te atenderemos con mucho gusto.</p>
+          </div>
+          <a href="https://wa.me/525635830014" target="_blank" rel="noopener noreferrer" className="ed-btn ed-btn--wa">
+            <MessageSquare size={18} />
             <span>WhatsApp</span>
           </a>
         </section>
-      </main>
+      </div>
 
-      {/* FOOTER */}
-      <footer style={{ backgroundColor: 'var(--color-green-dark)', color: 'var(--color-cream-light)', padding: '40px 0', marginTop: '60px', borderTop: '4px solid var(--color-ochre)' }}>
-        <div className="container" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '15px', textAlign: 'center' }}>
-          <img src="/images/logo.webp" alt="Edén Logo" style={{ width: '60px', height: '60px', borderRadius: '50%', backgroundColor: '#fff', padding: '5px' }} />
-          <h2 style={{ fontFamily: 'var(--font-serif)', fontSize: '1.8rem', color: 'var(--color-cream-light)' }}>Edén</h2>
-          <p style={{ maxWidth: '400px', fontSize: '0.9rem', opacity: 0.8 }}>
-            Higiene, orden y sabor artesanal en Otumba, Estado de México.
-          </p>
-
-          <div style={{ display: 'flex', gap: '20px', marginTop: '10px' }}>
-            <a
-              href="https://www.instagram.com/edenensaladas?igsh=OHZpZGFsZm5vc2hk"
-              target="_blank"
-              rel="noopener noreferrer"
-              style={{ color: 'var(--color-cream-light)', opacity: 0.85, transition: 'all 0.2s ease', display: 'flex', alignItems: 'center', justifyContent: 'center', width: '44px', height: '44px', borderRadius: '50%', backgroundColor: 'rgba(255,255,255,0.1)', border: '1px solid rgba(255,255,255,0.15)' }}
-              onMouseOver={(e) => { e.currentTarget.style.opacity = '1'; e.currentTarget.style.transform = 'scale(1.08)'; e.currentTarget.style.backgroundColor = 'var(--color-ochre)'; }}
-              onMouseOut={(e) => { e.currentTarget.style.opacity = '0.85'; e.currentTarget.style.transform = 'scale(1)'; e.currentTarget.style.backgroundColor = 'rgba(255,255,255,0.1)'; }}
-              aria-label="Instagram de Edén"
-            >
-              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <rect width="20" height="20" x="2" y="2" rx="5" ry="5" />
-                <path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z" />
-                <line x1="17.5" x2="17.51" y1="6.5" y2="6.5" />
-              </svg>
-            </a>
-            <a
-              href="https://www.facebook.com/share/18cVG24wEM/?mibextid=wwXIfr"
-              target="_blank"
-              rel="noopener noreferrer"
-              style={{ color: 'var(--color-cream-light)', opacity: 0.85, transition: 'all 0.2s ease', display: 'flex', alignItems: 'center', justifyContent: 'center', width: '44px', height: '44px', borderRadius: '50%', backgroundColor: 'rgba(255,255,255,0.1)', border: '1px solid rgba(255,255,255,0.15)' }}
-              onMouseOver={(e) => { e.currentTarget.style.opacity = '1'; e.currentTarget.style.transform = 'scale(1.08)'; e.currentTarget.style.backgroundColor = 'var(--color-ochre)'; }}
-              onMouseOut={(e) => { e.currentTarget.style.opacity = '0.85'; e.currentTarget.style.transform = 'scale(1)'; e.currentTarget.style.backgroundColor = 'rgba(255,255,255,0.1)'; }}
-              aria-label="Facebook de Edén"
-            >
-              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M18 2h-3a5 5 0 0 0-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 0 1 1-1h3z" />
-              </svg>
-            </a>
-            <a
-              href="https://wa.me/525635830014"
-              target="_blank"
-              rel="noopener noreferrer"
-              style={{ color: 'var(--color-cream-light)', opacity: 0.85, transition: 'all 0.2s ease', display: 'flex', alignItems: 'center', justifyContent: 'center', width: '44px', height: '44px', borderRadius: '50%', backgroundColor: 'rgba(255,255,255,0.1)', border: '1px solid rgba(255,255,255,0.15)' }}
-              onMouseOver={(e) => { e.currentTarget.style.opacity = '1'; e.currentTarget.style.transform = 'scale(1.08)'; e.currentTarget.style.backgroundColor = '#25D366'; }}
-              onMouseOut={(e) => { e.currentTarget.style.opacity = '0.85'; e.currentTarget.style.transform = 'scale(1)'; e.currentTarget.style.backgroundColor = 'rgba(255,255,255,0.1)'; }}
-              aria-label="WhatsApp de Edén Local"
-            >
-              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z" />
-              </svg>
-            </a>
+      {/* ═════════════ FOOTER ═════════════ */}
+      <footer className="ed-footer">
+        <div className="ed-wrap">
+          <EdenMark className="ed-footer-mark" />
+          <Tagline className="ed-footer-tag" />
+          <div className="ed-footer-row">
+            <p>Higiene, orden y sabor artesanal en Otumba, Estado de México.</p>
+            <div className="ed-footer-social">
+              <a href="https://www.instagram.com/edenensaladas?igsh=OHZpZGFsZm5vc2hk" target="_blank" rel="noopener noreferrer" aria-label="Instagram de Edén">Instagram</a>
+              <a href="https://www.facebook.com/share/18cVG24wEM/?mibextid=wwXIfr" target="_blank" rel="noopener noreferrer" aria-label="Facebook de Edén">Facebook</a>
+              <a href="https://wa.me/525635830014" target="_blank" rel="noopener noreferrer" aria-label="WhatsApp de Edén">WhatsApp</a>
+            </div>
           </div>
-
-          <div style={{ fontSize: '0.8rem', opacity: 0.6, marginTop: '15px' }}>
-            © 2026 Edén. Todos los derechos reservados.
-          </div>
-
-          {/* WATERMARK */}
-          <div style={{ marginTop: '30px', display: 'flex', flexDirection: 'column', alignItems: 'center', opacity: 0.7, transition: 'opacity 0.3s', paddingBottom: '20px' }} onMouseOver={e => e.currentTarget.style.opacity = '1'} onMouseOut={e => e.currentTarget.style.opacity = '0.7'}>
-            <a href="https://hummingxbi.com" target="_blank" rel="noopener noreferrer" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', textDecoration: 'none', color: 'inherit' }}>
-              <span style={{ fontSize: '0.7rem', letterSpacing: '2px', marginBottom: '8px', color: 'var(--color-cream-light)' }}> PRODUCED BY </span>
-              <img src="/images/logoclaro.webp" alt="HummingX BI" style={{ height: '26px', width: '26px', borderRadius: '50%', objectFit: 'cover' }} />
+          <div className="ed-footer-base">
+            <span>© 2026 Edén. Todos los derechos reservados.</span>
+            <a href="https://hummingxbi.com" target="_blank" rel="noopener noreferrer" className="ed-credit">
+              <span>Powered by</span>
+              <img src="/images/logoclaro.webp" alt="HummingX BI" />
             </a>
           </div>
         </div>
       </footer>
-
       {/* CUSTOMIZER MODAL */}
       {selectedProduct && (
-        <div className="modal-overlay" onClick={() => setSelectedProduct(null)}>
-          <div className="modal-content" onClick={e => e.stopPropagation()}>
+        <div className="modal-overlay ed-sheet-overlay" onClick={() => setSelectedProduct(null)}>
+          <div className="modal-content ed-sheet" onClick={e => e.stopPropagation()}>
+            <span className="ed-cart-grab" aria-hidden="true" />
             <div className="modal-header">
+              <div className="ed-sheet-thumb" aria-hidden="true">
+                {cutoutFor(selectedProduct.image) ? <img src={cutoutFor(selectedProduct.image) as string} alt="" /> : selectedProduct.image ? <img src={selectedProduct.image} alt="" className="is-photo" /> : null}
+              </div>
               <div className="modal-title-wrap">
                 <span className="modal-subtitle">
                   {selectedProduct.category === 'ensaladas' || selectedProduct.category === '299824bb-ede2-47ed-bf0e-b5fd9548af73' || menuData?.CATEGORIES?.find((c: any) => c.id === selectedProduct.category)?.name === 'Ensaladas' || selectedProduct.name?.toLowerCase().includes('ensalada')
@@ -1949,136 +2181,132 @@ function MenuContent() {
 
       {/* CART DRAWER */}
       {isCartOpen && (
-        <div className="modal-overlay" onClick={() => setIsCartOpen(false)}>
-          <div className="cart-drawer" onClick={e => e.stopPropagation()}>
-            <div className="cart-header">
-              <div className="cart-header-title">
-                <ShoppingBag />
-                <h2>Tu Pedido</h2>
+        <div className="modal-overlay ed-cart-overlay" onClick={() => setIsCartOpen(false)}>
+          <div className="cart-drawer ed-cart" onClick={e => e.stopPropagation()}>
+            <span className="ed-cart-grab" aria-hidden="true" />
+            <div className="ed-cart-head">
+              <div>
+                <span className="ed-eyebrow">Tu pedido</span>
+                <h2>{cartCount > 0 ? `${cartCount} ${cartCount === 1 ? 'producto' : 'productos'}` : 'Carrito'}</h2>
               </div>
-              <button className="close-btn" onClick={() => setIsCartOpen(false)}>
+              <button className="ed-close" onClick={() => setIsCartOpen(false)} aria-label="Cerrar carrito">
                 <X size={20} />
               </button>
             </div>
 
             {editingOrder && (
-              <div style={{ backgroundColor: '#fffbeb', borderBottom: '1px solid #fcd34d', padding: '12px 16px', fontSize: '0.85rem', color: '#92400e', display: 'flex', alignItems: 'center', gap: '10px' }}>
+              <div className="ed-cart-edit">
                 <div style={{ flex: 1, lineHeight: 1.35 }}>
                   <strong>Estás modificando tu pedido #{editingOrder.short}.</strong> Al confirmarlo, reemplazará al anterior.
                 </div>
-                <button
-                  onClick={discardOrderEdit}
-                  style={{ background: 'none', border: '1px solid #f59e0b', color: '#92400e', borderRadius: '8px', padding: '6px 10px', fontWeight: 700, fontSize: '0.78rem', cursor: 'pointer', flexShrink: 0 }}
-                >
-                  Descartar cambios
-                </button>
+                <button onClick={discardOrderEdit}>Descartar cambios</button>
               </div>
             )}
 
-            <div className="cart-body">
+            <div className="ed-cart-body">
               {cart.length === 0 ? (
-                <div className="cart-empty">
-                  <div className="cart-empty-icon" style={{ display: 'flex', justifyContent: 'center', marginBottom: '15px' }}><ShoppingBag size={48} color="var(--color-ochre)" /></div>
+                <div className="ed-cart-empty">
+                  <div className="ed-cart-empty-art">
+                    <Monstera v={0} className="ed-cart-empty-leaf" />
+                    <img src="/images/cut/ensalada.webp" alt="" aria-hidden="true" />
+                  </div>
                   <h3>Tu carrito está vacío</h3>
                   <p>Navega en el menú y agrega tus ensaladas o jugos favoritos.</p>
+                  <button className="ed-btn ed-btn--solid" onClick={() => { setIsCartOpen(false); navigate('menu'); }}>
+                    <span>Ver el menú</span>
+                    <ArrowRight size={18} />
+                  </button>
                 </div>
               ) : (
-                <div className="cart-items-list">
-                  {cart.map((item: any) => (
-                    <div key={item.cartId} className="cart-item">
-                      <div className="cart-item-info">
-                        <span className="cart-item-name">{item.name} {item.size && `(${item.size})`}</span>
-
-                        {item.customizations && (
-                          <div className="cart-item-customizations">
-                            {item.customizations.proteins?.length > 0 && (
-                              <div><strong>Proteínas:</strong> {item.customizations.proteins.join(', ')}</div>
-                            )}
-                            {item.customizations.toppings?.length > 0 && (
-                              <div><strong>Toppings:</strong> {item.customizations.toppings.join(', ')}</div>
-                            )}
-                            {item.customizations.seedsAndNuts?.length > 0 && (
-                              <div><strong>Semillas/Frutos:</strong> {item.customizations.seedsAndNuts.join(', ')}</div>
-                            )}
-                            {item.customizations.dressings?.length > 0 && (
-                              <div><strong>Aderezo:</strong> {item.customizations.dressings.join(', ')}</div>
-                            )}
-                            {item.customizations.flavors?.length > 0 && (
-                              <div><strong>Sabor:</strong> {item.customizations.flavors.join(', ')}</div>
-                            )}
-                            {item.customizations.extras?.length > 0 && (() => {
-                              const omissions = item.customizations.extras.filter((x: any) => typeof x === 'string' && x.toLowerCase().startsWith('sin '));
-                              const otherExtras = item.customizations.extras.filter((x: any) => !(typeof x === 'string' && x.toLowerCase().startsWith('sin ')));
-                              return (
-                                <>
-                                  {omissions.length > 0 && <div style={{ color: 'var(--color-terracotta)', fontWeight: 700 }}><strong>Exclusiones:</strong> {omissions.join(', ')}</div>}
-                                  {otherExtras.length > 0 && <div><strong>Opciones/Extras:</strong> {otherExtras.join(', ')}</div>}
-                                </>
-                              );
-                            })()}
-                            {Object.entries(item.customizations).map(([key, val]: [string, any]) => {
-                              if (['proteins', 'toppings', 'seedsAndNuts', 'dressings', 'flavors', 'extras'].includes(key)) return null;
-                              if (Array.isArray(val) && val.length > 0) {
-                                return <div key={key}><strong>{key.charAt(0).toUpperCase() + key.slice(1)}:</strong> {val.join(', ')}</div>;
-                              }
-                              if (typeof val === 'string' && val.trim() !== '') {
-                                return <div key={key}><strong>{key.charAt(0).toUpperCase() + key.slice(1)}:</strong> {val}</div>;
-                              }
-                              return null;
-                            })}
-                          </div>
-                        )}
-                        {item.notes && (
-                          <div style={{ fontSize: '0.8rem', fontStyle: 'italic', marginTop: '6px', color: 'var(--color-terracotta)' }}>
-                            "{item.notes}"
-                          </div>
-                        )}
-                      </div>
-
-                      <div className="cart-item-price-quantity">
-                        <span className="cart-item-price">${item.price * item.quantity}</span>
-                        <div className="quantity-controls">
-                          <button className="quantity-btn" onClick={() => updateQuantity(item.cartId, -1)}>-</button>
-                          <span className="quantity-value">{item.quantity}</span>
-                          <button className="quantity-btn" onClick={() => updateQuantity(item.cartId, 1)}>+</button>
+                <ul className="ed-cart-list">
+                  {cart.map((item: any) => {
+                    const img = imageFor(item.id);
+                    const cut = cutoutFor(img);
+                    return (
+                      <li key={item.cartId} className="ed-cart-item">
+                        <div className="ed-cart-thumb">
+                          {cut ? <img src={cut} alt="" /> : img ? <img src={img} alt="" className="is-photo" /> : <Utensils size={22} />}
                         </div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
+                        <div className="ed-cart-info">
+                          <div className="ed-cart-line">
+                            <span className="ed-cart-name">{item.name} {item.size && <em>{item.size}</em>}</span>
+                            <span className="ed-cart-price">${item.price * item.quantity}</span>
+                          </div>
+
+                          {item.customizations && (
+                            <div className="ed-cart-custom">
+                              {item.customizations.proteins?.length > 0 && (
+                                <div><strong>Proteínas:</strong> {item.customizations.proteins.join(', ')}</div>
+                              )}
+                              {item.customizations.toppings?.length > 0 && (
+                                <div><strong>Toppings:</strong> {item.customizations.toppings.join(', ')}</div>
+                              )}
+                              {item.customizations.seedsAndNuts?.length > 0 && (
+                                <div><strong>Semillas/Frutos:</strong> {item.customizations.seedsAndNuts.join(', ')}</div>
+                              )}
+                              {item.customizations.dressings?.length > 0 && (
+                                <div><strong>Aderezo:</strong> {item.customizations.dressings.join(', ')}</div>
+                              )}
+                              {item.customizations.flavors?.length > 0 && (
+                                <div><strong>Sabor:</strong> {item.customizations.flavors.join(', ')}</div>
+                              )}
+                              {item.customizations.extras?.length > 0 && (() => {
+                                const omissions = item.customizations.extras.filter((x: any) => typeof x === 'string' && x.toLowerCase().startsWith('sin '));
+                                const otherExtras = item.customizations.extras.filter((x: any) => !(typeof x === 'string' && x.toLowerCase().startsWith('sin ')));
+                                return (
+                                  <>
+                                    {omissions.length > 0 && <div className="is-omit"><strong>Exclusiones:</strong> {omissions.join(', ')}</div>}
+                                    {otherExtras.length > 0 && <div><strong>Opciones/Extras:</strong> {otherExtras.join(', ')}</div>}
+                                  </>
+                                );
+                              })()}
+                              {Object.entries(item.customizations).map(([key, val]: [string, any]) => {
+                                if (['proteins', 'toppings', 'seedsAndNuts', 'dressings', 'flavors', 'extras'].includes(key)) return null;
+                                if (Array.isArray(val) && val.length > 0) {
+                                  return <div key={key}><strong>{key.charAt(0).toUpperCase() + key.slice(1)}:</strong> {val.join(', ')}</div>;
+                                }
+                                if (typeof val === 'string' && val.trim() !== '') {
+                                  return <div key={key}><strong>{key.charAt(0).toUpperCase() + key.slice(1)}:</strong> {val}</div>;
+                                }
+                                return null;
+                              })}
+                            </div>
+                          )}
+                          {item.notes && <div className="ed-cart-note">“{item.notes}”</div>}
+
+                          <div className="ed-qty">
+                            <button onClick={() => updateQuantity(item.cartId, -1)} aria-label={item.quantity === 1 ? 'Quitar del carrito' : 'Quitar uno'}>
+                              <Minus size={15} />
+                            </button>
+                            <span>{item.quantity}</span>
+                            <button onClick={() => updateQuantity(item.cartId, 1)} aria-label="Agregar uno">
+                              <Plus size={15} />
+                            </button>
+                          </div>
+                        </div>
+                      </li>
+                    );
+                  })}
+                </ul>
               )}
             </div>
 
             {cart.length > 0 && (
-              <div className="cart-footer">
-                <div className="service-selector-container">
-                  <label className="service-selector-title">¿Dónde disfrutarás tu pedido?</label>
-
-                  <div className="service-selector-grid">
-                    <button
-                      className={`service-option-card ${serviceType === 'pickup' ? 'active' : ''}`}
-                      onClick={() => setServiceType('pickup')}
-                      type="button"
-                    >
-                      <ShoppingBag size={18} />
+              <div className="ed-cart-foot">
+                <div className="ed-service">
+                  <label className="ed-service-title">¿Dónde disfrutarás tu pedido?</label>
+                  <div className={`ed-seg s-${serviceType}`}>
+                    <span className="ed-seg-pill" aria-hidden="true" />
+                    <button className={serviceType === 'pickup' ? 'is-on' : ''} onClick={() => setServiceType('pickup')} type="button">
+                      <ShoppingBag size={17} />
                       <span>Recoger</span>
                     </button>
-
-                    <button
-                      className={`service-option-card ${serviceType === 'dine_in' ? 'active' : ''}`}
-                      onClick={() => setServiceType('dine_in')}
-                      type="button"
-                    >
-                      <Utensils size={18} />
+                    <button className={serviceType === 'dine_in' ? 'is-on' : ''} onClick={() => setServiceType('dine_in')} type="button">
+                      <Utensils size={17} />
                       <span>Aquí</span>
                     </button>
-
-                    <button
-                      className={`service-option-card ${serviceType === 'delivery' ? 'active' : ''}`}
-                      onClick={() => setServiceType('delivery')}
-                      type="button"
-                    >
-                      <Bike size={18} />
+                    <button className={serviceType === 'delivery' ? 'is-on' : ''} onClick={() => setServiceType('delivery')} type="button">
+                      <Bike size={17} />
                       <span>Envío</span>
                     </button>
                   </div>
@@ -2103,17 +2331,22 @@ function MenuContent() {
                   )}
                 </div>
 
+                <div className="ed-cart-points">
+                  <span className="ed-cart-points-ico"><Crown size={15} /></span>
+                  <span>
+                    Con este pedido sumas aprox. <b>{estPoints} {estPoints === 1 ? 'punto' : 'puntos'}</b> en tu Edén Pass
+                  </span>
+                </div>
+
                 {errorMsg && !isAuthOpen && (
-                  <div style={{ backgroundColor: '#ffebee', color: '#c62828', padding: '10px', borderRadius: '8px', fontSize: '0.85rem', marginBottom: '10px', fontWeight: 600, textAlign: 'center' }}>
-                    {errorMsg}
-                  </div>
+                  <div className="ed-cart-error">{errorMsg}</div>
                 )}
-                <div className="cart-totals-row">
+                <div className="ed-cart-total">
                   <span>Total</span>
-                  <span>${calculateSubtotal()}</span>
+                  <b>${cartTotal}</b>
                 </div>
                 <button
-                  className="checkout-btn"
+                  className="checkout-btn ed-checkout"
                   onClick={() => {
                     if (serviceType === 'delivery' && !deliveryCoords) {
                       setErrorMsg('Por favor selecciona tu dirección de entrega y calcula el costo de envío.');
@@ -2131,17 +2364,16 @@ function MenuContent() {
                   <span>{isSubmittingOrder ? 'Procesando Pedido...' : 'Confirmar Pedido'}</span>
                   {!isSubmittingOrder && <ArrowRight size={18} />}
                 </button>
-
+                <button className="ed-cart-more" onClick={() => setIsCartOpen(false)}>Seguir agregando</button>
               </div>
             )}
           </div>
         </div>
       )}
-
       {/* AUTH & MINI REGISTRATION MODAL */}
       {/* AUTH & MINI REGISTRATION MODAL (2-Step Compact Sheet) */}
       {isAuthOpen && (
-        <div className="modal-overlay" onClick={() => setIsAuthOpen(false)} style={{ overscrollBehavior: 'contain' }}>
+        <div className="modal-overlay ed-auth-overlay" onClick={() => setIsAuthOpen(false)} style={{ overscrollBehavior: 'contain' }}>
           <div
             className="modal-content"
             onClick={e => e.stopPropagation()}
@@ -2336,50 +2568,58 @@ function MenuContent() {
 
       {/* ACTIVE ORDERS FLOATING BUTTON */}
       {activeOrders.length > 0 && !isCartOpen && !selectedProduct && !isAuthOpen && (
-        <div
+        <button
+          className={`ed-active-order ${cart.length > 0 ? 'has-bar' : ''}`}
           onClick={() => router.push(`/orden/${activeOrders[0].id}`)}
-          style={{
-            position: 'fixed',
-            bottom: '90px', // Above the cart button
-            right: '20px',
-            backgroundColor: 'var(--color-ochre)',
-            color: 'var(--color-green-dark)',
-            padding: '12px 20px',
-            borderRadius: '30px',
-            boxShadow: '0 8px 24px rgba(212, 163, 115, 0.4)',
-            display: 'flex',
-            alignItems: 'center',
-            gap: '10px',
-            cursor: 'pointer',
-            zIndex: 90,
-            fontWeight: 700,
-            fontSize: '0.95rem',
-            animation: 'float 3s ease-in-out infinite',
-            border: '2px solid rgba(255,255,255,0.2)'
-          }}
         >
-          <div style={{
-            width: '10px',
-            height: '10px',
-            backgroundColor: '#27ae60',
-            borderRadius: '50%',
-            boxShadow: '0 0 8px #27ae60'
-          }} className="pulse-dot"></div>
-          <span>Ver Orden Activa</span>
+          <span className="pulse-dot ed-active-dot" />
+          <span>Ver orden activa</span>
           <ChevronRight size={18} />
-        </div>
+        </button>
       )}
 
-      {/* Video Modal Bajo Demanda */}
-      <EdenVideoModal isOpen={isVideoModalOpen} onClose={() => setIsVideoModalOpen(false)} />
-    </>
+      {/* BARRA FLOTANTE DEL CARRITO (móvil) */}
+      {cart.length > 0 && !isCartOpen && !selectedProduct && !isAuthOpen && (
+        <button className="ed-cartbar" onClick={() => setIsCartOpen(true)}>
+          <span className="ed-cartbar-count">{cartCount}</span>
+          <span className="ed-cartbar-label">Ver mi pedido</span>
+          <span className="ed-cartbar-total">${cartTotal}</span>
+        </button>
+      )}
+    </div>
+  );
+}
+
+/** Intro de entrada (solo CSS: funciona desde el primer pintado y no bloquea la carga). */
+function EdenIntro() {
+  // Al terminar la intro (o al salir del inicio) se marca como vista para no repetirla
+  useEffect(() => {
+    const t = setTimeout(() => document.documentElement.classList.add('ed-seen'), 3400);
+    return () => {
+      clearTimeout(t);
+      document.documentElement.classList.add('ed-seen');
+    };
+  }, []);
+  return (
+    <div className="ed-intro" aria-hidden="true">
+      <script
+        dangerouslySetInnerHTML={{
+          __html: "try{if(sessionStorage.getItem('eden_intro')){document.documentElement.classList.add('ed-seen')}else{sessionStorage.setItem('eden_intro','1')}}catch(e){}",
+        }}
+      />
+      <EdenMark leaf={false} className="ed-intro-mark" />
+      <span className="ed-intro-tag">Lo esencial es natural</span>
+    </div>
   );
 }
 
 export default function MenuPage() {
   return (
-    <React.Suspense fallback={<div className="flex items-center justify-center min-h-screen text-green-800">Cargando menú...</div>}>
-      <MenuContent />
-    </React.Suspense>
+    <>
+      <EdenIntro />
+      <React.Suspense fallback={<div className="ed-boot" />}>
+        <MenuContent />
+      </React.Suspense>
+    </>
   );
 }

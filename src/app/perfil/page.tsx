@@ -2,8 +2,20 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { ChevronLeft, LogOut, Award, Sparkles, Crown, ShieldCheck, Gift, Lock, CheckCircle } from 'lucide-react';
+import { LogOut, Sparkles, Crown, Gift, Lock, CheckCircle, ArrowRight } from 'lucide-react';
 import EdenPassQR from '@/components/loyalty/EdenPassQR';
+import LoginCard from '@/components/site/LoginCard';
+import SiteNav, { NavTarget } from '@/components/site/SiteNav';
+import { EdenMark, Monstera } from '@/components/site/brand';
+import { useCurtain } from '@/components/site/Curtain';
+import { useScrollFx } from '@/components/site/useScrollFx';
+
+const TIERS = [
+  { name: 'Estándar', pts: 0 },
+  { name: 'Plata', pts: 40 },
+  { name: 'Oro', pts: 90 },
+  { name: 'Diamante', pts: 140 },
+];
 
 export default function PerfilPage() {
   const router = useRouter();
@@ -11,12 +23,16 @@ export default function PerfilPage() {
   const [loading, setLoading] = useState(true);
   const [loyaltyData, setLoyaltyData] = useState<any>(null);
   const [benefits, setBenefits] = useState<any[]>([]);
+  const [memberName, setMemberName] = useState('');
+  const { go } = useCurtain();
+  useScrollFx([loading, isAuthenticated]);
 
   useEffect(() => {
     try {
       const savedSession = localStorage.getItem('eden_user_session');
       if (savedSession) {
         const parsed = JSON.parse(savedSession);
+        if (parsed.name) setMemberName(String(parsed.name).split(' ')[0]);
         if (parsed.lastActive && (Date.now() - parsed.lastActive) < 30 * 24 * 60 * 60 * 1000) {
           setIsAuthenticated(true);
           setLoading(false);
@@ -39,6 +55,7 @@ export default function PerfilPage() {
       })
       .then(data => {
         if (data && data.user) {
+          if (data.user.name) setMemberName(String(data.user.name).split(' ')[0]);
           try {
             localStorage.setItem('eden_user_session', JSON.stringify({
               name: data.user.name || '',
@@ -97,216 +114,215 @@ export default function PerfilPage() {
 
   const handleLogout = async () => {
     await fetch('/api/auth/logout', { method: 'POST', credentials: 'include' });
-    router.push('/');
+    go({ word: 'EDÉN', route: true, action: () => router.push('/') });
   };
+
+  const navigate = (t: NavTarget) => {
+    if (t === 'perfil') { window.scrollTo({ top: 0, behavior: 'smooth' }); return; }
+    if (t === 'rifa') { go({ word: 'RIFA', route: true, action: () => router.push('/rifa') }); return; }
+    const words: Record<string, string> = { inicio: 'EDÉN', menu: 'MENÚ', arma: 'TU ENSALADA', pass: 'EDÉN PASS' };
+    const hash = t === 'inicio' ? '' : `#${t}`;
+    go({ word: words[t] || 'EDÉN', route: true, action: () => router.push(`/${hash}`) });
+  };
+
+  const nav = <SiteNav variant="page" active="perfil" onNavigate={navigate} />;
 
   if (loading) {
     return (
-      <div className="profile-page-wrapper" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-        <div className="spin-icon" style={{ width: '48px', height: '48px', border: '4px solid var(--color-green-light)', borderTopColor: 'var(--color-green-dark)', borderRadius: '50%' }}></div>
+      <div className="ed-page" style={{ display: 'grid', placeItems: 'center', background: 'var(--ed-deep)' }}>
+        {nav}
+        <div className="spin-icon" style={{ width: '44px', height: '44px', border: '3px solid rgba(230,203,146,.2)', borderTopColor: 'var(--ed-gold-2)', borderRadius: '50%' }}></div>
       </div>
     );
   }
 
   if (!isAuthenticated) {
     return (
-      <div className="profile-page-wrapper" style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', justifyContent: 'space-between', padding: '24px 20px', background: 'var(--color-cream-light)' }}>
-        <header style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-          <button onClick={() => router.push('/')} className="profile-back-btn" style={{ position: 'static', display: 'flex', alignItems: 'center', gap: '4px', textDecoration: 'none', background: 'rgba(34, 60, 43, 0.08)', borderRadius: '12px', padding: '8px 14px', border: 'none', cursor: 'pointer', color: 'var(--color-green-dark)', fontWeight: 700 }}>
-            <ChevronLeft size={20} /> <span style={{ fontSize: '0.95rem' }}>Menú</span>
-          </button>
-          <div style={{ fontFamily: 'var(--font-serif)', fontSize: '1.4rem', color: 'var(--color-green-dark)', fontWeight: 700, letterSpacing: '1px' }}>EDÉN</div>
-          <div style={{ width: '70px' }}></div>
-        </header>
-
-        <div className="edenpass-vip-card-wrapper" style={{ margin: 'auto' }}>
-          <div className="edenpass-vip-card" style={{ padding: '32px 28px' }}>
-            <div className="edenpass-vip-sheen"></div>
-
-            <div className="edenpass-vip-header">
-              <div className="edenpass-vip-logo-group">
-                <div className="edenpass-vip-crown-icon">
-                  <Crown size={22} color="#d4a35f" />
-                </div>
-                <div>
-                  <div className="edenpass-vip-brand">RESTAURANTE EDÉN</div>
-                  <div className="edenpass-vip-subbrand">MEMBRESÍA EXCLUSIVA • EDENPASS</div>
-                </div>
-              </div>
-              <div className="edenpass-vip-status-chip">
-                <ShieldCheck size={14} color="#d4a35f" />
-                <span>CLUB VIP</span>
-              </div>
-            </div>
-
-            <div className="edenpass-vip-chip-row">
-              <div className="edenpass-smart-chip">
-                <div className="chip-line horizontal"></div>
-                <div className="chip-line vertical"></div>
-                <div className="chip-inner"></div>
-              </div>
-              <div className="edenpass-vip-motto">
-                <div className="motto-title">BARRA BOTÁNICA & JUGOS NATURALES</div>
-                <div className="motto-subtitle">Identidad de Fidelidad & Puntos en Cada Visita</div>
-              </div>
-            </div>
-
-            <div style={{ textAlign: 'center', padding: '14px 0', zIndex: 2 }}>
-              <h1 style={{ fontFamily: 'var(--font-serif)', fontSize: '1.85rem', color: '#ffffff', margin: '0 0 12px 0', lineHeight: 1.25, fontWeight: 700 }}>Únete a la Familia Edén</h1>
-              <p style={{ fontSize: '0.92rem', color: 'rgba(255, 255, 255, 0.82)', lineHeight: 1.55, margin: '0 auto 24px auto' }}>
-                Haz tu primer pedido o inicia sesión para activar de inmediato tu credencial de socio exclusivo <strong>EdenPass</strong>, acumular puntos y canjear recompensas en mostrador.
+      <div className="ed-page">
+        {nav}
+        <section className="ed-pp-hero ed-pp-join">
+          <Monstera v={0} className="ed-pp-leaf1" />
+          <Monstera v={2} className="ed-pp-leaf2" />
+          <div className="ed-wrap ed-pp-grid">
+            <div>
+              <div className="ed-eyebrow ed-eyebrow--gold">Membresía · Edén Pass</div>
+              <h1 className="ed-pp-title">Tu <em>Edén Pass</em></h1>
+              <p className="ed-pp-hello">
+                Inicia sesión con tu número para ver tu QR de socio, tus puntos y tus premios. Cada pedido suma 3 puntos por cada $100 y los canjeas en mostrador.
               </p>
-
-              <button 
-                onClick={() => router.push('/')} 
-                style={{ width: '100%', padding: '16px 24px', borderRadius: '20px', background: 'linear-gradient(135deg, #d4a35f 0%, #b8863b 100%)', color: '#112217', border: 'none', fontSize: '1.05rem', fontWeight: 800, cursor: 'pointer', boxShadow: '0 10px 25px rgba(212, 163, 95, 0.35)', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px', transition: 'all 0.2s ease' }}
-              >
-                <Sparkles size={18} color="#112217" /> Activar Mi EdenPass
-              </button>
+              <div className="ed-tiers" style={{ maxWidth: 560 }}>
+                {TIERS.map((t, i) => (
+                  <div key={t.name} className={`ed-tier t${i}`}>
+                    <span className="ed-tier-gem" />
+                    <b>{t.name}</b>
+                    <small>{t.pts === 0 ? 'Al unirte' : `${t.pts} pts`}</small>
+                  </div>
+                ))}
+              </div>
             </div>
+            <LoginCard
+              onSuccess={(u) => {
+                if (u.name) setMemberName(String(u.name).split(' ')[0]);
+                // Si llegó desde la rifa, regresa a la rifa ya con sesión
+                if (new URLSearchParams(window.location.search).get('next') === '/rifa') {
+                  window.location.href = '/rifa';
+                  return;
+                }
+                setIsAuthenticated(true);
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+              }}
+            />
           </div>
-        </div>
-
-        <footer style={{ textAlign: 'center', fontSize: '0.8rem', color: 'var(--color-text-muted)', paddingBottom: '10px' }}>
-          Restaurante Edén • Otumba, Estado de México
-        </footer>
+        </section>
+        <footer className="ed-pp-footer">Restaurante Edén · Otumba, Estado de México</footer>
       </div>
     );
   }
 
+  const points: number = loyaltyData?.loyalty_points || 0;
+  const tierIdx = TIERS.reduce((acc, t, i) => (points >= t.pts ? i : acc), 0);
+  const nextTier = TIERS[tierIdx + 1];
+  const prevPts = TIERS[tierIdx].pts;
+  const ringPct = nextTier ? Math.min(1, (points - prevPts) / (nextTier.pts - prevPts)) : 1;
+  const R = 84;
+  const C = 2 * Math.PI * R;
+  const ladderPct = Math.min(100, (points / TIERS[TIERS.length - 1].pts) * 100);
+
   return (
-    <div className="profile-page-wrapper">
-      <header className="profile-header-bar">
-        <button onClick={() => router.push('/')} className="profile-back-btn" title="Volver al Menú">
-          <ChevronLeft size={28} />
-        </button>
-        <h1 className="profile-header-title">Mi Perfil</h1>
-        <button onClick={handleLogout} className="profile-action-btn" title="Cerrar Sesión">
-          Salir
-        </button>
-      </header>
-
-      <main className="profile-main-content">
-        {/* EdenPass QR Component */}
-        <EdenPassQR />
-
-        {/* Loyalty Points Display */}
-        {loyaltyData && (
-          <div className="profile-card">
-            <h2 className="profile-card-title">Mis Puntos</h2>
-            <div className="profile-points-layout">
-              <div>
-                <p className="profile-points-hero">{loyaltyData.loyalty_points}</p>
-                <p className="profile-points-label">puntos acumulados</p>
-              </div>
-              <div className="profile-tier-layout">
-                <p className="profile-tier-name">{loyaltyData.loyalty_tier}</p>
-                {loyaltyData.next_tier && (
-                  <div className="profile-tier-progress">
-                    Faltan {loyaltyData.points_needed_for_next_tier} pts para {loyaltyData.next_tier}
-                  </div>
-                )}
-              </div>
+    <div className="ed-page">
+      {nav}
+      <section className="ed-pp-hero">
+        <Monstera v={0} className="ed-pp-leaf1" />
+        <Monstera v={2} className="ed-pp-leaf2" />
+        <div className="ed-wrap ed-pp-grid">
+          <div>
+            <div className="ed-eyebrow ed-eyebrow--gold">Mi perfil · Edén Pass</div>
+            <h1 className="ed-pp-title">Hola{memberName ? ',' : ''} <em>{memberName || 'socio'}</em></h1>
+            <p className="ed-pp-hello">
+              Presenta tu código en mostrador para acumular puntos o canjear tus premios. El QR se renueva solo para mantener tu cuenta segura.
+            </p>
+            <div className="ed-pp-actions">
+              <button className="ed-btn ed-btn--gold" onClick={() => navigate('menu')}>
+                <span>Hacer un pedido</span>
+                <ArrowRight size={18} />
+              </button>
+              <button className="ed-btn ed-btn--line" onClick={handleLogout}>
+                <LogOut size={17} />
+                <span>Cerrar sesión</span>
+              </button>
             </div>
           </div>
-        )}
+          <div className="ed-pp-qr">
+            <EdenPassQR />
+          </div>
+        </div>
+      </section>
 
-        {/* Gamified Rewards Roadmap Panel - Ultra Luxury High Contrast Module */}
-        {benefits && benefits.length > 0 && (
-          <div className="profile-rewards-catalog-card">
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <Sparkles size={22} color="#d4a35f" />
-                <h2 className="profile-rewards-catalog-title">Catálogo de Premios VIP</h2>
+      <main className="ed-pp-body">
+        <div className="ed-wrap">
+          {loyaltyData && (
+            <div className="ed-points" data-reveal="">
+              <div className="ed-ring">
+                <svg viewBox="0 0 200 200" aria-hidden="true">
+                  <defs>
+                    <linearGradient id="edRingGrad" x1="0" y1="0" x2="1" y2="1">
+                      <stop offset="0%" stopColor="#56742D" />
+                      <stop offset="100%" stopColor="#C9A15A" />
+                    </linearGradient>
+                  </defs>
+                  <circle className="trk" cx="100" cy="100" r={R} />
+                  <circle className="val" cx="100" cy="100" r={R} strokeDasharray={C} strokeDashoffset={C * (1 - ringPct)} />
+                </svg>
+                <div className="ed-ring-center">
+                  <b data-count={points}>{points}</b>
+                  <span>puntos</span>
+                </div>
               </div>
-              <span className="profile-rewards-points-pill">
-                {loyaltyData?.loyalty_points || 0} pts
-              </span>
-            </div>
-            <p className="profile-rewards-catalog-subtitle">
-              Desbloquea recompensas automáticas al acumular puntos. Muestra tu código QR en mostrador para canjear cualquiera de tus premios desbloqueados al instante.
-            </p>
-
-            <div className="profile-rewards-grid-luxury">
-              {benefits.map((b: any, idx: number) => {
-                const currentPts = loyaltyData?.loyalty_points || 0;
-                const cost = b.points_cost || b.points_required || 0;
-                const isUnlocked = currentPts >= cost;
-                const missingPts = Math.max(0, cost - currentPts);
-                const progressPercent = Math.min(100, Math.floor((currentPts / cost) * 100));
-
-                return (
-                  <div 
-                    key={b.id || idx}
-                    className={`profile-reward-luxury-item ${isUnlocked ? 'unlocked' : 'locked'}`}
-                  >
-                    {/* Shimmer Sheen on Unlocked */}
-                    {isUnlocked && <div className="edenpass-vip-sheen"></div>}
-
-                    <div className="reward-luxury-header">
-                      <div className="reward-luxury-title-group">
-                        <div className="reward-luxury-icon-box">
-                          {isUnlocked ? <Gift size={18} /> : <Lock size={18} />}
-                        </div>
-                        <div>
-                          <h3 className="reward-luxury-name">
-                            {b.name}
-                          </h3>
-                        </div>
-                      </div>
-
-                      <div className="reward-luxury-cost-badge">
-                        {cost} pts
-                      </div>
+              <div>
+                <span className="ed-points-tier"><Crown size={15} /> Nivel {loyaltyData.loyalty_tier}</span>
+                <h3>
+                  {nextTier
+                    ? <>Te faltan {loyaltyData.points_needed_for_next_tier ?? Math.max(0, nextTier.pts - points)} pts para {loyaltyData.next_tier || nextTier.name}</>
+                    : <>Estás en el nivel más alto</>}
+                </h3>
+                <p>Acumulas 3 puntos por cada $100 en pedidos pagados o entregados.</p>
+                <div className="ed-ladder">
+                  <span className="ed-ladder-fill" style={{ width: `${ladderPct}%` }} />
+                  {TIERS.map((t, i) => (
+                    <div key={t.name} className={`ed-rung t${i} ${points >= t.pts ? 'is-on' : ''}`}>
+                      <span className="ed-tier-gem" />
+                      <b>{t.name}</b>
+                      <small>{t.pts === 0 ? 'Inicio' : `${t.pts} pts`}</small>
                     </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          )}
 
-                    <p className="reward-luxury-description">
-                      {b.description}
-                    </p>
-
-                    <div className="reward-luxury-footer">
+          {benefits && benefits.length > 0 && (
+            <>
+              <div className="ed-pp-section-head" data-reveal="">
+                <div>
+                  <span className="ed-eyebrow">Recompensas</span>
+                  <h2>Catálogo de <em>premios</em></h2>
+                </div>
+                <p>Se desbloquean solos al juntar puntos. Muestra tu QR en caja para canjear cualquiera de tus premios desbloqueados.</p>
+              </div>
+              <div className="ed-rewards">
+                {benefits.map((b: any, idx: number) => {
+                  const cost = b.points_cost || b.points_required || 0;
+                  const isUnlocked = points >= cost;
+                  const missingPts = Math.max(0, cost - points);
+                  const progressPercent = cost > 0 ? Math.min(100, Math.floor((points / cost) * 100)) : 100;
+                  return (
+                    <article key={b.id || idx} className={`ed-reward ${isUnlocked ? 'is-on' : ''}`} data-reveal="">
+                      {isUnlocked && <span className="ed-pass-sheen" />}
+                      <div className="ed-reward-top">
+                        <span className="ed-reward-ico">{isUnlocked ? <Gift size={20} /> : <Lock size={18} />}</span>
+                        <span className="ed-reward-cost">{cost} pts</span>
+                      </div>
+                      <h3>{b.name}</h3>
+                      {b.description && <p>{b.description}</p>}
                       {isUnlocked ? (
-                        <div className="reward-unlocked-status">
-                          <CheckCircle size={15} />
-                          <span>¡Desbloqueado! Muestra tu QR en caja para canjear</span>
-                        </div>
+                        <div className="ed-reward-status"><CheckCircle size={16} /> ¡Desbloqueado! Muestra tu QR en caja</div>
                       ) : (
-                        <div>
-                          <div className="reward-locked-progress-header">
-                            <span className="reward-locked-missing-text" style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
-                              <Lock size={13} color="#d4a35f" />
-                              <span>Faltan <strong>{missingPts} pts</strong> para desbloquear</span>
-                            </span>
-                            <span style={{ fontWeight: 700 }}>{progressPercent}%</span>
+                        <div className="ed-reward-status" style={{ display: 'block' }}>
+                          <div className="ed-reward-meta">
+                            <span>Faltan {missingPts} pts</span>
+                            <span>{progressPercent}%</span>
                           </div>
-                          <div className="reward-progress-track">
-                            <div className="reward-progress-fill" style={{ width: `${progressPercent}%` }} />
-                          </div>
+                          <div className="ed-reward-bar"><span style={{ width: `${progressPercent}%` }} /></div>
                         </div>
                       )}
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-        )}
+                    </article>
+                  );
+                })}
+              </div>
+            </>
+          )}
 
-        {/* Redemption History */}
-        {loyaltyData?.history?.length > 0 && (
-          <div className="profile-card">
-            <h2 className="profile-card-title">Historial de Canjes</h2>
-            <ul className="profile-history-list">
-              {loyaltyData.history.map((item: any) => (
-                <li key={item.id} className="profile-history-item">
-                  <span className="profile-history-desc">{item.benefit_description}</span>
-                  <span className="profile-history-pts">-{item.points_used} pts</span>
-                </li>
-              ))}
-            </ul>
-          </div>
-        )}
+          {loyaltyData?.history?.length > 0 && (
+            <>
+              <div className="ed-pp-section-head" data-reveal="">
+                <div>
+                  <span className="ed-eyebrow">Movimientos</span>
+                  <h2>Historial de <em>canjes</em></h2>
+                </div>
+              </div>
+              <ul className="ed-history" data-reveal="">
+                {loyaltyData.history.map((item: any) => (
+                  <li key={item.id}>
+                    <span>{item.benefit_description}</span>
+                    <b>-{item.points_used} pts</b>
+                  </li>
+                ))}
+              </ul>
+            </>
+          )}
+        </div>
       </main>
+      <footer className="ed-pp-footer">Restaurante Edén · Otumba, Estado de México</footer>
     </div>
   );
 }
