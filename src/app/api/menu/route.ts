@@ -174,10 +174,13 @@ export async function GET() {
 
   } catch (error) {
     console.error('Menu API error:', error);
+    // fallback: true -> el cliente muestra este menú solo para ver (sus ids no existen en la base)
+    // y no deja agregar productos al carrito hasta que cargue el menú real.
     return NextResponse.json({
       CATEGORIES: staticCategories,
       MENU_ITEMS: staticMenuItems,
-      SALAD_OPTIONS: staticSaladOptions
+      SALAD_OPTIONS: staticSaladOptions,
+      fallback: true
     });
   }
 }

@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
@@ -45,6 +45,7 @@ import { EdenMark, Monstera, LeafShadows, Tagline, cutoutFor } from '@/component
 import { MARK_LEAF } from '@/components/site/edenPaths';
 import { useCurtain } from '@/components/site/Curtain';
 import { useScrollFx } from '@/components/site/useScrollFx';
+import { isUuid } from '@/lib/ids';
 
 // Helper local icon
 function getCategoryIcon(name: string) {
@@ -110,6 +111,11 @@ function MenuContent() {
   // Menu Data State
   const [menuData, setMenuData] = useState<{ CATEGORIES: MenuCategory[], MENU_ITEMS: MenuItem[], SALAD_OPTIONS: any } | null>(null);
   const [menuError, setMenuError] = useState(false);
+  // true mientras se muestra el menú de respaldo (src/lib/menuData.ts): sus ids no existen en la
+  // base, así que se puede ver pero NO agregar al carrito hasta que cargue el menú real.
+  const [menuIsFallback, setMenuIsFallback] = useState(false);
+  const [menuNotice, setMenuNotice] = useState('');
+  const retryMenuRef = useRef<(() => void) | null>(null);
 
   // Navigation and Scroll-hide Header
   const [activeCategory, setActiveCategory] = useState<string>('');
@@ -197,14 +203,14 @@ function MenuContent() {
     if (savedCart) {
       try {
         const parsed = JSON.parse(savedCart);
-        // Evitar error 500 al enviar IDs viejos (tipo 'ensalada-chica') en lugar de UUIDs de la nueva base de datos
-        const isOldCart = parsed.some((item: any) => item.id && !item.id.includes('-'));
-        if (isOldCart) {
-          localStorage.removeItem('eden_cart');
-          setCart([]);
-        } else {
-          setCart(parsed);
+        // Quitar productos con ids que no existen en la base (slugs viejos o del menú de respaldo,
+        // p. ej. "ensalada" o "jugo-mixto"): harían fallar el pedido. Se conservan los válidos.
+        const items = Array.isArray(parsed) ? parsed : [];
+        const validItems = items.filter((item: any) => isUuid(item?.id));
+        if (validItems.length !== items.length) {
+          localStorage.setItem('eden_cart', JSON.stringify(validItems));
         }
+        setCart(validItems);
       } catch (e) {
         console.error(e);
       }
@@ -286,32 +292,87 @@ function MenuContent() {
     return () => clearInterval(refreshInterval);
   }, []);
 
-  // Fetch Menu from API (con temporizador de 8s y respaldo automático)
+  // Fetch Menu from API (temporizador de 8s por intento). Si no carga, se muestra el menú de
+  // respaldo SOLO para ver y se reintenta en segundo plano hasta obtener el menú real.
   useEffect(() => {
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 8000);
+    let cancelled = false;
+    let loaded = false;
+    let inFlight = false;
+    let attempt = 0;
+    let retryTimer: ReturnType<typeof setTimeout> | null = null;
+    const RETRY_DELAYS_MS = [3000, 5000, 10000, 15000, 30000];
 
-    fetch('/api/menu', { signal: controller.signal })
-      .then(res => {
-        clearTimeout(timeoutId);
-        if (!res.ok) throw new Error('Error de red al cargar el menú');
-        return res.json();
-      })
-      .then(data => {
-        setMenuData(data);
-      })
-      .catch(err => {
-        console.error('Menu fetch failed or timed out, loading fallback:', err);
-        const fallback = {
-          CATEGORIES: fallbackCategories,
-          MENU_ITEMS: fallbackMenuItems,
-          SALAD_OPTIONS: fallbackSaladOptions
-        };
-        setMenuData(fallback);
-      });
+    const scheduleRetry = () => {
+      if (cancelled || loaded || retryTimer) return;
+      const delay = RETRY_DELAYS_MS[Math.min(attempt - 1, RETRY_DELAYS_MS.length - 1)];
+      retryTimer = setTimeout(() => { retryTimer = null; loadMenu(); }, delay);
+    };
 
-    return () => clearTimeout(timeoutId);
+    const loadMenu = () => {
+      if (cancelled || loaded || inFlight) return;
+      inFlight = true;
+      attempt += 1;
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 8000);
+
+      fetch('/api/menu', { signal: controller.signal, cache: attempt > 1 ? 'no-store' : 'default' })
+        .then(res => {
+          if (!res.ok) throw new Error('Error de red al cargar el menú');
+          return res.json();
+        })
+        .then(data => {
+          clearTimeout(timeoutId);
+          if (cancelled) return;
+          if (data?.fallback || !Array.isArray(data?.MENU_ITEMS)) throw new Error('El servidor respondió con el menú de respaldo');
+          loaded = true;
+          setMenuData(data);
+          setMenuIsFallback(false);
+          setMenuNotice('');
+          // Por si quedó algo inválido en el carrito, se limpia al tener el menú real.
+          setCart(prev => {
+            const valid = prev.filter((item: any) => isUuid(item?.id));
+            if (valid.length !== prev.length) {
+              try { localStorage.setItem('eden_cart', JSON.stringify(valid)); } catch (e) { }
+            }
+            return valid.length !== prev.length ? valid : prev;
+          });
+        })
+        .catch(err => {
+          clearTimeout(timeoutId);
+          if (cancelled) return;
+          console.error('Menu fetch failed or timed out, showing fallback (solo lectura):', err);
+          setMenuIsFallback(true);
+          setMenuData(prev => prev ?? {
+            CATEGORIES: fallbackCategories,
+            MENU_ITEMS: fallbackMenuItems,
+            SALAD_OPTIONS: fallbackSaladOptions
+          });
+          scheduleRetry();
+        })
+        .finally(() => { inFlight = false; });
+    };
+
+    // Permite que un toque en "Agregar" adelante el reintento.
+    retryMenuRef.current = () => {
+      if (retryTimer) { clearTimeout(retryTimer); retryTimer = null; }
+      loadMenu();
+    };
+
+    loadMenu();
+
+    return () => {
+      cancelled = true;
+      if (retryTimer) clearTimeout(retryTimer);
+      retryMenuRef.current = null;
+    };
   }, []);
+
+  // Oculta el aviso de "cargando menú" después de unos segundos
+  useEffect(() => {
+    if (!menuNotice) return;
+    const t = setTimeout(() => setMenuNotice(''), 5000);
+    return () => clearTimeout(t);
+  }, [menuNotice]);
 
   // Scroll direction listener to show/hide header unificado & update active category
   useEffect(() => {
@@ -400,7 +461,14 @@ function MenuContent() {
   };
 
   // Add to Cart Logic
+  const MENU_LOADING_NOTICE = 'Estamos terminando de cargar el menú. Intenta de nuevo en unos segundos.';
+
   const handleAddToCartClick = (product: MenuItem) => {
+    if (menuIsFallback) {
+      setMenuNotice(MENU_LOADING_NOTICE);
+      retryMenuRef.current?.();
+      return;
+    }
     setSelectedProduct(product);
     // Reset selection defaults
     const initialSize = product.prices ? (product.prices['Chica'] !== undefined ? 'Chica' : product.prices['Chico'] !== undefined ? 'Chico' : Object.keys(product.prices)[0]) : 'Chico';
@@ -425,6 +493,11 @@ function MenuContent() {
   };
 
   const addToCartDirect = (product: MenuItem) => {
+    if (menuIsFallback) {
+      setMenuNotice(MENU_LOADING_NOTICE);
+      retryMenuRef.current?.();
+      return;
+    }
     const existingIndex = cart.findIndex(item => item.id === product.id && !item.size);
     if (existingIndex !== -1) {
       const newCart = [...cart];
@@ -445,6 +518,11 @@ function MenuContent() {
 
   const handleConfirmCustomization = () => {
     if (!selectedProduct) return;
+    if (menuIsFallback) {
+      setMenuNotice(MENU_LOADING_NOTICE);
+      retryMenuRef.current?.();
+      return;
+    }
 
     // Build item details
     const isSmoothieClasico = Boolean(
@@ -717,6 +795,15 @@ function MenuContent() {
 
       try { sessionStorage.removeItem('eden_otp_sent'); } catch (e) { }
 
+      // El código ya se gastó en Twilio: a partir de aquí la sesión está iniciada. Si el pedido
+      // falla, se reintenta solo el pedido (desde el carrito) sin pedir otro SMS.
+      setIsAuthenticated(true);
+      setIsVerifying(false);
+      setSmsSent(false);
+      setSmsCode(['', '', '', '', '', '']);
+      setIsAuthOpen(false);
+      setIsCartOpen(true);
+
       // Éxito: guardar sesión híbrida por 30 días y enviar orden
       try {
         localStorage.setItem('eden_user_session', JSON.stringify({
@@ -800,6 +887,21 @@ function MenuContent() {
         const blockedShort = editingOrder?.short;
         setEditingOrder(null);
         setErrorMsg(`${data.message || 'Tu pedido ya no se puede modificar.'} Tu pedido original #${blockedShort ?? ''} sigue vigente. Si envías este carrito ahora se creará un pedido NUEVO adicional.`);
+        setIsSubmittingOrder(false);
+        setIsVerifying(false);
+        return;
+      }
+
+      if (res.status === 409 && Array.isArray(data.conflicts) && data.conflicts.some((c: any) => c.invalid_id)) {
+        // Productos agregados desde el menú de respaldo: se quitan del carrito y se pide volver a agregarlos.
+        const badCartIds = new Set(data.conflicts.filter((c: any) => c.invalid_id).map((c: any) => c.cart_id));
+        const badIds = new Set(data.conflicts.filter((c: any) => c.invalid_id).map((c: any) => c.product_id));
+        const cleaned = cart.filter((item: any) => !(badCartIds.has(item.cartId) || badIds.has(item.id)));
+        saveCart(cleaned);
+        const names = data.conflicts.filter((c: any) => c.invalid_id).map((c: any) => c.product_name).join(', ');
+        setErrorMsg(`Tuvimos que quitar de tu carrito: ${names}. Se agregó mientras el menú terminaba de cargar. Vuelve a agregarlo desde el menú y confirma tu pedido; ya no necesitas otro código SMS.`);
+        setIsAuthOpen(false);
+        setIsCartOpen(true);
         setIsSubmittingOrder(false);
         setIsVerifying(false);
         return;
@@ -2180,6 +2282,16 @@ function MenuContent() {
       )}
 
       {/* CART DRAWER */}
+      {menuNotice && (
+        <div
+          role="status"
+          aria-live="polite"
+          style={{ position: 'fixed', left: '50%', bottom: '24px', transform: 'translateX(-50%)', zIndex: 3000, maxWidth: 'calc(100vw - 32px)', width: 'max-content', backgroundColor: '#1f3b2c', color: '#fff', padding: '12px 16px', borderRadius: '12px', fontSize: '0.88rem', fontWeight: 600, boxShadow: '0 8px 24px rgba(0,0,0,0.22)', textAlign: 'center' }}
+        >
+          {menuNotice}
+        </div>
+      )}
+
       {isCartOpen && (
         <div className="modal-overlay ed-cart-overlay" onClick={() => setIsCartOpen(false)}>
           <div className="cart-drawer ed-cart" onClick={e => e.stopPropagation()}>

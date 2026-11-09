@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { isUuid } from '@/lib/ids';
 import { createAdminClient, isSupabaseConfigured } from '@/lib/supabase';
 import { requireRole, verifyAccessToken } from '@/lib/auth';
 import { OrderCreateRequest } from '@/types/api-contracts';
@@ -164,6 +165,27 @@ export async function POST(req: Request) {
       replacedOrderId = oldOrder.id;
     }
 
+    // 3a. IDs de producto inválidos (p. ej. "ensalada", del menú de respaldo que se muestra si el
+    // menú real no cargó a tiempo). Postgres los rechaza (22P02) porque products.id es uuid, así que
+    // se responden como conflicto para que el cliente los vuelva a agregar desde el menú real.
+    const invalidItems = items.filter((i: any) => !isUuid(i?.id));
+    if (invalidItems.length > 0) {
+      console.warn('[orders] Carrito con ids de producto inválidos:', invalidItems.map((i: any) => String(i?.id).slice(0, 40)));
+      return NextResponse.json(
+        {
+          error: 'item_unavailable',
+          conflicts: invalidItems.map((i: any) => ({
+            product_id: i?.id ?? null,
+            cart_id: i?.cartId ?? null,
+            product_name: i?.name || 'Producto',
+            reason: 'Se agregó mientras el menú no había terminado de cargar. Vuelve a agregarlo desde el menú.',
+            invalid_id: true,
+          })),
+        },
+        { status: 409 }
+      );
+    }
+
     // 3. Fetch all products referenced in the cart (requiere adminClient — tabla products tiene RLS)
     const productIds = items.map((i: any) => i.id);
     const { data: dbProducts, error: prodErr } = await adminSupabase
@@ -179,6 +201,10 @@ export async function POST(req: Request) {
       .in('id', productIds);
 
     if (prodErr || !dbProducts) {
+      console.error('[orders] Error consultando productos:', {
+        code: prodErr?.code, message: prodErr?.message, details: prodErr?.details, hint: prodErr?.hint,
+        item_count: productIds.length,
+      });
       throw new Error('Error al consultar productos en la base de datos.');
     }
 
